@@ -4,13 +4,13 @@ Mbuild is configured using TOML files that contain specific information. There a
 
 ### Definitions
 
-| Term               | Definition                                                                        |
-| ------------------ | --------------------------------------------------------------------------------- |
-| Module file        | A configuration file describing a module. See [Module files]                      |
-| Global flags       | A set of all flags that are not defined inside a module file                      |
-| Architecture flags | A set of flags defined in [Architecture specific configuration file]              |
-| Module flags       | A set of flags defined in a module, that are applied to all sources defined in it |
-| File flags         | A set of flags defined in a module applied only to a specific source file         |
+| Term               | Definition                                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Module file        | A configuration file describing a module. See [Module files](#module-files)                                     |
+| Global flags       | A set of all flags that are not defined inside a module file                                                    |
+| Architecture flags | A set of flags defined in [Architecture specific configuration file](#architecture-specific-configuration-file) |
+| Module flags       | A set of flags defined in a module, that are applied to all sources defined in it                               |
+| File flags         | A set of flags defined in a module applied only to a specific source file                                       |
 
 ### Global configuration files
 
@@ -120,7 +120,7 @@ A module may declare the following types of source files:
 - \*.s \*.asm - an assembly source file which is not passed through the C preprocessor
 - \*.S - an assembly source file which is passed by the C preprocessor
 
-The target is an opaque identifier referring to one final link output. All modules that specify the same target are linked together. If two modules declare the same target, they will be linked into the same final link output (i.e. they'll be linked together). There are however two special targets:
+The target is an opaque identifier referring to one final link output. If two or more modules declare the same target, they will be linked into the same final link output (i.e. they'll be linked together). There are however two special targets:
 
 - `builtin` - The module will be linked into the target specified by the TARGET variable in the main configuration file
 - `lib` - The module will be linked into the target specified by the LIB_TARGET variable in the main configuration file
