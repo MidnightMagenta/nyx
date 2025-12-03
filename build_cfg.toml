@@ -9,10 +9,10 @@ ARCH = "x86_64"
 CROSS_COMPILE = true
 
 # directories
-SOURCE_DIR = ""     # "" = SOURCE_DIR is ./
+SOURCE_DIR = ""            # "" = SOURCE_DIR is ./
 ARCH_DIR = "arch"
-BUILD_DIR = "build" # "" = in source build
-INC_DIR = "include"
+BUILD_DIR = "build"        # "" = in source build
+INCLUDE_DIRS = ["include"]
 
 # if true, both $SOURCE_DIR/manifest.toml and $ARCH_DIR/$ARCH/manifest.toml will be evaluated
 INCLUDE_ARCH_MANIFEST = true
