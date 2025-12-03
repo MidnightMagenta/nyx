@@ -1,0 +1,25 @@
+CROSS_PREFIX = "x86_64-elf-" # if $CROSS_COMPILE == true, prefix tools with this string
+
+LINKER_SCRIPT = "x86_64-link.ld"
+INC_DIR = "include"              # arch specific include dir. Relative to $ARCH_DIR/$ARCH/ (the directory this file should reside in)
+
+# architecture specific flags
+CFLAGS = [
+    "-m64",
+    "-m80387",
+    "-msse",
+    "-msse2",
+    "-mmmx",
+    "-mno-sse3",
+    "-mno-sse4",
+    "-mno-avx",
+    "-mno-avx2",
+    "-mno-avx512",
+    "-mcmodel=kernel",
+    "-mno-red-zon",
+    "-fno-omit-frame-pointer",
+]
+CPPFLAGS = []
+CXXFLAGS = []
+ACFLAGS = []
+LDFLAGS = []

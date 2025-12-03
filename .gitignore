@@ -1,4 +1,6 @@
+# file extensions
 *.o
+*.d
 *.so
 *.efi
 *.EFI
@@ -6,9 +8,10 @@
 *.lib
 *.img
 *.elf
-*.cfg
-*.CFG
+*.auto
+*.auto.*
 
+# directories
 .vscode/
 .cache/
 build/
@@ -16,4 +19,11 @@ docs/
 keys/
 **/tmp/
 
+# files
 compile_commands.json
+
+# mbuild specific files
+scripts/mbuild/mbuild
+scripts/mbuild/parser.h
+scripts/mbuild/parser.c
+scripts/mbuild/lexer.c

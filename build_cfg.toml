@@ -1,0 +1,54 @@
+# toolchain options
+HOSTCC = "gcc"
+HOSTCXX = "g++"
+HOSTAS = "as"
+HOSTLD = "ld"
+HOSTAR = "ar"
+
+ARCH = "x86_64"
+CROSS_COMPILE = true
+
+# directories
+SOURCE_DIR = ""     # "" = SOURCE_DIR is ./
+ARCH_DIR = "arch"
+BUILD_DIR = "build" # "" = in source build
+INC_DIR = "include"
+
+# if true, both $SOURCE_DIR/manifest.toml and $ARCH_DIR/$ARCH/manifest.toml will be evaluated
+INCLUDE_ARCH_MANIFEST = true
+
+# main compilation targes.
+TARGET = "nyxos.elf"    # linked into by using special target "builtin"
+LIB_TARGET = "libnyx.a" # linked into by using special target "lib"
+
+# build options
+#
+# WARN_LEVEL defines how strict warning flags will be passed to CC.
+# Available warning levels are:
+#  - "none"     - no additional warning flags will be passed
+#  - "normal"   - -Wall -Wextra will be passed
+#  - "strict"   - -Wall -Wextra -Wpedantic will be passed
+#  - "paranoid" - -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wundef -Wcast-align -Wshift-overflow -Wdouble-promotion will be passed
+WARN_LEVEL = "normal"
+WARNING_AS_ERRORS = false # passes -Werror
+DEBUG = true              # passes -g and -D_DEBUG
+OPT_LEVEL = 0             # passes -O$OPT_LEVEL
+
+# global, non architerutre specific compile flags
+CFLAGS = [
+    "-nostartfiles",
+    "-nodefaultlibs",
+    "-nostdlib",
+    "-nostdinc",
+    "-ffreestanding",
+    "-fshort-wchar",
+    "-fno-stack-protector",
+    "-fno-builtin",
+    "-fno-tree-vectorize",
+    "-fno-pic",
+    "-fno-pie",
+]
+CPPFLAGS = ["-std=gnu23"]
+CXXFLAGS = []
+ACFLAGS = []
+LDFLAGS = ["-static", "-Bsymbolic", "-nostdlib"]
