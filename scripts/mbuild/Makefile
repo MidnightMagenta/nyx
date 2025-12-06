@@ -1,17 +1,16 @@
 CC ?= gcc
 CXX ?= g++
-FLEX ?= flex
-BISON ?= bison
 
-CFLAGS := -O3 -MP -MMD
-CXXFLAGS := $(CFLAGS)
+CFLAGS := -O0 -g -MP -MMD -D_DEBUG
+CXXFLAGS := $(CFLAGS) -std=c++17
 CPPFLAGS :=
-LDFLAGS := -lfl
+LDFLAGS := 
 
-TARGET := mbuild
+TARGET := build
 
-obj-p := parser.o lexer.o
-obj := $(obj-p) ast.o main.o eval.o emit.o
+obj := main.o evaluator.o toml_impl.o
+
+ARGS ?=
 
 .PHONY: all clean ccdb
 
@@ -27,8 +26,6 @@ clean:
 	@rm -rf .cache
 	@rm -f $(TARGET)
 	@rm -f $(obj:.o=.d)
-	@rm -f $(obj-p:.o=.c)
-	@rm -f $(obj-p:.o=.h)
 
 %.o: %.c
 	@echo -e "CC $@"
@@ -37,14 +34,6 @@ clean:
 %.o: %.cc
 	@echo -e "CXX $@"
 	@$(CXX) $(CXXFLAGS) -c -o $@ $<
-
-%.c: %.l
-	@echo -e "FLEX $@"
-	@$(FLEX) -o $@ $<
-
-%.c: %.y
-	@echo -e "BISON $@"
-	@$(BISON) -d -o $@ $<
 
 -include $(obj:.o=.d)
 
