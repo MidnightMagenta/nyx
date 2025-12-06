@@ -1,6 +1,7 @@
 #ifndef MBUILD_EVALUATOR
 #define MBUILD_EVALUATOR
 
+#include "source_tree.hpp"
 #include <filesystem>
 #include <queue>
 #include <string>
@@ -32,6 +33,9 @@ public:
 private:
     int  read_config();
     void read_build_cfg();
+
+    void eval_manifest(const std::filesystem::path &dir);
+    void eval_module(const std::filesystem::path &dir);
 
 private:
     struct DefaultSettings {
@@ -77,6 +81,8 @@ private:
 
     std::queue<std::filesystem::path> m_dirQueue;
     std::queue<std::filesystem::path> m_moduleQueue;
+
+    std::vector<Module> m_modules;
 };
 }// namespace mbuild
 

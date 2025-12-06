@@ -51,7 +51,6 @@ int cmd_update(int argc, char **argv) {
                 e.set_root_path(optarg);
                 break;
             case '?':
-                std::cerr << "Unknown options: " << optopt << "\n";
                 [[fallthrough]];
             default:
                 return 1;
@@ -87,7 +86,6 @@ int cmd_build(int argc, char **argv) {
                 e.set_root_path(optarg);
                 break;
             case '?':
-                std::cerr << "Unknown options: " << optopt << "\n";
                 [[fallthrough]];
             default:
                 return 1;
@@ -128,7 +126,6 @@ int cmd_clean(int argc, char **argv) {
                 clean_all = true;
                 break;
             case '?':
-                std::cerr << "Unknown options: " << optopt << "\n";
                 [[fallthrough]];
             default:
                 return 1;
