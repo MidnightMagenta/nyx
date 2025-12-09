@@ -4,13 +4,11 @@ CXX ?= g++
 CFLAGS := -O0 -g -MP -MMD -D_DEBUG
 CXXFLAGS := $(CFLAGS) -std=c++17
 CPPFLAGS :=
-LDFLAGS := 
+LDFLAGS := -lfmt
 
 TARGET := build
 
-obj := main.o evaluator.o toml_impl.o
-
-ARGS ?=
+obj := main.o evaluator.o ninja_emitter.o var_eval.o toml_impl.o
 
 .PHONY: all clean ccdb
 

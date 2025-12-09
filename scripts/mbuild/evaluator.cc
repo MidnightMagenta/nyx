@@ -1,4 +1,5 @@
 #include "evaluator.hpp"
+#include "ninja_emitter.hpp"
 #include "toml_inc.hpp"
 #include <iomanip>
 #include <iostream>
@@ -30,7 +31,7 @@ const static std::unordered_set<std::string> manifest_allowed = {
 };
 
 const static std::unordered_set<std::string> module_allowed = {
-        "target", "sources", "CFLAGS", "CPPFLAGS", "CXXFLAGS", "ASFLAGS", "LDFLAGS",
+        "target", "sources", "name", "CFLAGS", "CPPFLAGS", "CXXFLAGS", "ASFLAGS", "LDFLAGS",
 
 };
 
@@ -293,6 +294,21 @@ void mbuild::Evaluator::eval_manifest(const std::filesystem::path &dir) {
     }
 }
 
+static std::string make_unique_modname(const std::filesystem::path &p, const std::filesystem::path &root) {
+    std::filesystem::path rel = p.lexically_relative(root);
+    std::string           s   = rel.string();
+
+    for (char &c : s) {
+        if (c == '/' || c == '\\') {
+            c = '_';
+        } else if (!std::isalnum((unsigned char) c) && c != '_') {
+            c = '_';
+        }
+    }
+
+    return s;
+}
+
 void mbuild::Evaluator::eval_module(const std::filesystem::path &dir) {
     if (m_verbose) { std::cout << "Evaluating module " << dir << "\n"; }
 
@@ -321,6 +337,7 @@ void mbuild::Evaluator::eval_module(const std::filesystem::path &dir) {
     if (module["CONTAINS_MANIFEST"].value_or(false)) { m_dirQueue.push(dir); }
 
     Module m;
+    m.name   = module["name"].value_or(make_unique_modname(dir, m_rootDir));
     m.target = get_required_key<std::string>(module, "target");
     if (m.target == "builtin") {
         m.target = m_defSettings.target;
@@ -328,7 +345,10 @@ void mbuild::Evaluator::eval_module(const std::filesystem::path &dir) {
         m.target = m_defSettings.lib_target;
     }
 
-    if (m_verbose) { std::cout << std::left << std::setw(10) << "Target: " << m.target << "\n"; }
+    if (m_verbose) {
+        std::cout << std::left << std::setw(10) << "Name: " << m.name << "\n";
+        std::cout << std::left << std::setw(10) << "Target: " << m.target << "\n";
+    }
 
     auto append = [](auto &dst, const auto &src) { dst.insert(dst.end(), src.begin(), src.end()); };
 
@@ -343,13 +363,11 @@ void mbuild::Evaluator::eval_module(const std::filesystem::path &dir) {
         append(m.cppflags.flags, cppflags);
         append(m.cxxflags.flags, cxxflags);
         append(m.asflags.flags, asflags);
-        append(m.ldflags.flags, ldflags);
 
-        m.cflags.append   = module["OVERRIDE_CFLAGS"].value_or(false);
-        m.cppflags.append = module["OVERRIDE_CXXFLAGS"].value_or(false);
-        m.cxxflags.append = module["OVERRIDE_CPPFLAGS"].value_or(false);
-        m.asflags.append  = module["OVERRIDE_ASFLAGS"].value_or(false);
-        m.ldflags.append  = module["OVERRIDE_LDFLAGS"].value_or(false);
+        m.cflags.override   = module["OVERRIDE_CFLAGS"].value_or(false);
+        m.cppflags.override = module["OVERRIDE_CXXFLAGS"].value_or(false);
+        m.cxxflags.override = module["OVERRIDE_CPPFLAGS"].value_or(false);
+        m.asflags.override  = module["OVERRIDE_ASFLAGS"].value_or(false);
     }
 
     if (m_verbose) { std::cout << "Sources:\n"; }
@@ -369,8 +387,8 @@ void mbuild::Evaluator::eval_module(const std::filesystem::path &dir) {
         src.rule = rule_it->second;
 
         if (m_verbose) {
-            std::cout << src.source_path.lexically_relative(m_rootDir) << " -" << src.rule << "-> "
-                      << src.object_path.lexically_relative(m_rootDir) << "\n";
+            std::cout << std::left << std::setw(5) << "" << src.source_path.lexically_relative(m_rootDir) << " -"
+                      << src.rule << "-> " << src.object_path.lexically_relative(m_rootDir) << "\n";
         }
 
         if (auto *tbl = module[s].as_table()) {
@@ -384,10 +402,10 @@ void mbuild::Evaluator::eval_module(const std::filesystem::path &dir) {
             append(src.cxxflags.flags, cxxflags);
             append(src.asflags.flags, asflags);
 
-            m.cflags.append   = (*tbl)["OVERRIDE_CFLAGS"].value_or(false);
-            m.cppflags.append = (*tbl)["OVERRIDE_CXXFLAGS"].value_or(false);
-            m.cxxflags.append = (*tbl)["OVERRIDE_CPPFLAGS"].value_or(false);
-            m.asflags.append  = (*tbl)["OVERRIDE_ASFLAGS"].value_or(false);
+            m.cflags.override   = (*tbl)["OVERRIDE_CFLAGS"].value_or(false);
+            m.cppflags.override = (*tbl)["OVERRIDE_CXXFLAGS"].value_or(false);
+            m.cxxflags.override = (*tbl)["OVERRIDE_CPPFLAGS"].value_or(false);
+            m.asflags.override  = (*tbl)["OVERRIDE_ASFLAGS"].value_or(false);
         }
 
         m.sources.push_back(src);
@@ -414,6 +432,9 @@ int mbuild::Evaluator::update() {
                 m_dirQueue.pop();
             }
         }
+
+        NinjaEmitter emitter(m_defSettings);
+        emitter.emit(m_modules);
     } catch (const std::runtime_error &e) {
         std::cerr << e.what() << "\n";
         return 1;
@@ -429,6 +450,8 @@ int mbuild::Evaluator::build() {
     res = read_config();
     if (res != 0) { return res; }
 
+    std::cerr << "Unimplemented\n";
+
     return 0;
 }
 
@@ -438,6 +461,8 @@ int mbuild::Evaluator::clean(bool all) {
 
     res = read_config();
     if (res != 0) { return res; }
+
+    std::cerr << "Unimplemented\n";
 
     return 0;
 }
