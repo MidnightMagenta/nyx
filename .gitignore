@@ -3,13 +3,10 @@
 *.d
 *.a
 *.so
-*.efi
-*.EFI
-*.lib
 *.img
 *.elf
 *.auto
-*.auto.*
+*.lds
 
 # directories
 .vscode/
@@ -20,7 +17,5 @@ keys/
 
 # files
 compile_commands.json
-tools/build/build
-
-# mbuild specific files
-scripts/kbuild/build
+.config
+nyxos

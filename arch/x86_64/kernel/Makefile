@@ -1,1 +1,0 @@
-obj-y += $(subdir)panic.o $(subdir)idt.o

@@ -1,3 +1,4 @@
+
 BasedOnStyle: LLVM
 AccessModifierOffset: -4
 AlignAfterOpenBracket: Align
@@ -10,7 +11,7 @@ AllowAllConstructorInitializersOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortBlocksOnASingleLine: Always
 AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: All
+AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: Always
 AllowShortLambdasOnASingleLine: All
 AllowShortLoopsOnASingleLine: true
@@ -42,7 +43,7 @@ IndentPPDirectives: None
 IndentWidth: 4
 KeepEmptyLinesAtTheStartOfBlocks: true
 MaxEmptyLinesToKeep: 2
-NamespaceIndentation: None
+NamespaceIndentation: Inner
 ObjCSpaceAfterProperty: false
 ObjCSpaceBeforeProtocolList: true
 PointerAlignment: Right
@@ -66,7 +67,11 @@ SpacesInSquareBrackets: false
 TabWidth: 4
 UseTab: Never
 
+Cpp11BracedListStyle: true
+
 BinPackParameters: false
+BinPackArguments: false
 PackConstructorInitializers: Never
 PenaltyBreakBeforeFirstCallParameter: 2
 PenaltyReturnTypeOnItsOwnLine: 1000000
+

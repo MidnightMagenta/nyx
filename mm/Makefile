@@ -1,1 +1,0 @@
-obj-y += $(subdir)memblock.o

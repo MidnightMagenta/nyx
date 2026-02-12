@@ -1,0 +1,27 @@
+config X86
+    bool
+    default y
+
+menu "Architecture options ($(ARCH))"
+
+choice
+    prompt "Processor family"
+
+config X86_64
+    bool "amd64"
+
+config X86_32
+    bool "i386"
+
+endchoice
+
+# boot protocol
+choice
+    prompt "Boot protocol"
+
+config BOOT_MULTIBOOT2
+    bool "Multiboot2"
+
+endchoice
+
+endmenu

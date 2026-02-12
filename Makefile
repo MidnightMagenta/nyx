@@ -1,138 +1,140 @@
-export TOPLEVEL_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+.EXPORT_ALL_VARIABLES:
 
-ARCH := x86_64
-BIN_TARGET := elf
-PREFIX := $(ARCH)-$(BIN_TARGET)-
+ifeq ($(V),y)
+Q := 
+else
+Q := @
+endif
 
-CC := $(PREFIX)gcc
-LD := $(PREFIX)ld
-AR := $(PREFIX)ar
-AC := $(PREFIX)as
+MAKEFLAGS += --no-print-directory
 
-DEBUG := true
-DEBUGER := true
-VERBOSE := false
-OPTIMIZE := -O0
+ARCH := x86
+CROSS_COMPILE :=
+TOPDIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
-BUILD_DIR := build/$(ARCH)
-LIB_DIR := $(BUILD_DIR)/libs
+# --------------------------------
+# toolchain
+# --------------------------------
+
+INCDIR := $(TOPDIR)/include
+
+HOSTCC  := gcc
+HOSTCXX := g++
+HOSTAR  := ar
+
+CC  := $(CROSS_COMPILE)gcc -I$(INCDIR)
+CPP := $(CC) -E
+AS  := $(CROSS_COMPILE)as
+AR  := $(CROSS_COMPILE)ar
+LD  := $(CROSS_COMPILE)ld
+
+# --------------------------------
+# flags
+# --------------------------------
+
+HOSTCFLAGS= -O2 -g
+HOSTCXXFLAGS= -O2 -g
 
 CFLAGS := -nostartfiles \
-			-nodefaultlibs \
-			-nostdlib \
-			-nostdinc \
-			-ffreestanding \
-			-fshort-wchar \
-			-fno-omit-frame-pointer \
-			-fno-stack-protector \
-		 	-fno-builtin \
-			-fno-tree-vectorize \
-			-fno-pic -fno-pie \
-			-I./arch/$(ARCH)/include \
-			-I./include \
-			-std=gnu23 \
-			-MMD -MP \
-			$(OPTIMIZE)
-LDFLAGS := -static -Bsymbolic -nostdlib -L$(LIB_DIR)
-ACFLAGS := 
+		  -nodefaultlib \
+		  -nostdlib \
+		  -nostdinc \
+		  -ffreestanding \
+		  -fshort-wchar \
+		  -fno-omit-frame-pointer \
+		  -fno-stack-protector \
+		  -fno-builtin \
+		  -fno-pic -fno-pie \
+		  -std=gnu23 \
+		  -Wall -Wextra
+CPPFLAGS :=
+ASFLAGS :=
+ASPPFLAGS := -D__ASSEMBLY__
+LFLAGS := -static -Bsymbolic -nostdlib
 
-ifeq ($(ARCH),x86_64)
-    AC := nasm
-    ACFLAGS := -f elf64 -i$(abspath ./include) -i$(abspath ./arch/$(ARCH)/include)
-    CFLAGS += -m64 -m80387 -msse -msse2 -mmmx \
-				-mno-sse3 -mno-sse4 -mno-avx -mno-avx2 -mno-avx512f \
-				-mcmodel=kernel -mno-red-zone
+# --------------------------------
+# Configuration
+# --------------------------------
+
+ifeq ($(CONFIG_DEBUG),y)
+CFLAGS += -O0 -g -D__DEBUG
 else
-    $(error Unsuported architecture $(ARCH))
-    # TODO: implement other arches
+CFLAGS += -O2
 endif
 
-ifeq ($(DEBUG),true)
-    CFLAGS += -Wall -Wextra -g -D_DEBUG
-    ACFLAGS += -g -d_DEBUG
-    ifeq ($(DEBUGER), true)
-        CFLAGS += -D_DEBUGER_START
-    endif
+ifeq ($(CONFIG_EXTRA_WARNINGS),y)
+CFLAGS += -Wconversion -Wsign-conversion -Wundef -Wcast-align \
+          -Wshift-overflow -Wdouble-promotion -Wpedantic
 endif
 
-ifeq ($(VERBOSE),true)
-    CFLAGS += -Wconversion -Wsign-conversion -Wundef -Wcast-align -Wshift-overflow \
-	  			-Wdouble-promotion -Wpedantic -Werror
+ifeq ($(CONFIG_WARNINGS_AS_ERRORS),y)
+CFLAGS += -Werror
 endif
 
-GNU_EFI_DIR := bootloader/gnu-efi
-GNU_EFI_NOTE := $(BUILD_DIR)/.gnu_efi_built
+CFLAGS += -include include/generated/autoconf.h
 
-KERNEL_TARGET := nyxos.elf
-KLIB_TARGET := libnyx.a
+# --------------------------------
 
-obj-y := arch/$(ARCH)/ debug/ mm/
-lib-y := lib/
-# build rules
+ARCHIVES :=
+LIBS     :=
 
-.PHONY: all rebuild rebuild-all kernel bootloader clean clean-all image ccdb
-.NOTPARALLEL: rebuild rebuild-all
+SUBDIRS :=
 
-all: kernel bootloader
+.PHONY: all do-all nyxos nyxsubdirs clean distclean symlinks menuconfig config
 
-kernel: $(BUILD_DIR)/$(KERNEL_TARGET)
+all: do-all
 
-rebuild: clean all
-rebuild-all: clean-all all
+ifeq (.config,$(wildcard .config))
+include .config
+do-all: nyxos
+else
+do-all: config
+endif
 
-BOOT_TYPE := uefi
+include arch/$(ARCH)/Makefile
 
-bootloader: $(GNU_EFI_NOTE)
-	@$(MAKE) -C bootloader BUILD_DIR="$(abspath $(BUILD_DIR)/bootloader)" INCLUDE_DIR="$(abspath ./include/)" BOOT_TYPE="$(BOOT_TYPE)" ARCH="$(ARCH)" all
+# --------------------------------
+# General rules for building the kernel
+# --------------------------------
 
-$(GNU_EFI_NOTE):
-	@mkdir -p $(BUILD_DIR)
-	@$(MAKE) -C $(GNU_EFI_DIR) all
-	@touch $@
+nyxos: nyxsubdirs $(ARCH_LINK)
+	@echo -e "LD $@"
+	$(Q)$(LD) $(LFLAGS) \
+		-T $(ARCH_LINK) \
+		$(ARCHIVES) \
+		$(LIBS) \
+		-o $@
 
-include scripts/build.mk
+nyxsubdirs: include/generated/autoconf.h
+	$(Q)set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i; done
 
-# TODO: add kernel module build rules
+# --------------------------------
+# Cleanup rules
+# --------------------------------
 
-clean-all: clean
-	@$(MAKE) -C $(GNU_EFI_DIR) clean
-	@rm -rf $(GNU_EFI_NOTE)
-	@rm -rf $(BUILD_DIR)
+clean: archclean
+	find . -type f ! -path ./scripts/* -name '*.[oasd]' -delete
+	rm -f nyxos
 
-clean:
-	@make -C bootloader BUILD_DIR="$(abspath $(BUILD_DIR)/bootloader)" \
-	INCLUDE_DIR="$(abspath ./include/)" BOOT_TYPE="uefi" ARCH="$(ARCH)" clean
-	@find $(BUILD_DIR) -name "*.o" -type f -delete
-	@find $(BUILD_DIR) -name "*.a" -type f -delete
-	@find $(BUILD_DIR) -name "*.d" -type f -delete
-	@find $(BUILD_DIR) -name "*.so" -type f -delete
-	@find $(BUILD_DIR) -name "*.efi" -type f -delete
-	@find $(BUILD_DIR) -name "*.EFI" -type f -delete
-	@find $(BUILD_DIR) -name "*.efi.debug" -type f -delete
-	@find $(BUILD_DIR) -name "*.elf" -type f -delete
+distclean: clean
+	rm -f .config .config.old include/asi
+	rm -rf include/generated scripts/Kconfig/__pycache__
 
-# image building rules
+# --------------------------------
+# Rules for setting up the project
+# --------------------------------
 
-FILES_DIR := files
-IMAGE := $(BUILD_DIR)/nyxos.img
-DISK_GUID = f953b4de-e77f-4f0b-a14e-2b29080599cf
-ESP_GUID = 0cc13370-53ec-4cdb-8c3d-4185950e2581
+include/generated/autoconf.h:
+	$(Q)mkdir -p include/generated
+	$(Q)./scripts/Kconfig/genconfig.py --header-path include/generated/autoconf.h
 
-image: $(IMAGE)
-	@mkdir -p $(FILES_DIR)/BOOT
-	@sh ./scripts/genbootcfg.sh "$(FILES_DIR)/BOOT/BOOT.CFG" "$(ESP_GUID)" "$(KERNEL_TARGET)"
-	@sudo sh ./scripts/updateimg.sh "$(IMAGE)" "$(BUILD_DIR)" "$(FILES_DIR)"
+symlinks:
+	rm -f include/asi
+	( cd include ; ln -s ../arch/$(ARCH)/include/asi asi )
 
-$(IMAGE):
-	@echo -e "\e[1;32mCreating empty image\e[0m"
-	@mkdir -p $(@D)
-	@dd if=/dev/zero of=$@ bs=512 count=93750
-	@sgdisk -s $(IMAGE) --disk-guid=$(DISK_GUID)
-	@sgdisk -s $(IMAGE) --largest-new=1 --typecode=1:ef00 --partition-guid=1:$(ESP_GUID)
+menuconfig: symlinks
+	$(Q)./scripts/Kconfig/menuconfig.py
 
-include scripts/run.mk
+config: symlinks
+	$(Q)./scripts/Kconfig/oldconfig.py
 
-# misc
-
-ccdb:
-	@compiledb make -Bn all
