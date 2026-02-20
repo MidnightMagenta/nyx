@@ -1,4 +1,4 @@
-mainmenu "NyxOS Configuration"
+mainmenu "NyxOS Kernel Configuration"
 
 menu "Build settings"
 

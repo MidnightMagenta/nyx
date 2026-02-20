@@ -11,7 +11,7 @@ unexport SUB_DIRS
 .PHONY: first_rule all_targets sub_dirs
 
 first_rule: sub_dirs
-	$(MAKE) all_targets
+	$(Q)$(MAKE) all_targets
 
 all_targets: $(O_TARGET) $(L_TARGET)
 
@@ -25,7 +25,8 @@ all_targets: $(O_TARGET) $(L_TARGET)
 
 %.o: %.S
 	@echo -e "AS $@"
-	$(Q)$(CC) $(ASFLAGS) $(EXTRA_ASFLAGS) $($*_ASFLAGS) $(ASPPFLAGS) -MMD -MP -c $< -o $@
+	$(Q)$(CC) -x assembler-with-cpp \
+		$(ASFLAGS) $(EXTRA_ASFLAGS) $($*_ASFLAGS) $(ASPPFLAGS) -MMD -MP -c $< -o $@
 
 # --------------------------------
 # compile multiple .o files into a single .o/.a file

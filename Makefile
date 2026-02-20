@@ -6,10 +6,11 @@ else
 Q := @
 endif
 
-MAKEFLAGS += --no-print-directory
+MAKEFLAGS += --no-print-directory --no-builtin-rules
 
 ARCH := x86
-CROSS_COMPILE :=
+# HACK: CROSS_COMPILE should be empty (set as enviromental variable). Left filled for convenience right now
+CROSS_COMPILE := x86_64-elf-
 TOPDIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 # --------------------------------
@@ -50,7 +51,7 @@ CFLAGS := -nostartfiles \
 CPPFLAGS :=
 ASFLAGS :=
 ASPPFLAGS := -D__ASSEMBLY__
-LFLAGS := -static -Bsymbolic -nostdlib
+LDFLAGS := -static -Bsymbolic -nostdlib
 
 # --------------------------------
 # Configuration
@@ -99,7 +100,7 @@ include arch/$(ARCH)/Makefile
 
 nyxos: nyxsubdirs $(ARCH_LINK)
 	@echo -e "LD $@"
-	$(Q)$(LD) $(LFLAGS) \
+	$(Q)$(LD) $(LDFLAGS) \
 		-T $(ARCH_LINK) \
 		$(ARCHIVES) \
 		$(LIBS) \
@@ -124,7 +125,7 @@ distclean: clean
 # Rules for setting up the project
 # --------------------------------
 
-include/generated/autoconf.h:
+include/generated/autoconf.h: .config
 	$(Q)mkdir -p include/generated
 	$(Q)./scripts/Kconfig/genconfig.py --header-path include/generated/autoconf.h
 

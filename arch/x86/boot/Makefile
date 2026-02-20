@@ -5,6 +5,12 @@ else
 $(error Invalid boot type)
 endif
 
+ifdef CONFIG_X86_32
+$(warning i386 is unsupported)
+else ifdef CONFIG_X86_64
+O_OBJS += startup64.o
+endif
+
 O_TARGET := boot.o
 
 include $(TOPDIR)/Rules.mk

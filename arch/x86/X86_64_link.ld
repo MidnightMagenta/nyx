@@ -1,33 +1,32 @@
 ENTRY(_start)
 
 PHDRS {
+	init PT_LOAD FLAGS(7);          /* RWE */
 	text PT_LOAD FLAGS(5);          /* R_E */
 	data PT_LOAD FLAGS(6);          /* RW_ */
-	init PT_LOAD FLAGS(7);          /* RWE */
 	note PT_NOTE FLAGS(0);          /* ___ */
 }
 
 SECTIONS {
     . = 1M;
-
-#ifdef CONFIG_BOOT_MULTIBOOT2
-    .multiboot : {
-        *(.multiboot*)
-    } :text
-#endif
-
     __init_start = .;
 
-    .init.text : ALIGN(0x1000){
+#ifdef CONFIG_BOOT_MULTIBOOT2
+    .multiboot BLOCK(8) : AT(1M) {
+        *(.multiboot*)
+    } :init
+#endif
+
+    .init.text BLOCK(0x1000) : ALIGN(0x1000) {
         *(.init.text*)
         *(.init.rodata*)
     } :init
 
-    .init.data : ALIGN(0x1000){
+    .init.data BLOCK(0x1000) : ALIGN(0x1000) {
         *(.init.data*)
     } :init
 
-    .init.bss (NOLOAD) : ALIGN(0x1000){
+    .init.bss (NOLOAD) : ALIGN(0x1000) {
         *(.init.bss*)
     } :init
 
@@ -38,21 +37,21 @@ SECTIONS {
 #elif defined(CONFIG_X86_32)
     . = 0xC0000000;
 #else
-#error "Invalid architecture"
+#error "Invalid processor family"
 #endif
 
     __kernel_start = .;
 
-    .text : ALIGN(0x1000) {
+    .text BLOCK(0x1000) : ALIGN(0x1000) {
         *(.text*)
         *(.rodata*)
     } :text
 
-    .data : ALIGN(0x1000) {
+    .data BLOCK(0x1000) : ALIGN(0x1000) {
         *(.data*)
     } :data
 
-    .bss (NOLOAD) : ALIGN(0x1000) {
+    .bss BLOCK(0x1000) (NOLOAD) : ALIGN(0x1000) {
         *(COMMON)
         *(.bss*)
     } :data
@@ -60,6 +59,7 @@ SECTIONS {
     __kernel_end = .;
 
     /DISCARD/ : {
+        *(.note.gnu.property)
         *(.eh_frame)
     }
 }

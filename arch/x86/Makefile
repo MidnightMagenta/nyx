@@ -3,14 +3,15 @@ LIBS     +=
 
 SUBDIRS  += arch/$(ARCH)/boot
 
-ifeq ($(CONFIG_X86_32),y)
-$(error i386 is unsupported)
-else ifeq ($(CONFIG_X86_64),y)
+ifdef CONFIG_X86_32
+$(warning i386 is unsupported)
+else ifdef CONFIG_X86_64
 CFLAGS += -m64 -m80387 -msse -msse2 -mmmx \
           -mno-sse3 -mno-sse4 -mno-avx -mno-avx2 \
           -mno-avx512f -mcmodel=kernel \
           -mno-red-zone -fno-tree-vectorize
-ARCH_LINK := arch/$(ARCH)/X86_64_link.lds
+ASFLAGS := -m64
+ARCH_LINK := $(TOPDIR)/arch/$(ARCH)/X86_64_link.lds
 endif
 
 .PHONY: archclean
