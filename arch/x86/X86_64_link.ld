@@ -1,37 +1,43 @@
 ENTRY(_start)
 
 PHDRS {
-	init PT_LOAD FLAGS(7);          /* RWE */
+	boot PT_LOAD FLAGS(7);          /* RWE */
+    init PT_LOAD FLAGS(7);          /* RWE */
 	text PT_LOAD FLAGS(5);          /* R_E */
 	data PT_LOAD FLAGS(6);          /* RW_ */
 	note PT_NOTE FLAGS(0);          /* ___ */
 }
 
+#define PHYS_ADVANCE(sec, align)    \
+    __phys += SIZEOF(sec);          \
+    __phys = ALIGN(__phys, align);
+
 SECTIONS {
     . = 1M;
-    __init_start = .;
+    __boot_phys_start = .;
+    __boot_virt_start = .;
 
 #ifdef CONFIG_BOOT_MULTIBOOT2
-    .multiboot BLOCK(8) : AT(1M) {
+    .boot.multiboot BLOCK(8) : {
         *(.multiboot*)
-    } :init
+    } :boot
 #endif
 
-    .init.text BLOCK(0x1000) : ALIGN(0x1000) {
-        *(.init.text*)
-        *(.init.rodata*)
-    } :init
+    .boot.text BLOCK(0x1000) : {
+        *(.boot.text*)
+    } :boot
 
-    .init.data BLOCK(0x1000) : ALIGN(0x1000) {
-        *(.init.data*)
-    } :init
+    .boot.data BLOCK(0x1000) : {
+        *(.boot.data*)
+    } :boot
 
-    .init.bss (NOLOAD) : ALIGN(0x1000) {
-        *(.init.bss*)
-    } :init
+    .boot.bss (NOLOAD) : {
+        *(.boot.bss*)
+    } :boot
 
-    __init_end = .;
-
+    __boot_phys_end = .;
+    __boot_virt_end = .;
+    __phys = ALIGN(ADDR(.boot.bss) + SIZEOF(.boot.bss), 0x1000);
 #ifdef CONFIG_X86_64
     . = 0xFFFFFFFF80000000;
 #elif defined(CONFIG_X86_32)
@@ -40,23 +46,71 @@ SECTIONS {
 #error "Invalid processor family"
 #endif
 
-    __kernel_start = .;
+    __kernel_phys_start = __phys;
+    __kernel_virt_start = .;
 
-    .text BLOCK(0x1000) : ALIGN(0x1000) {
+    __text_phys_start = __phys;
+
+    .text BLOCK(0x1000) : AT(__phys) {
+        __text_virt_start = .;
         *(.text*)
-        *(.rodata*)
+        __text_virt_end = .;
     } :text
+    PHYS_ADVANCE(.text, 0x1000)
 
-    .data BLOCK(0x1000) : ALIGN(0x1000) {
+    __text_phys_end = __phys;
+
+    __rodata_phys_start = __phys;
+
+    .rodata BLOCK(0x1000) : AT(__phys) {
+        __rodata_virt_start = .;
+        *(.rodata*)
+        __rodata_virt_end = .;
+    } :text
+    PHYS_ADVANCE(.rodata, 0x1000)
+
+    __rodata_phys_end = __phys;
+
+    __data_phys_start = __phys;
+
+    .data BLOCK(0x1000) : AT(__phys) {
+        __data_virt_start = .;
         *(.data*)
     } :data
+    PHYS_ADVANCE(.data, 0x1000)
 
-    .bss BLOCK(0x1000) (NOLOAD) : ALIGN(0x1000) {
+    .bss BLOCK(0x1000) (NOLOAD) : {
         *(COMMON)
         *(.bss*)
+        __data_virt_end = .;
     } :data
+    PHYS_ADVANCE(.bss, 0x1000)
 
-    __kernel_end = .;
+    __data_phys_end = __phys;
+
+    __kernel_phys_end = __phys;
+    __kernel_virt_end = .;
+
+    __init_phys_start = __phys;
+    __init_virt_start = .;
+
+    .init.text BLOCK(0x1000) : AT(__phys) {
+        *(.init.text*)
+    } :init
+    PHYS_ADVANCE(.init.text, 0x1000)
+
+    .init.data BLOCK(0x1000) : AT(__phys) {
+        *(.init.data*)
+    } :init
+    PHYS_ADVANCE(.init.data, 0x1000)
+
+    .init.bss (NOLOAD) : {
+        *(.init.bss*)
+    } :init
+    PHYS_ADVANCE(.init.bss, 0x1000)
+
+    __init_phys_end = __phys;
+    __init_virt_end = .;
 
     /DISCARD/ : {
         *(.note.gnu.property)

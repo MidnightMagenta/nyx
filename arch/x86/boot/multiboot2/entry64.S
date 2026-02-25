@@ -1,5 +1,5 @@
 .code32
-.section .multiboot, "a"
+.section .boot.multiboot, "a"
 
 #include "multiboot2.h"
 
@@ -23,7 +23,7 @@ mb_entry_address_tag_end:
     .int    8
 mb_header_end:
 
-.section .init.text, "ax"
+.section .boot.text, "ax"
 
 .global start, _start
 
@@ -71,8 +71,8 @@ _start:
     mov     $32, %ecx
     mov     $pd, %edi
     xor     %eax, %eax
-1:
-    movl    %eax, (%edi)    // write low 32 bits
+
+1:  movl    %eax, (%edi)    // write low 32 bits
     orl     $0x83, (%edi)   // P=1, RW=1, PS=1
     movl    $0, 4(%edi)     // zero high 32 bits
 
@@ -127,7 +127,7 @@ bad_boot:
     hlt
     jmp     bad_boot
 
-.section .init.data, "aw"
+.section .boot.data, "aw"
 gdt32_desc:
 .word   gdt32_end - gdt32 - 1
 .int    gdt32
@@ -141,7 +141,7 @@ gdt32_end:
 
 // TODO: boot IDT
 
-.section .init.bss, "aw", @nobits
+.section .boot.bss, "aw", @nobits
 .align  0x1000
 pml4:
 .skip   0x1000
@@ -160,7 +160,7 @@ boot_stack_bottom:
 boot_stack_top:
 
 .code64
-.section .init.text, "ax"
+.section .boot.text, "ax"
 long_mode:
     mov     %rax, %r15
     mov     $0x10, %ax

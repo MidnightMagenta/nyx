@@ -9,10 +9,8 @@
 *.lds
 
 # directories
-.vscode/
 .cache/
 out/
-keys/
 **/tmp/
 
 # files
