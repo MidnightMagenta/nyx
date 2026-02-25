@@ -48,23 +48,24 @@ _start:
 
     // long mode is available
     // identity map the first 64 MiB of memory
+
     // ensure the page tables are zeroed out
     cld
     // zero out the PD
     mov     $1024, %ecx
     mov     $pd, %edi
     xor     %eax, %eax
-    rep     stosl
+    rep stosl
 
     // zero out the PDPT
     mov     $1024, %ecx
     mov     $pdpt, %edi
-    rep     stosl
+    rep stosl
 
     // zero out the PML4
     mov     $1024, %ecx
     mov     $pml4, %edi
-    rep     stosl
+    rep stosl
 
     // map 64 MiB using 2 MiB pages in the PD
     mov     $32, %ecx
@@ -119,7 +120,7 @@ _start:
     // jump to long mode
     pop     %ebx
     pop     %eax
-    ljmp    $0x08, $long_mode
+    jmp    $0x08, $long_mode
 
 no_long_mode:
 bad_boot:

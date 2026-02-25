@@ -1,5 +1,5 @@
-#ifndef _ASM_TYPES_H
-#define _ASM_TYPES_H
+#ifndef _ASI_GENERIC_TYPES_H
+#define _ASI_GENERIC_TYPES_H
 
 #include <generated/autoconf.h>
 
@@ -12,12 +12,12 @@ typedef short             __s16;
 typedef int               __s32;
 typedef long int          __s64;
 
-#ifdef CONFIG_64BIT
-typedef __u64 __phys_addr_t;
-typedef __u64 __virt_addr_t;
-#elif defined(CONFIG_32BIT)
+#ifdef CONFIG_32BIT
 typedef __u32 __phys_addr_t;
 typedef __u32 __virt_addr_t;
+#elif defined(CONFIG_64BIT)
+typedef __u64 __phys_addr_t;
+typedef __u64 __virt_addr_t;
 #endif
 
 #endif
