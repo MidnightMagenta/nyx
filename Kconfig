@@ -1,0 +1,19 @@
+mainmenu "NyxOS Kernel Configuration"
+
+menu "Build settings"
+
+config DEBUG
+    bool "Enable debug build"
+    default n
+
+config EXTRA_WARNINGS
+    bool "Enable extra warnings"
+    default n
+
+config WARNINGS_AS_ERRORS
+    bool "Treat warnings as errors"
+    default n
+
+endmenu
+
+source "arch/$(ARCH)/Kconfig"

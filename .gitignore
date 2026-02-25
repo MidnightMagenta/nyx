@@ -1,19 +1,21 @@
+# file extensions
 *.o
-*.so
-*.efi
-*.EFI
+*.d
 *.a
-*.lib
+*.so
 *.img
 *.elf
-*.cfg
-*.CFG
+*.auto
+*.lds
 
+# directories
 .vscode/
 .cache/
-build/
-docs/
+out/
 keys/
 **/tmp/
 
+# files
 compile_commands.json
+.config
+nyxos
