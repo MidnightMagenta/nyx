@@ -1,7 +1,11 @@
-ARCHIVES += arch/$(ARCH)/boot/boot.o
-LIBS     +=
+ARCHIVES += arch/$(ARCH)/boot/boot.o \
+			arch/$(ARCH)/init/init_archive.o \
+			arch/$(ARCH)/kernel/kernel.o
+LIBS +=
 
-SUBDIRS  += arch/$(ARCH)/boot
+SUBDIRS += arch/$(ARCH)/boot \
+		   arch/$(ARCH)/init \
+		   arch/$(ARCH)/kernel
 
 ifdef CONFIG_X86_32
 $(warning i386 is unsupported)
@@ -10,7 +14,7 @@ CFLAGS += -m64 -m80387 -msse -msse2 -mmmx \
           -mno-sse3 -mno-sse4 -mno-avx -mno-avx2 \
           -mno-avx512f -mcmodel=kernel \
           -mno-red-zone -fno-tree-vectorize
-ASFLAGS := -m64
+ASFLAGS += -m64
 ARCH_LINK := $(TOPDIR)/arch/$(ARCH)/X86_64_link.lds
 endif
 

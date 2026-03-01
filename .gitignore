@@ -16,4 +16,5 @@ out/
 # files
 compile_commands.json
 .config
+.config.old
 nyxos

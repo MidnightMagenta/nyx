@@ -1,11 +1,12 @@
 ENTRY(_start)
 
 PHDRS {
-	boot PT_LOAD FLAGS(7);          /* RWE */
-    init PT_LOAD FLAGS(7);          /* RWE */
-	text PT_LOAD FLAGS(5);          /* R_E */
-	data PT_LOAD FLAGS(6);          /* RW_ */
-	note PT_NOTE FLAGS(0);          /* ___ */
+    boot        PT_LOAD FLAGS(7);          /* RWE */
+    init_text   PT_LOAD FLAGS(5);          /* R_E */
+    init_data   PT_LOAD FLAGS(6);          /* RW_ */
+    text        PT_LOAD FLAGS(5);          /* R_E */
+    data        PT_LOAD FLAGS(6);          /* RW_ */
+    note        PT_NOTE FLAGS(0);          /* ___ */
 }
 
 #define PHYS_ADVANCE(sec, align)    \
@@ -38,6 +39,7 @@ SECTIONS {
     __boot_phys_end = .;
     __boot_virt_end = .;
     __phys = ALIGN(ADDR(.boot.bss) + SIZEOF(.boot.bss), 0x1000);
+
 #ifdef CONFIG_X86_64
     . = 0xFFFFFFFF80000000;
 #elif defined(CONFIG_X86_32)
@@ -96,17 +98,18 @@ SECTIONS {
 
     .init.text BLOCK(0x1000) : AT(__phys) {
         *(.init.text*)
-    } :init
+        *(.init.rodata*)
+    } :init_text
     PHYS_ADVANCE(.init.text, 0x1000)
 
     .init.data BLOCK(0x1000) : AT(__phys) {
         *(.init.data*)
-    } :init
+    } :init_data
     PHYS_ADVANCE(.init.data, 0x1000)
 
     .init.bss (NOLOAD) : {
         *(.init.bss*)
-    } :init
+    } :init_data
     PHYS_ADVANCE(.init.bss, 0x1000)
 
     __init_phys_end = __phys;

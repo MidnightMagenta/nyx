@@ -37,7 +37,7 @@ HOSTCFLAGS= -O2 -g
 HOSTCXXFLAGS= -O2 -g
 
 CFLAGS := -nostartfiles \
-		  -nodefaultlib \
+		  -nodefaultlibs \
 		  -nostdlib \
 		  -nostdinc \
 		  -ffreestanding \
@@ -52,6 +52,24 @@ CPPFLAGS :=
 ASFLAGS :=
 ASPPFLAGS := -D__ASSEMBLY__
 LDFLAGS := -static -Bsymbolic -nostdlib
+
+# --------------------------------
+
+ARCHIVES :=
+LIBS     := lib/libnyx.a
+
+SUBDIRS := lib 
+
+.PHONY: all do-all nyxos nyxsubdirs clean distclean symlinks menuconfig config docs tools
+
+all: do-all
+
+ifeq (.config,$(wildcard .config))
+include .config
+do-all: nyxos
+else
+do-all: config
+endif
 
 # --------------------------------
 # Configuration
@@ -72,25 +90,7 @@ ifeq ($(CONFIG_WARNINGS_AS_ERRORS),y)
 CFLAGS += -Werror
 endif
 
-CFLAGS += -include include/generated/autoconf.h
-
-# --------------------------------
-
-ARCHIVES :=
-LIBS     :=
-
-SUBDIRS :=
-
-.PHONY: all do-all nyxos nyxsubdirs clean distclean symlinks menuconfig config
-
-all: do-all
-
-ifeq (.config,$(wildcard .config))
-include .config
-do-all: nyxos
-else
-do-all: config
-endif
+CFLAGS += -include $(TOPDIR)/include/generated/autoconf.h
 
 include arch/$(ARCH)/Makefile
 
@@ -109,6 +109,9 @@ nyxos: nyxsubdirs $(ARCH_LINK)
 nyxsubdirs: include/generated/autoconf.h
 	$(Q)set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i; done
 
+tools:
+	$(Q)$(MAKE) -C tools
+
 # --------------------------------
 # Cleanup rules
 # --------------------------------
@@ -118,8 +121,9 @@ clean: archclean
 	rm -f nyxos
 
 distclean: clean
+	$(Q)$(MAKE) -C tools clean
 	rm -f .config .config.old include/asi
-	rm -rf include/generated scripts/Kconfig/__pycache__
+	rm -rf .cache out include/generated scripts/Kconfig/__pycache__
 
 # --------------------------------
 # Rules for setting up the project
@@ -131,7 +135,8 @@ include/generated/autoconf.h: .config
 
 symlinks:
 	rm -f include/asi
-	( cd include ; ln -s ../arch/$(ARCH)/include/asi asi )
+	( cd include ; ln -s ../arch/$(ARCH)/include/asi asi ; \
+		cd uapi ; ln -s ../../arch/$(ARCH)/include/uapi/asi asi )
 
 menuconfig: symlinks
 	$(Q)./scripts/Kconfig/menuconfig.py
@@ -139,3 +144,6 @@ menuconfig: symlinks
 config: symlinks
 	$(Q)./scripts/Kconfig/oldconfig.py
 
+docs:
+	$(Q)mkdir -p out/docs
+	$(Q)doxygen
