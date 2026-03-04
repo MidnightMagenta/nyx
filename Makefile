@@ -117,8 +117,9 @@ tools:
 # --------------------------------
 
 clean: archclean
-	find . -type f ! -path ./scripts/* -name '*.[oasd]' -delete
-	rm -f nyxos
+	find . -type f ! -path './scripts/*' -name '*.[oasd]' -delete
+	rm -rf isodir
+	rm -f nyxos nyxos.iso
 
 distclean: clean
 	$(Q)$(MAKE) -C tools clean

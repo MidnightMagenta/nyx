@@ -3,7 +3,6 @@
 #include <nyx/early_serial.h>
 #include <nyx/linkage.h>
 #include <nyx/types.h>
-#include <stddef.h>
 #include <string.h>
 
 #define COM1_PORT     0x3F8

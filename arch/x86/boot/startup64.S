@@ -11,13 +11,15 @@ mb_header:
     .int    (mb_header_end - mb_header)
     .int    -(MB2_HEADER_MAGIC + MB2_ARCH_i386 + (mb_header_end - mb_header))
 
+.align 8
 mb_entry_address_tag:
-    .short  MB2_HEADER_TAG_ADDRESS
-    .short  0
+    .short  MB2_HEADER_TAG_ENTRY_ADDRESS
+    .short  1
     .int    (mb_entry_address_tag_end - mb_entry_address_tag)
     .int    _start
 mb_entry_address_tag_end:
 
+.align 8
     // end tag
     .short  0
     .short  0
@@ -34,7 +36,6 @@ _start:
     cmpl    $MB2_BOOTLOADER_MAGIC, %eax
     jne     bad_boot
     mov     $boot_stack_top, %esp
-    push    %eax    // preserve multiboot magic
     push    %ebx    // preserve boot info poiner
 
     // verify the CPU supports long mode
@@ -121,7 +122,6 @@ _start:
 
     // jump to long mode
     pop     %ebx
-    pop     %eax
     jmp    $0x08, $long_mode
 
 no_long_mode:
@@ -166,7 +166,7 @@ boot_stack_top:
 
 .section .boot.text, "ax"
 long_mode:
-    mov     %rax, %r15
+    mov     %rbx, %r15              // save boot info in r15
     mov     $0x10, %ax
     mov     %ax, %ds
     mov     %ax, %es
@@ -175,19 +175,18 @@ long_mode:
     mov     %ax, %ss
     mov     $boot_stack_top, %rsp
 
-    // map the first 1GiB of physical memory to 0xFFFFFFFF80000000
-    // set entry 510 of PDPT to PD
-    mov     $pd, %rax
-    or      $0x3, %rax
-    mov     $pdpt, %rdi
-    mov     %rax, 4080(%rdi)
-
-    // set entry 511 of PML4 to PDPT
-    mov     $pdpt, %rax
-    or      $0x3, %rax
+    // init boot allocator
+.extern boot_alloc_init
+    mov     %r15, %rdi
+    call    boot_alloc_init
+    // map kernel pages
+.extern boot_map_kernel
     mov     $pml4, %rdi
-    mov     %rax, 4088(%rdi)
+    call    boot_map_kernel
+    mov     %cr3, %rax
+    mov     %rax, %cr3
 
+    // call higher half kernel init code
     mov     %r15, %rdi
     mov     $entry_64, %rax
     jmp     *%rax

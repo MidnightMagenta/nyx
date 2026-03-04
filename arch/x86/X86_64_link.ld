@@ -15,6 +15,9 @@ PHDRS {
 
 SECTIONS {
     . = 1M;
+    __image_phys_start = .;
+    __image_virt_start = .;
+
     __boot_phys_start = .;
     __boot_virt_start = .;
 
@@ -114,7 +117,9 @@ SECTIONS {
 
     __init_phys_end = __phys;
     __init_virt_end = .;
-
+    
+    __image_phys_end = __phys;
+    __image_virt_end = .;
     /DISCARD/ : {
         *(.note.gnu.property)
         *(.eh_frame)

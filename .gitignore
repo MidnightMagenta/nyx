@@ -11,6 +11,7 @@
 # directories
 .cache/
 out/
+isodir/
 **/tmp/
 
 # files
@@ -18,3 +19,4 @@ compile_commands.json
 .config
 .config.old
 nyxos
+nyxos.iso
