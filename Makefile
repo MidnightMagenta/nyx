@@ -55,10 +55,11 @@ LDFLAGS := -static -Bsymbolic -nostdlib
 
 # --------------------------------
 
-ARCHIVES := nyx/nyxar.o
+ARCHIVES := nyx/nyxar.o \
+			mm/mmar.o
 LIBS     := lib/libnyx.a
 
-SUBDIRS := nyx lib
+SUBDIRS := nyx mm lib
 
 .PHONY: all do-all nyxos nyxsubdirs clean distclean symlinks menuconfig config docs tools
 
