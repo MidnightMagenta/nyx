@@ -8,13 +8,97 @@
 #define hcf()                                                                                                          \
     while (1) { __asm__ volatile("hlt"); }
 
-u64 __bootzero boot_alloc_base = 0;
-u64 __bootzero boot_alloc_top  = 0;
+static void *__boot boot_memset(void *p, int v, size_t num) {
+    u8 *strPtr = (u8 *) p;
+    while (num--) { *strPtr++ = (u8) v; }
+    return p;
+}
 
+#define BOOT_MAX_RESERVED_REGIONS 128
+
+struct memregion {
+    u64 base; // inclusive
+    u64 end;  // exclusive
+};
+
+static struct memregion __bootzero reserved_regions[BOOT_MAX_RESERVED_REGIONS];
+static u32 __bootdata              reserved_region_count = 0;
+
+static void __boot reserve_region(u64 base, u64 end) {
+    if (reserved_region_count >= BOOT_MAX_RESERVED_REGIONS) { hcf(); }
+    reserved_regions[reserved_region_count++] = (struct memregion) {base, end};
+}
+
+extern char __image_phys_start;
 extern char __image_phys_end;
 
+static void *__bootdata image_phys_start = &__image_phys_start;
+static void *__bootdata image_phys_end   = &__image_phys_end;
+
+static void __boot reserve_boot_regions(u64 bi) {
+    // reserve kernel image region
+    reserve_region(ALIGN_DOWN((u64) image_phys_start, 0x1000), ALIGN_UP((u64) image_phys_end, 0x1000));
+
+    // reserve boot info region
+    u32 bi_size = *(u32 *) bi;
+    reserve_region(ALIGN_DOWN(bi, 0x1000), ALIGN_UP(bi + bi_size, 0x1000));
+}
+
+static struct memregion __boot subtract_region(struct memregion a, struct memregion b) {
+    struct memregion res = {0};
+
+    // check both regions are sane
+    if (a.end <= a.base || b.end <= b.base) { return (struct memregion) {0}; }
+
+    // case 0: regions fully overlap
+    if (a.base == b.base && a.end == b.end) { return (struct memregion) {0}; }
+
+    // case 1: regions don't overlap
+    if (b.end <= a.base || b.base >= a.end) {
+        res = a;
+        return res;
+    }
+
+    // case 2: region b overlaps region a at the start
+    if (b.end > a.base && b.base <= a.base) {
+        res.base = a.base + (b.end - a.base);
+        res.end  = a.end;
+        return res;
+    }
+
+    // case 3: region b overlaps region a at the end
+    if (b.base < a.end && b.end >= a.end) {
+        res.base = a.base;
+        res.end  = a.end - (a.end - b.base);
+        return res;
+    }
+
+    // case 4: region b is fully inside region a (return the larger of the two non overlapping regions)
+    if (b.base > a.base && b.end < a.end) {
+        struct memregion lower = {a.base, b.base};
+        struct memregion upper = {b.end, a.end};
+        if (lower.end - lower.base > upper.end - upper.base) {
+            return lower;
+        } else {
+            return upper;
+        }
+    }
+
+    return (struct memregion) {0};
+}
+
+static u64 __bootdata boot_alloc_base = 0;
+static u64 __bootdata boot_alloc_top  = 0;
+
+
+// FIXME: GRUB apparently doesn't mark it's own boot info as reserved memory
+// this function should check if it won't encroach on GRUB's boot info
 void __boot boot_alloc_init(u64 bi) {
-    boot_alloc_base = ALIGN_UP((u64) &__image_phys_end, PAGE_SIZE);
+    boot_alloc_base = 0;
+    boot_alloc_top  = 0;
+
+    boot_memset(reserved_regions, 0, BOOT_MAX_RESERVED_REGIONS * sizeof(struct memregion));
+    reserve_boot_regions(bi);
 
     u32             bi_total_size = *(u32 *) bi;
     struct mb2_tag *bi_tag        = (struct mb2_tag *) (bi + 8);
@@ -28,11 +112,19 @@ void __boot boot_alloc_init(u64 bi) {
 
         for (u8 *p = (u8 *) mmap_tag->entries; p < (u8 *) mmap_tag + mmap_tag->size; p += mmap_tag->entry_size) {
             struct mb2_mmap_entry *mmap_entry = (struct mb2_mmap_entry *) p;
+            if (mmap_entry->type != MB2_MMAP_AVAILABLE) { continue; }
 
             u64 region_start = mmap_entry->addr;
             u64 region_end   = mmap_entry->addr + mmap_entry->len;
-            if (region_start <= ((u64) &__image_phys_end) && region_end > ((u64) &__image_phys_end)) {
-                boot_alloc_top = region_end;
+            if (region_end - region_start < 4 * UNIT_MiB) { continue; }
+
+            // region is larger than 4M
+            struct memregion region = {region_start, region_end};
+            for (u32 i = 0; i < reserved_region_count; ++i) { region = subtract_region(region, reserved_regions[i]); }
+
+            if (region.end - region.base > 4 * UNIT_MiB) {
+                boot_alloc_base = region.base;
+                boot_alloc_top  = region.end;
                 goto exit;
             }
         }
@@ -41,11 +133,10 @@ void __boot boot_alloc_init(u64 bi) {
         bi_tag = (struct mb2_tag *) ((char *) bi_tag + ALIGN_UP(bi_tag->size, 8));
     }
 
+    hcf();
+
 exit:
-    if (boot_alloc_base > (boot_alloc_top - (8 * UNIT_MiB))) {
-        hcf();
-    } // require at least 4 MiB heap
-      // TODO: fallback to any arbitrary free region
+    return;
 }
 
 void *__boot boot_alloc_page() {
@@ -73,21 +164,15 @@ extern char __kernel_virt_end;
 extern char __init_virt_start;
 extern char __init_virt_end;
 
-void *__bootdata kernel_phys_start = &__kernel_phys_start;
-void *__bootdata kernel_phys_end   = &__kernel_phys_end;
-void *__bootdata init_phys_start   = &__init_phys_start;
-void *__bootdata init_phys_end     = &__init_phys_end;
+static void *__bootdata kernel_phys_start = &__kernel_phys_start;
+static void *__bootdata kernel_phys_end   = &__kernel_phys_end;
+static void *__bootdata init_phys_start   = &__init_phys_start;
+static void *__bootdata init_phys_end     = &__init_phys_end;
 
-void *__bootdata kernel_virt_start = &__kernel_virt_start;
-void *__bootdata kernel_virt_end   = &__kernel_virt_end;
-void *__bootdata init_virt_start   = &__init_virt_start;
-void *__bootdata init_virt_end     = &__init_virt_end;
-
-void *__boot boot_memset(void *p, int v, size_t num) {
-    u8 *strPtr = (u8 *) p;
-    while (num--) { *strPtr++ = (u8) v; }
-    return p;
-}
+static void *__bootdata kernel_virt_start = &__kernel_virt_start;
+// static void *__bootdata kernel_virt_end   = &__kernel_virt_end;
+static void *__bootdata init_virt_start = &__init_virt_start;
+// static void *__bootdata init_virt_end     = &__init_virt_end;
 
 // TODO: use large pages here if the address is 2M aligned
 int __boot map_page_4k(u64 *pml4, u64 phys, u64 virt) {
