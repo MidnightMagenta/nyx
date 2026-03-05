@@ -7,6 +7,6 @@ endif
 
 O_OBJS += init.o
 
-O_TARGET := boot.o
+O_TARGET := bootar.o
 
 include $(TOPDIR)/Rules.mk

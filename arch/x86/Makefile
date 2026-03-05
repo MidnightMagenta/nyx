@@ -1,6 +1,6 @@
-ARCHIVES += arch/$(ARCH)/boot/boot.o \
-			arch/$(ARCH)/init/init_archive.o \
-			arch/$(ARCH)/kernel/kernel.o
+ARCHIVES += arch/$(ARCH)/boot/bootar.o \
+			arch/$(ARCH)/init/initar.o \
+			arch/$(ARCH)/kernel/kernelar.o
 LIBS +=
 
 SUBDIRS += arch/$(ARCH)/boot \

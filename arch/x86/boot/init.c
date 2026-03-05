@@ -144,7 +144,7 @@ void __boot boot_map_kernel(u64 *pml4) {
     // map runtime code
     cur_phys = (u64) kernel_phys_start;
     cur_virt = (u64) kernel_virt_start;
-    while (cur_phys < (u64) kernel_phys_end && cur_virt < (u64) kernel_virt_end) {
+    while (cur_phys < (u64) kernel_phys_end) {
         if (map_page_4k(pml4, cur_phys, cur_virt) != 0) { hcf(); }
         cur_virt += 0x1000;
         cur_phys += 0x1000;
