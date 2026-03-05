@@ -178,17 +178,17 @@ long_mode:
     // init boot allocator
 .extern boot_alloc_init
     mov     %r15, %rdi
-    call    boot_alloc_init
+    call    EXT_C(boot_alloc_init)
     // map kernel pages
 .extern boot_map_kernel
     mov     $pml4, %rdi
-    call    boot_map_kernel
+    call    EXT_C(boot_map_kernel)
     mov     %cr3, %rax
     mov     %rax, %cr3
 
     // call higher half kernel init code
     mov     %r15, %rdi
-    mov     $entry_64, %rax
+    mov     $EXT_C(entry_64), %rax
     jmp     *%rax
     // for now halt and catch fire
 1:  hlt

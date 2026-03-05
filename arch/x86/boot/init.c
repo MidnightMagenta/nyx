@@ -78,7 +78,7 @@ void *__bootdata kernel_phys_end   = &__kernel_phys_end;
 void *__bootdata init_phys_start   = &__init_phys_start;
 void *__bootdata init_phys_end     = &__init_phys_end;
 
-void *__bootdata kernel_virt_start = &__kernel_phys_start;
+void *__bootdata kernel_virt_start = &__kernel_virt_start;
 void *__bootdata kernel_virt_end   = &__kernel_virt_end;
 void *__bootdata init_virt_start   = &__init_virt_start;
 void *__bootdata init_virt_end     = &__init_virt_end;
@@ -92,7 +92,7 @@ void *__boot boot_memset(void *p, int v, size_t num) {
 // TODO: use large pages here if the address is 2M aligned
 int __boot map_page_4k(u64 *pml4, u64 phys, u64 virt) {
     if (!pml4) { return 1; }
-    if (phys & 0xFFF) { return 1; }
+    if (phys & 0xFFF || virt & 0xFFF) { return 1; }
 
     if (!(pml4[PML4_IDX(virt)] & (1 << 0))) {
         // allocate a page
@@ -112,14 +112,14 @@ int __boot map_page_4k(u64 *pml4, u64 phys, u64 virt) {
 
     u64 *pd = (u64 *) (pdpt[PDP_IDX(virt)] & ~0xFFFULL);
 
-    if (!(pd[PDP_IDX(virt)] & (1 << 0))) {
+    if (!(pd[PD_IDX(virt)] & (1 << 0))) {
         // allocate pd
         u64 page = (u64) boot_alloc_page();
         boot_memset((void *) page, 0, 0x1000);
-        pd[PDP_IDX(virt)] = page | 0x3;
+        pd[PD_IDX(virt)] = page | 0x3;
     }
 
-    u64 *pt = (u64 *) (pd[PDP_IDX(virt)] & ~0xFFFULL);
+    u64 *pt = (u64 *) (pd[PD_IDX(virt)] & ~0xFFFULL);
     if (pt[PT_IDX(virt)] & (1 << 0)) { return 1; }
     pt[PT_IDX(virt)] = (phys | 0x3ULL); // RW = 1, P = 1
 
@@ -135,7 +135,7 @@ void __boot boot_map_kernel(u64 *pml4) {
     // map init code
     cur_phys = (u64) init_phys_start;
     cur_virt = (u64) init_virt_start;
-    while (cur_phys < (u64) init_phys_end && cur_virt < (u64) init_virt_end) {
+    while (cur_phys < (u64) init_phys_end) {
         if (map_page_4k(pml4, cur_phys, cur_virt) != 0) { hcf(); }
         cur_virt += 0x1000;
         cur_phys += 0x1000;

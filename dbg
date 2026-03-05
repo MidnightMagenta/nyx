@@ -1,0 +1,23 @@
+#! /usr/bin/env bash
+set -euo pipefail
+
+case "$1" in
+mkimage)
+    ./scripts/mkimage.sh
+    ;;
+run)
+    qemu-system-x86_64 -cdrom nyxos.iso -m 2G -cpu qemu64 -nographic
+    ;;
+run-info)
+    qemu-system-x86_64 -cdrom nyxos.iso -m 2G -cpu qemu64 -vga std -d int,guest_errors,cpu_reset -no-reboot -no-shutdown
+    ;;
+run-debug)
+    mkdir -p tmp
+    qemu-system-x86_64 -cdrom nyxos.iso -m 2G -cpu qemu64 -vga std -s -S -d int,guest_errors,cpu_reset -no-reboot -no-shutdown -D tmp/qemu.log &
+    gdb -ex "symbol-file nyxos" -ex "target remote localhost:1234" -ex "set step-mode on"
+    ;;
+*)
+    echo "Usage: dbg {mkimage|run|run-info|run-debug}"
+    exit 1
+    ;;
+esac

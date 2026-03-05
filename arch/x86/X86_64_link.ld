@@ -23,7 +23,7 @@ SECTIONS {
 
 #ifdef CONFIG_BOOT_MULTIBOOT2
     .boot.multiboot BLOCK(8) : {
-        *(.multiboot*)
+        *(.boot.multiboot*)
     } :boot
 #endif
 
@@ -35,7 +35,7 @@ SECTIONS {
         *(.boot.data*)
     } :boot
 
-    .boot.bss (NOLOAD) : {
+    .boot.bss BLOCK(0x1000) (NOLOAD) : {
         *(.boot.bss*)
     } :boot
 
