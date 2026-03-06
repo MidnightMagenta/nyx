@@ -13,6 +13,6 @@
 #define __visible
 #endif
 
-#define __unused __attribute__((unused))
-
+#define __unused      __attribute__((unused))
+#define __unused_p(p) (void) p
 #endif

@@ -1,4 +1,5 @@
 #include <mm/memblock.h>
+#include <nyx/errno.h>
 #include <nyx/linkage.h>
 
 #define MEMBLOCK_INIT_REGIONS 128
@@ -56,4 +57,12 @@ static void __init memblock_merge_regions(struct memblock_region *const r, size_
 static inline void __init memblock_sort_and_merge(struct memblock_region *const regions, size_t *n) {
     memblock_sort(regions, n);
     memblock_merge_regions(regions, n);
+}
+
+int memblock_reserve_region(phys_addr_t addr, size_t size) {
+    return 0;
+}
+
+int memblock_unreserve_region(phys_addr_t addr, size_t size) {
+    return 0;
 }
