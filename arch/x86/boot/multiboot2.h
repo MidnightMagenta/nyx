@@ -74,7 +74,7 @@ struct mb2_tag {
 struct mb2_tag_string {
     u32  type;
     u32  size;
-    char str[0];
+    char str[];
 } __packed;
 
 struct mb2_tag_basic_meminfo {
@@ -97,7 +97,7 @@ struct mb2_tag_mmap {
     u32                   size;
     u32                   entry_size;
     u32                   entry_version;
-    struct mb2_mmap_entry entries[0];
+    struct mb2_mmap_entry entries[];
 } __packed;
 
 struct mb2_vbe_info_block {
@@ -123,25 +123,21 @@ struct mb2_tag_vbe {
 #define MB2_FB_TYPE_RGB      1
 #define MB2_FB_TYPE_EGA_TEXT 2
 
-struct mb2_tag_fb_common {
+struct mb2_tag_fb {
     u32 type;
     u32 size;
     u64 fb_addr;
-    u64 fb_pitch;
-    u64 fb_width;
-    u64 fb_height;
+    u32 fb_pitch;
+    u32 fb_width;
+    u32 fb_height;
     u8  fb_bpp;
     u8  fb_type;
-    u16 reserved;
-} __packed;
-
-struct mb2_tag_fb {
-    struct mb2_tag_fb_common common;
+    u8  reserved;
 
     union {
         struct {
             u16              fb_palette_num_colors;
-            struct mb2_color fb_palette[0];
+            struct mb2_color fb_palette[];
         } __packed;
         struct {
             u8 fb_red_field_pos;
@@ -160,7 +156,7 @@ struct mb2_tag_elf_sections {
     u32  num;
     u32  entsize;
     u32  shndx;
-    char sections[0];
+    char sections[];
 } __packed;
 
 struct mb2_tag_apm {
@@ -195,25 +191,25 @@ struct mb2_tag_smbios {
     u8  major;
     u8  minor;
     u8  reserved[6];
-    u8  tables[0];
+    u8  tables[];
 } __packed;
 
 struct mb2_tag_acpi1 {
     u32 type;
     u32 size;
-    u8  rsdp[0];
+    u8  rsdp[];
 } __packed;
 
 struct mb2_tag_acpi2 {
     u32 type;
     u32 size;
-    u8  rsdp[0];
+    u8  rsdp[];
 } __packed;
 
 struct mb2_tag_net {
     u32 type;
     u32 size;
-    u8  dhcpack[0];
+    u8  dhcpack[];
 } __packed;
 
 struct mb2_tag_efi_mmap {
@@ -221,7 +217,7 @@ struct mb2_tag_efi_mmap {
     u32 size;
     u32 desc_size;
     u32 desc_vers;
-    u8  efi_mmap[0];
+    u8  efi_mmap[];
 } __packed;
 
 struct mb2_tag_efi32_ih {

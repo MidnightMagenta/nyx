@@ -25,13 +25,13 @@ static void __init memblock_sort(struct memblock_region *const r, size_t *n) {
 
     for (size_t i = 1; i < *n; ++i) {
         temp     = r[i];
-        size_t j = i - 1;
+        size_t j = i;
 
-        while (j >= 0 && r[j].base > temp.base) {
-            r[j + 1] = r[j];
+        while (j > 0 && r[j - 1].base > temp.base) {
+            r[j] = r[j - 1];
             j--;
         }
-        r[j + 1] = temp;
+        r[j] = temp;
     }
 }
 

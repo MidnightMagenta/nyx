@@ -37,11 +37,11 @@ static void *__bootdata image_phys_end   = &__image_phys_end;
 
 static void __boot reserve_boot_regions(u64 bi) {
     // reserve kernel image region
-    reserve_region(ALIGN_DOWN((u64) image_phys_start, 0x1000), ALIGN_UP((u64) image_phys_end, 0x1000));
+    reserve_region(ALIGN_DOWN((u64) image_phys_start, PAGE_SIZE), ALIGN_UP((u64) image_phys_end, PAGE_SIZE));
 
     // reserve boot info region
     u32 bi_size = *(u32 *) bi;
-    reserve_region(ALIGN_DOWN(bi, 0x1000), ALIGN_UP(bi + bi_size, 0x1000));
+    reserve_region(ALIGN_DOWN(bi, PAGE_SIZE), ALIGN_UP(bi + bi_size, PAGE_SIZE));
 }
 
 static struct memregion __boot subtract_region(struct memregion a, struct memregion b) {
@@ -123,9 +123,9 @@ void __boot boot_alloc_init(u64 bi) {
             for (u32 i = 0; i < reserved_region_count; ++i) { region = subtract_region(region, reserved_regions[i]); }
 
             if (region.end - region.base > 4 * UNIT_MiB) {
-                boot_alloc_base = region.base;
-                boot_alloc_top  = region.end;
-                goto exit;
+                boot_alloc_base = ALIGN_UP(region.base, PAGE_SIZE);
+                boot_alloc_top  = ALIGN_DOWN(region.end, PAGE_SIZE);
+                return;
             }
         }
 
@@ -134,9 +134,6 @@ void __boot boot_alloc_init(u64 bi) {
     }
 
     hcf();
-
-exit:
-    return;
 }
 
 void *__boot boot_alloc_page() {
