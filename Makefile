@@ -137,7 +137,7 @@ include/generated/autoconf.h: .config
 	$(Q)./scripts/Kconfig/genconfig.py --header-path include/generated/autoconf.h
 
 symlinks:
-	rm -f include/asi
+	rm -f include/asi include/uapi/asi
 	( cd include ; ln -s ../arch/$(ARCH)/include/asi asi ; \
 		cd uapi ; ln -s ../../arch/$(ARCH)/include/uapi/asi asi )
 
