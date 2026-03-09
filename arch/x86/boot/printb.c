@@ -120,7 +120,9 @@ static const char *u8_to_hstr(unsigned char v) {
 
 static int bstrlen(const char *s) {
     int len = 0;
-    while (*s) { len++; }
+    if (s) {
+        while (s[len] != '\0') { len++; }
+    }
     return len;
 }
 

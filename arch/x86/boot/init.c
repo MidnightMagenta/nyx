@@ -15,6 +15,6 @@ unsigned long kernrel_blob_size = (unsigned long) &__kernel_blob_size;
 void boot_main(unsigned long bi) {
     (void) bi;
     boot_serial_init();
-    printb("Hello, boot stub\n");
+    printb("Hello, boot stub %lx\n", 0x1234123412341234);
     hcf();
 }
