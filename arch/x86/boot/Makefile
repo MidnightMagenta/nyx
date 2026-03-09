@@ -4,7 +4,7 @@ VMNYX_OBJCPYFLAGS := -O elf64-x86-64
 
 .PHONY: bImage clean
 
-bImage: head.o vmnyx.o | boot_link.lds
+bImage: head.o init.o printb.o vmnyx.o | boot_link.lds
 	$(Q)echo -e "LD nyxos"
 	$(Q)$(LD) $(BIMAGE_FLAGS) \
 		-T boot_link.lds \
