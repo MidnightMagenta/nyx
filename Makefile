@@ -28,6 +28,7 @@ CPP := $(CC) -E
 AS  := $(CROSS_COMPILE)as
 AR  := $(CROSS_COMPILE)ar
 LD  := $(CROSS_COMPILE)ld
+OBJCOPY := $(CROSS_COMPILE)objcopy
 
 # --------------------------------
 # flags
@@ -61,13 +62,13 @@ LIBS     := lib/libnyx.a
 
 SUBDIRS := nyx mm lib
 
-.PHONY: all do-all nyxos nyxsubdirs clean distclean symlinks menuconfig config docs tools
+.PHONY: all do-all vmnyx nyxsubdirs clean distclean symlinks menuconfig config docs tools
 
 all: do-all
 
 ifeq (.config,$(wildcard .config))
 include .config
-do-all: nyxos
+do-all: vmnyx
 else
 do-all: config
 endif
@@ -99,7 +100,7 @@ include arch/$(ARCH)/Makefile
 # General rules for building the kernel
 # --------------------------------
 
-nyxos: nyxsubdirs $(ARCH_LINK)
+vmnyx: nyxsubdirs $(ARCH_LINK)
 	@echo -e "LD $@"
 	$(Q)$(LD) $(LDFLAGS) \
 		-T $(ARCH_LINK) \
@@ -120,7 +121,7 @@ tools:
 clean: archclean
 	find . -type f ! -path './scripts/*' -name '*.[oasd]' -delete
 	rm -rf isodir
-	rm -f nyxos nyxos.iso
+	rm -f vmnyx nyxos nyxos.iso
 
 distclean: clean
 	$(Q)$(MAKE) -C tools clean

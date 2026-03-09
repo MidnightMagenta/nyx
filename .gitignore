@@ -18,5 +18,6 @@ isodir/
 compile_commands.json
 .config
 .config.old
+vmnyx
 nyxos
 nyxos.iso

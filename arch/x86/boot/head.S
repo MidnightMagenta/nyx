@@ -1,5 +1,5 @@
 .code32
-.section .boot.multiboot, "a"
+.section .multiboot, "a"
 
 #include "multiboot2.h"
 #include <asi/asm_linkage.h>
@@ -26,7 +26,7 @@ mb_entry_address_tag_end:
     .int    8
 mb_header_end:
 
-.section .boot.text, "ax"
+.section .text, "ax"
 
 .global start, _start
 
@@ -129,7 +129,7 @@ bad_boot:
     hlt
     jmp     bad_boot
 
-.section .boot.data, "aw"
+.section .data, "aw"
 gdt32_desc:
 .word   gdt32_end - gdt32 - 1
 .int    gdt32
@@ -143,7 +143,7 @@ gdt32_end:
 
 // TODO: boot IDT
 
-.section .boot.bss, "aw", @nobits
+.section .bss, "aw", @nobits
 .align  0x1000
 pml4:
 .skip   0x1000
@@ -164,7 +164,7 @@ boot_stack_top:
 .code64
 .extern entry_64
 
-.section .boot.text, "ax"
+.section .text, "ax"
 long_mode:
     mov     %rbx, %r15              // save boot info in r15
     mov     $0x10, %ax
@@ -178,17 +178,17 @@ long_mode:
     // init boot allocator
 .extern boot_alloc_init
     mov     %r15, %rdi
-    call    EXT_C(boot_alloc_init)
+    // call    EXT_C(boot_alloc_init)
     // map kernel pages
 .extern boot_map_kernel
     mov     $pml4, %rdi
-    call    EXT_C(boot_map_kernel)
+    // call    EXT_C(boot_map_kernel)
     mov     %cr3, %rax
     mov     %rax, %cr3
 
     // call higher half kernel init code
     mov     %r15, %rdi
-    mov     $EXT_C(entry_64), %rax
+    // mov     $EXT_C(entry_64), %rax
     jmp     *%rax
     // for now halt and catch fire
 1:  hlt

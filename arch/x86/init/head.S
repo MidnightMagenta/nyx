@@ -1,9 +1,9 @@
-.global entry_64
+.global startup_64
 
 #include <asi/asm_linkage.h>
 
 .section .init.text, "ax"
-entry_64:
+startup_64:
     cli
     mov $init_stack_top, %rsp
     call EXT_C(kernel_init)
