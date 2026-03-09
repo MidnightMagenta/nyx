@@ -1,16 +1,13 @@
-#include <asi/errno.h>
-#include <nyx/types.h>
-
 #define outb(port, value) __asm__ volatile("outb %b0, %w1" ::"a"(value), "Nd"(port) : "memory");
 #define inb(port)                                                                                                      \
     ({                                                                                                                 \
-        u8 _v;                                                                                                         \
+        unsigned char _v;                                                                                              \
         __asm__ volatile("inb %w1, %b0" : "=a"(_v) : "Nd"(port) : "memory");                                           \
         _v;                                                                                                            \
     })
 
 #define COM1_PORT     0x3F8
-#define COM1_REG(reg) (u16)(COM1_PORT + reg)
+#define COM1_REG(reg) ((unsigned short) (COM1_PORT + reg))
 
 #define COM_R_RX_BUFF                      0
 #define COM_W_TX_BUFF                      0
@@ -39,7 +36,7 @@ int boot_serial_init() {
     outb(COM1_REG(COM_RW_MODEM_CONTROL_REG), 0x1E);
 
     outb(COM1_REG(COM_W_TX_BUFF), 0xAE);
-    if (inb(COM1_REG(COM_R_RX_BUFF)) != 0xAE) { return -ENODEV; }
+    if (inb(COM1_REG(COM_R_RX_BUFF)) != 0xAE) { return -1; }
 
     outb(COM1_REG(COM_RW_MODEM_CONTROL_REG), 0x0F);
     boot_serial_initialized = true;
@@ -57,7 +54,7 @@ void boot_serial_putc(char c) {
 
     if (c == '\n') { boot_serial_putc('\r'); }
     while (!boot_serial_is_tx_empty());
-    outb(COM1_REG(COM_W_TX_BUFF), (u8) c);
+    outb(COM1_REG(COM_W_TX_BUFF), (unsigned char) c);
 }
 
 void bputs(const char *s, unsigned long len) {
@@ -79,42 +76,42 @@ char buf_to_h16[128];
 char buf_to_h8[128];
 char buf_to_i64[128];
 
-static const char *u64_to_str(u64 v) {
-    u64 intest = v;
-    u8  length = 0;
+static const char *u64_to_str(unsigned long v) {
+    unsigned long intest = v;
+    unsigned char length = 0;
     while (intest / 10 > 0) {
         intest /= 10;
         length++;
     }
 
-    u8 index = 0;
+    unsigned char index = 0;
     do {
-        u8 remainder = (u8) (v % 10);
+        unsigned char remainder = (unsigned char) (v % 10);
         v /= 10;
         buf_to_u64[length - index] = (char) (remainder) + '0';
         index++;
     } while (v / 10 > 0);
-    u8 remainder               = (u8) (v % 10);
+    unsigned char remainder    = (unsigned char) (v % 10);
     buf_to_u64[length - index] = (char) (remainder) + '0';
     buf_to_u64[length + 1]     = '\0';
     return buf_to_u64;
 }
 
-static const char *u64_to_hstr(u64 v) {
+static const char *u64_to_hstr(unsigned long v) {
     static const char hexDigits[] = "0123456789ABCDEF";
     for (int i = 0; i < 16; ++i) { buf_to_h64[15 - i] = hexDigits[(v >> (i * 4)) & 0xF]; }
     buf_to_h64[16] = '\0';
     return buf_to_h64;
 }
 
-static const char *u32_to_hstr(u32 v) {
+static const char *u32_to_hstr(unsigned int v) {
     static const char hexDigits[] = "0123456789ABCDEF";
     for (int i = 0; i < 8; ++i) { buf_to_h32[7 - i] = hexDigits[(v >> (i * 4)) & 0xF]; }
     buf_to_h32[8] = '\0';
     return buf_to_h32;
 }
 
-static const char *u8_to_hstr(u8 v) {
+static const char *u8_to_hstr(unsigned char v) {
     static const char hexDigits[] = "0123456789ABCDEF";
     for (int i = 0; i < 2; ++i) { buf_to_h8[1 - i] = hexDigits[(v >> (i * 4)) & 0xF]; }
     buf_to_h8[8] = '\0';
@@ -127,28 +124,28 @@ static int bstrlen(const char *s) {
     return len;
 }
 
-static const char *s64_to_str(s64 v) {
-    u8 negative = 0;
+static const char *s64_to_str(long v) {
+    unsigned char negative = 0;
     if (v < 0) {
         negative = 1;
         v *= -1;
         buf_to_i64[0] = '-';
     }
-    u64 intest = (u64) (v);
-    u8  length = 0;
+    unsigned long intest = (unsigned long) (v);
+    unsigned char length = 0;
     while (intest / 10 > 0) {
         intest /= 10;
         length++;
     }
 
-    u8 index = 0;
+    unsigned char index = 0;
     while (v / 10 > 0) {
-        u8 remainder = (u8) (v % 10);
+        unsigned char remainder = (unsigned char) (v % 10);
         v /= 10;
         buf_to_i64[negative + length - index] = (char) (remainder) + '0';
         index++;
     }
-    u8 remainder                          = (u8) (v % 10);
+    unsigned char remainder               = (unsigned char) (v % 10);
     buf_to_i64[negative + length - index] = (char) (remainder) + '0';
     buf_to_i64[negative + length + 1]     = '\0';
     return buf_to_i64;
@@ -188,16 +185,16 @@ int vprintb(const char *fmt, va_list params) {
             written += amount;
         } else if (*fmt == 'd' || *fmt == 'i') {
             fmt++;
-            s32         num    = (s32) va_arg(params, s32);
-            const char *str    = s64_to_str((s64) num);
+            int         num    = (int) va_arg(params, int);
+            const char *str    = s64_to_str((long) num);
             int         amount = bstrlen(str);
             if (maxrem < amount) { return (int) 0; }
             bputs(str, amount);
             written += amount;
         } else if ((*fmt == 'l' && fmt[1] == 'd') || (*fmt == 'l' && fmt[1] == 'i')) {
             fmt += 2;
-            s64         num    = (s64) va_arg(params, s64);
-            const char *str    = s64_to_str((s64) num);
+            long        num    = (long) va_arg(params, long);
+            const char *str    = s64_to_str((long) num);
             int         amount = bstrlen(str);
             if (maxrem < amount) {
                 // TODO: error
@@ -207,41 +204,41 @@ int vprintb(const char *fmt, va_list params) {
             written += amount;
         } else if (*fmt == 'u') {
             fmt++;
-            u32         num    = (u32) va_arg(params, u32);
-            const char *str    = u64_to_str((u64) num);
-            int         amount = bstrlen(str);
+            unsigned int num    = (unsigned int) va_arg(params, unsigned int);
+            const char  *str    = u64_to_str((unsigned long) num);
+            int          amount = bstrlen(str);
             if (maxrem < amount) { return (int) 0; }
             bputs(str, amount);
             written += amount;
         } else if ((*fmt == 'l' && fmt[1] == 'u')) {
             fmt += 2;
-            u64         num    = (u64) va_arg(params, u64);
-            const char *str    = u64_to_str((u64) num);
-            int         amount = bstrlen(str);
+            unsigned long num    = (unsigned long) va_arg(params, unsigned long);
+            const char   *str    = u64_to_str((unsigned long) num);
+            int           amount = bstrlen(str);
             if (maxrem < amount) { return (int) 0; }
             bputs(str, amount);
             written += amount;
         } else if (*fmt == 'b') {
             fmt++;
-            u32         num    = (u32) va_arg(params, u32);
-            const char *str    = u8_to_hstr(num);
-            int         amount = bstrlen(str);
+            unsigned int num    = (unsigned int) va_arg(params, unsigned int);
+            const char  *str    = u8_to_hstr(num);
+            int          amount = bstrlen(str);
             if (maxrem < amount) { return (int) 0; }
             bputs(str, amount);
             written += amount;
         } else if (*fmt == 'x') {
             fmt++;
-            u32         num    = (u32) va_arg(params, u32);
-            const char *str    = u32_to_hstr(num);
-            int         amount = bstrlen(str);
+            unsigned int num    = (unsigned int) va_arg(params, unsigned int);
+            const char  *str    = u32_to_hstr(num);
+            int          amount = bstrlen(str);
             if (maxrem < amount) { return (int) 0; }
             bputs(str, amount);
             written += amount;
         } else if ((*fmt == 'l' && fmt[1] == 'x')) {
             fmt += 2;
-            u64         num    = (u64) va_arg(params, u64);
-            const char *str    = u64_to_hstr(num);
-            int         amount = bstrlen(str);
+            unsigned long num    = (unsigned long) va_arg(params, unsigned long);
+            const char   *str    = u64_to_hstr(num);
+            int           amount = bstrlen(str);
             if (maxrem < amount) { return (int) 0; }
             bputs(str, amount);
             written += amount;
