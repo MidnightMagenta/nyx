@@ -1,7 +1,5 @@
 SYSTEM := $(TOPDIR)/vmnyx
 
-VMNYX_OBJCPYFLAGS := -O elf64-x86-64
-
 .PHONY: bImage clean
 
 bImage: head.o init.o printb.o vmnyx.o | boot_link.lds
@@ -12,8 +10,8 @@ bImage: head.o init.o printb.o vmnyx.o | boot_link.lds
 
 vmnyx.o: $(SYSTEM)
 	$(Q)echo -e "OBJCOPY $@"
-	$(Q)$(OBJCOPY) -I binary $(VMNYX_OBJCPYFLAGS) \
-		--rename-section .data=.kernel_blob,alloc,load,readonly $< $@
+	$(Q)$(OBJCOPY) -I binary -O elf64-x86-64 \
+		--rename-section .data=.kernel_blob,alloc,load,readonly,data,contents $< $@
 
 clean:
 	rm -f nyxos.o boot_link.lds

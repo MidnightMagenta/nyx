@@ -27,7 +27,7 @@ SECTIONS {
 
     .kernel_blob BLOCK(0x1000) : {
         __kernel_blob_start = .;
-        *(.kernel_blob*)
+        KEEP(*(.kernel_blob*))
         __kernel_blob_end = .;
     } :blob
 

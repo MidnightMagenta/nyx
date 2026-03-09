@@ -1,3 +1,5 @@
+#include "elf.h"
+
 #define hcf()                                                                                                          \
     while (1) { __asm__ volatile("hlt"); }
 
@@ -12,9 +14,20 @@ void         *kernel_blob_start = &__kernel_blob_start;
 void         *kernel_blob_end   = &__kernel_blob_end;
 unsigned long kernrel_blob_size = (unsigned long) &__kernel_blob_size;
 
+int bmemcmp(const void *a, const void *b, unsigned long n) {
+    const unsigned char *aptr = (const unsigned char *) a;
+    const unsigned char *bptr = (const unsigned char *) b;
+    while (n--) {
+        if (*aptr != *bptr) { return *aptr - *bptr; }
+        aptr++;
+        bptr++;
+    }
+    return 0;
+}
+
 void boot_main(unsigned long bi) {
     (void) bi;
     boot_serial_init();
-    printb("Hello, boot stub %lx\n", 0x1234123412341234);
+
     hcf();
 }

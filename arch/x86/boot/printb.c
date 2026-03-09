@@ -126,7 +126,7 @@ static int bstrlen(const char *s) {
     return len;
 }
 
-static const char *s64_to_str(long v) {
+static const char *s64_to_str(signed long long v) {
     unsigned char negative = 0;
     if (v < 0) {
         negative = 1;
@@ -188,16 +188,16 @@ int vprintb(const char *fmt, va_list params) {
         } else if (*fmt == 'd' || *fmt == 'i') {
             fmt++;
             int         num    = (int) va_arg(params, int);
-            const char *str    = s64_to_str((long) num);
+            const char *str    = s64_to_str((signed long long) num);
             int         amount = bstrlen(str);
             if (maxrem < amount) { return (int) 0; }
             bputs(str, amount);
             written += amount;
         } else if ((*fmt == 'l' && fmt[1] == 'd') || (*fmt == 'l' && fmt[1] == 'i')) {
             fmt += 2;
-            long        num    = (long) va_arg(params, long);
-            const char *str    = s64_to_str((long) num);
-            int         amount = bstrlen(str);
+            signed long long num    = (long long) va_arg(params, long long);
+            const char      *str    = s64_to_str((signed long long) num);
+            int              amount = bstrlen(str);
             if (maxrem < amount) {
                 // TODO: error
                 return (int) 0;
