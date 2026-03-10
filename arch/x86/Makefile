@@ -16,8 +16,9 @@ ARCH_LINK := $(TOPDIR)/arch/$(ARCH)/X86_64_link.lds
 
 MAKEBOOT := $(MAKE) -C arch/$(ARCH)/boot
 
-bImage: vmnyx
-	$(MAKEBOOT) bImage
+image: vmnyx
+	$(Q)$(MAKEBOOT) image
+	$(Q)cp arch/$(ARCH)/boot/image image
 
 archclean:
 	rm -f arch/$(ARCH)/X86_64_link.lds

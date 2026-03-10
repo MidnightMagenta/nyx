@@ -1,12 +1,13 @@
 SYSTEM := $(TOPDIR)/vmnyx
+I_OBJS := head.o init.o printb.o vmnyx.o
 
-.PHONY: bImage clean
+.PHONY: image clean
 
-bImage: head.o init.o printb.o vmnyx.o | boot_link.lds
+image: boot_link.lds $(I_OBJS)
 	$(Q)echo -e "LD nyxos"
 	$(Q)$(LD) $(BIMAGE_FLAGS) \
 		-T boot_link.lds \
-		$^ -o $(TOPDIR)/nyxos
+		-o $@ $(filter-out boot_link.lds,$^)
 
 vmnyx.o: $(SYSTEM)
 	$(Q)echo -e "OBJCOPY $@"
@@ -14,7 +15,7 @@ vmnyx.o: $(SYSTEM)
 		--rename-section .data=.kernel_blob,alloc,load,readonly,data,contents $< $@
 
 clean:
-	rm -f nyxos.o boot_link.lds
+	rm -f image vmnyx.o boot_link.lds
 
 %.o: %.c
 	@echo -e "CC $<"
@@ -28,4 +29,4 @@ clean:
 	@echo -e "CPP $@"
 	$(Q)$(CPP) -P -x assembler-with-cpp -include $(TOPDIR)/include/generated/autoconf.h $^ -o $@
 
--include head.d init.d
+-include $(I_OBJS:.o=.d)

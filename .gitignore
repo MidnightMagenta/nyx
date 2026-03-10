@@ -19,5 +19,5 @@ compile_commands.json
 .config
 .config.old
 vmnyx
-nyxos
+image
 nyxos.iso

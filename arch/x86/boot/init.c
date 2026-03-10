@@ -28,6 +28,5 @@ int bmemcmp(const void *a, const void *b, unsigned long n) {
 void boot_main(unsigned long bi) {
     (void) bi;
     boot_serial_init();
-
     hcf();
 }
