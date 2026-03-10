@@ -120,7 +120,7 @@ tools:
 
 clean: archclean
 	find . -type f ! -path './scripts/*' -name '*.[oasd]' -delete
-	rm -rf isodir
+	rm -rf isodir tmp
 	rm -f vmnyx nyxos nyxos.iso
 
 distclean: clean

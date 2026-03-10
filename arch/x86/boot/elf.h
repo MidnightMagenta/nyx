@@ -65,6 +65,7 @@ typedef struct {
     Elf64_Addr    e_entry;
     Elf64_Off     e_phoff;
     Elf64_Off     e_shoff;
+    Elf64_Word    e_flags;
     Elf64_Half    e_ehsize;
     Elf64_Half    e_phentsize;
     Elf64_Half    e_phnum;
