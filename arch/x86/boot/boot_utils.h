@@ -1,0 +1,28 @@
+#ifndef _BOOT_UTILS_H
+#define _BOOT_UTILS_H
+
+#include "printb.h"
+#include <stddef.h>
+
+#define hcf()                                                                                                          \
+    while (1) { __asm__ volatile("hlt"); }
+
+#define pr_fmt(f) "boot: " f
+
+#define pr_error(f, ...) printb("Error (%s:%d): " f, __FILE__, __LINE__, ##__VA_ARGS__)
+#define pr_warn(f, ...)  printb("Warning: " f, ##__VA_ARGS__)
+#define pr_info(f, ...)  printb("Info: " f, ##__VA_ARGS__)
+
+#ifdef CONFIG_DEBUG
+#define pr_dbg(f, ...) printb(f, ##__VA_ARGS__)
+#else
+#define pr_dbg(f, ...)
+#endif
+
+#define max(a, b) (a > b ? a : b)
+#define min(a, b) (a < b ? a : b)
+
+void *memsetb(void *p, int v, size_t c);
+void *memmoveb(void *dest, const void *src, size_t len);
+
+#endif

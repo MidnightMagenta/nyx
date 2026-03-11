@@ -1,5 +1,5 @@
 SYSTEM := $(TOPDIR)/vmnyx
-I_OBJS := head.o init.o printb.o vmnyx.o
+I_OBJS := head.o init.o printb.o boot_utils.o region_alloc.o vmnyx.o
 
 .PHONY: image clean
 
