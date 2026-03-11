@@ -1,3 +1,5 @@
+#include "printb.h"
+
 #define outb(port, value) __asm__ volatile("outb %b0, %w1" ::"a"(value), "Nd"(port) : "memory");
 #define inb(port)                                                                                                      \
     ({                                                                                                                 \
@@ -60,12 +62,6 @@ void boot_serial_putc(char c) {
 void bputs(const char *s, unsigned long len) {
     for (unsigned long i = 0; i < len; ++i) { boot_serial_putc(s[i]); }
 }
-
-typedef __builtin_va_list va_list;
-#define va_start(ap, last) __builtin_va_start(ap, last)
-#define va_end(ap)         __builtin_va_end(ap)
-#define va_arg(ap, type)   __builtin_va_arg(ap, type)
-#define va_copy(dest, src) __builtin_va_copy(dest, src)
 
 #define INT_MAX ((int) ((~0U) >> 1))
 

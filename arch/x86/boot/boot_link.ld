@@ -9,7 +9,8 @@ PHDRS {
 
 SECTIONS {
     . = 1M;
- 
+    __image_start = .;
+
     .text BLOCK(0x1000) : {
         KEEP(*(.multiboot*))
         *(.text*)
@@ -32,6 +33,7 @@ SECTIONS {
     } :blob
 
     __kernel_blob_size = __kernel_blob_end - __kernel_blob_start;
+    __image_end = .;
 
     /DISCARD/ : {
         *(.note.gnu.property)

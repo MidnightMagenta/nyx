@@ -45,7 +45,6 @@
 #ifndef __ASSEMBLY__
 
 #include <nyx/compiler.h>
-#include <nyx/types.h>
 
 #define MB2_MMAP_AVAILABLE        1
 #define MB2_MMAP_RESERVED         2
@@ -54,67 +53,75 @@
 #define MB2_MMAP_BADRAM           5
 
 struct mb2_mmap_entry {
-    u64 addr;
-    u64 len;
-    u32 type;
-    u32 zero;
+    unsigned long addr;
+    unsigned long len;
+    unsigned int  type;
+    unsigned int  zero;
 } __packed;
 
 struct mb2_color {
-    u8 red;
-    u8 green;
-    u8 blue;
+    unsigned char red;
+    unsigned char green;
+    unsigned char blue;
 } __packed;
 
 struct mb2_tag {
-    u32 type;
-    u32 size;
+    unsigned int type;
+    unsigned int size;
 } __packed;
 
 struct mb2_tag_string {
-    u32  type;
-    u32  size;
-    char str[];
+    unsigned int type;
+    unsigned int size;
+    char         str[];
 } __packed;
 
+struct mb2_tag_module {
+    unsigned int  type;
+    unsigned int  size;
+    unsigned int  mod_start;
+    unsigned int  mod_end;
+    unsigned char str[];
+};
+
 struct mb2_tag_basic_meminfo {
-    u32 type;
-    u32 size;
-    u32 mem_lower;
-    u32 mem_upper;
+    unsigned int type;
+    unsigned int size;
+    unsigned int mem_lower;
+    unsigned int mem_upper;
 } __packed;
 
 struct mb2_tag_bootdev {
-    u32 type;
-    u32 size;
-    u32 biosdev;
-    u32 slice;
-    u32 port;
+    unsigned int type;
+    unsigned int size;
+    unsigned int biosdev;
+    unsigned int slice;
+    unsigned int port;
 } __packed;
 
 struct mb2_tag_mmap {
-    u32                   type;
-    u32                   size;
-    u32                   entry_size;
-    u32                   entry_version;
+    unsigned int          type;
+    unsigned int          size;
+    unsigned int          entry_size;
+    unsigned int          entry_version;
     struct mb2_mmap_entry entries[];
 } __packed;
 
 struct mb2_vbe_info_block {
-    u8 external_specification[512];
+    unsigned char external_specification[512];
 } __packed;
 
 struct mb2_vbe_mode_info_block {
-    u8 external_specification[512];
+    unsigned char external_specification[512];
 } __packed;
 
 struct mb2_tag_vbe {
-    u32                            type;
-    u32                            size;
-    u16                            vbe_mode;
-    u16                            vbe_interface_seg;
-    u16                            vbe_interface_off;
-    u16                            vbe_interface_len;
+    unsigned int                   type;
+    unsigned int                   size;
+    unsigned short                 vbe_mode;
+    unsigned short                 vbe_interface_seg;
+    unsigned short                 vbe_interface_off;
+    unsigned short                 vbe_interface_len;
     struct mb2_vbe_info_block      vbe_control_info;
     struct mb2_vbe_mode_info_block vbe_mode_info;
 } __packed;
@@ -124,118 +131,118 @@ struct mb2_tag_vbe {
 #define MB2_FB_TYPE_EGA_TEXT 2
 
 struct mb2_tag_fb {
-    u32 type;
-    u32 size;
-    u64 fb_addr;
-    u32 fb_pitch;
-    u32 fb_width;
-    u32 fb_height;
-    u8  fb_bpp;
-    u8  fb_type;
-    u8  reserved;
+    unsigned int  type;
+    unsigned int  size;
+    unsigned long fb_addr;
+    unsigned int  fb_pitch;
+    unsigned int  fb_width;
+    unsigned int  fb_height;
+    unsigned char fb_bpp;
+    unsigned char fb_type;
+    unsigned char reserved;
 
     union {
         struct {
-            u16              fb_palette_num_colors;
+            unsigned short   fb_palette_num_colors;
             struct mb2_color fb_palette[];
         } __packed;
         struct {
-            u8 fb_red_field_pos;
-            u8 fb_red_mask_size;
-            u8 fb_green_field_pos;
-            u8 fb_green_mask_size;
-            u8 fb_blue_field_pos;
-            u8 fb_blue_mask_size;
+            unsigned char fb_red_field_pos;
+            unsigned char fb_red_mask_size;
+            unsigned char fb_green_field_pos;
+            unsigned char fb_green_mask_size;
+            unsigned char fb_blue_field_pos;
+            unsigned char fb_blue_mask_size;
         } __packed;
     };
 } __packed;
 
 struct mb2_tag_elf_sections {
-    u32  type;
-    u32  size;
-    u32  num;
-    u32  entsize;
-    u32  shndx;
-    char sections[];
+    unsigned int type;
+    unsigned int size;
+    unsigned int num;
+    unsigned int entsize;
+    unsigned int shndx;
+    char         sections[];
 } __packed;
 
 struct mb2_tag_apm {
-    u32 type;
-    u32 size;
-    u16 version;
-    u16 cseg;
-    u32 offset;
-    u16 cseg_16;
-    u16 dseg;
-    u16 flags;
-    u16 cseg_len;
-    u16 cseg_16_len;
-    u16 dseg_len;
+    unsigned int   type;
+    unsigned int   size;
+    unsigned short version;
+    unsigned short cseg;
+    unsigned int   offset;
+    unsigned short cseg_16;
+    unsigned short dseg;
+    unsigned short flags;
+    unsigned short cseg_len;
+    unsigned short cseg_16_len;
+    unsigned short dseg_len;
 } __packed;
 
 struct mb2_tag_efi32 {
-    u32 type;
-    u32 size;
-    u32 ptr;
+    unsigned int type;
+    unsigned int size;
+    unsigned int ptr;
 } __packed;
 
 struct mb2_tag_efi64 {
-    u32 type;
-    u32 size;
-    u64 ptr;
+    unsigned int  type;
+    unsigned int  size;
+    unsigned long ptr;
 } __packed;
 
 struct mb2_tag_smbios {
-    u32 type;
-    u32 size;
-    u8  major;
-    u8  minor;
-    u8  reserved[6];
-    u8  tables[];
+    unsigned int  type;
+    unsigned int  size;
+    unsigned char major;
+    unsigned char minor;
+    unsigned char reserved[6];
+    unsigned char tables[];
 } __packed;
 
 struct mb2_tag_acpi1 {
-    u32 type;
-    u32 size;
-    u8  rsdp[];
+    unsigned int  type;
+    unsigned int  size;
+    unsigned char rsdp[];
 } __packed;
 
 struct mb2_tag_acpi2 {
-    u32 type;
-    u32 size;
-    u8  rsdp[];
+    unsigned int  type;
+    unsigned int  size;
+    unsigned char rsdp[];
 } __packed;
 
 struct mb2_tag_net {
-    u32 type;
-    u32 size;
-    u8  dhcpack[];
+    unsigned int  type;
+    unsigned int  size;
+    unsigned char dhcpack[];
 } __packed;
 
 struct mb2_tag_efi_mmap {
-    u32 type;
-    u32 size;
-    u32 desc_size;
-    u32 desc_vers;
-    u8  efi_mmap[];
+    unsigned int  type;
+    unsigned int  size;
+    unsigned int  desc_size;
+    unsigned int  desc_vers;
+    unsigned char efi_mmap[];
 } __packed;
 
 struct mb2_tag_efi32_ih {
-    u32 type;
-    u32 size;
-    u32 ptr;
+    unsigned int type;
+    unsigned int size;
+    unsigned int ptr;
 } __packed;
 
 struct mb2_tag_efi64_ih {
-    u32 type;
-    u32 size;
-    u64 ptr;
+    unsigned int  type;
+    unsigned int  size;
+    unsigned long ptr;
 } __packed;
 
 struct mb2_tag_load_base_addr {
-    u32 type;
-    u32 size;
-    u32 load_base_addr;
+    unsigned int type;
+    unsigned int size;
+    unsigned int load_base_addr;
 } __packed;
 
 #endif
