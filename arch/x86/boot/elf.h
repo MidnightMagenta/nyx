@@ -46,6 +46,10 @@ typedef signed long long Elf64_Sxword;
 #define EV_NONE    0
 #define EV_CURRENT 1
 
+// EI_OSABI
+#define ELFOSABI_NONE 0
+#define ELFOSABI_SYSV 0
+
 // e_type
 #define ET_NONE 0
 #define ET_REL  1

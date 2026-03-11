@@ -32,4 +32,9 @@ SECTIONS {
     } :blob
 
     __kernel_blob_size = __kernel_blob_end - __kernel_blob_start;
+
+    /DISCARD/ : {
+        *(.note.gnu.property)
+        *(.eh_frame)
+    }
 }
