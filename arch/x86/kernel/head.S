@@ -3,6 +3,9 @@
 #include <asi/asm_linkage.h>
 
 .section .init.text, "ax"
+/*
+ * RDI = boot_params pointer
+ */
 startup_64:
     cli
     mov $init_stack_top, %rsp

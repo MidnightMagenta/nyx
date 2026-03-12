@@ -7,7 +7,7 @@
 #define hcf()                                                                                                          \
     while (1) { __asm__ volatile("hlt"); }
 
-#define pr_fmt(f) "boot: " f
+#define pr_fmt(f) "boot: " f "\n"
 
 #define pr_error(f, ...) printb("Error (%s:%d): " f, __FILE__, __LINE__, ##__VA_ARGS__)
 #define pr_warn(f, ...)  printb("Warning: " f, ##__VA_ARGS__)
@@ -22,6 +22,7 @@
 #define max(a, b) (a > b ? a : b)
 #define min(a, b) (a < b ? a : b)
 
+int   memcmpb(const void *a, const void *b, size_t c);
 void *memsetb(void *p, int v, size_t c);
 void *memmoveb(void *dest, const void *src, size_t len);
 
