@@ -1,9 +1,7 @@
-ARCHIVES += arch/$(ARCH)/init/initar.o \
-			arch/$(ARCH)/kernel/kernelar.o
+ARCHIVES += arch/$(ARCH)/kernel/kernelar.o
 LIBS +=
 
-SUBDIRS += arch/$(ARCH)/init \
-		   arch/$(ARCH)/kernel
+SUBDIRS += arch/$(ARCH)/kernel
 
 CFLAGS += -m64 -m80387 -msse -msse2 -mmmx \
           -mno-sse3 -mno-sse4 -mno-avx -mno-avx2 \
@@ -12,7 +10,7 @@ CFLAGS += -m64 -m80387 -msse -msse2 -mmmx \
 ASFLAGS += -m64
 ARCH_LINK := $(TOPDIR)/arch/$(ARCH)/X86_64_link.lds
 
-.PHONY: archclean bImage
+.PHONY: image archclean
 
 MAKEBOOT := $(MAKE) -C arch/$(ARCH)/boot
 

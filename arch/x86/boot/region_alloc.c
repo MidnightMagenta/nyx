@@ -177,7 +177,7 @@ retry:
         u64 re = r.base + r.size;
 
         // prefer avoiding low memory
-        if (!try_lowmem && rb < 0x100000) { continue; }
+        if (!try_lowmem && rb < 0x100000) { rb = 0x100000; }
 
         // alignment pushed up past the region
         if (rb >= re) { continue; }

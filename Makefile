@@ -56,11 +56,12 @@ LDFLAGS := -static -Bsymbolic -nostdlib
 
 # --------------------------------
 
-ARCHIVES := nyx/nyxar.o \
+ARCHIVES := init/initar.o \
+			kernel/kernelar.o \
 			mm/mmar.o
 LIBS     := lib/libnyx.a
 
-SUBDIRS := nyx mm lib
+SUBDIRS := init kernel mm lib
 
 .PHONY: all do-all vmnyx nyxsubdirs clean distclean symlinks menuconfig config docs tools
 

@@ -6,7 +6,7 @@
 startup_64:
     cli
     mov $init_stack_top, %rsp
-    call EXT_C(kernel_init)
+    call EXT_C(start_kernel)
 1:  hlt
     jmp 1b
 
