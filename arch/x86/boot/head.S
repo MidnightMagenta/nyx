@@ -179,9 +179,12 @@ long_mode:
 .extern boot_main
     mov     %r15, %rdi
     call    EXT_C(boot_main)
+
     // jump to kernel entry
     // rdi = boot info pointer
     // rsi = kernel entry pointer
+.global jump_kernel
+jump_kernel:
     mov     %rsi, %rax
     jmp     *%rax
     // for now halt and catch fire

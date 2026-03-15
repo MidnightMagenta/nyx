@@ -1,7 +1,9 @@
 #include "boot_utils.h"
 #include "elf.h"
+#include "multiboot2.h"
 #include "printb.h"
 #include "region_alloc.h"
+#include <asi/memory.h>
 #include <asi/page.h>
 #include <nyx/util.h>
 
@@ -80,7 +82,7 @@ static int load_segments(const Elf64_Ehdr *ehdr, const Elf64_Phdr *phdrs, u64 la
         const Elf64_Phdr *ph = &phdrs[i];
 
         if (ph->p_type != PT_LOAD) { continue; }
-        if ((void *) ((char *) ph->p_offset) > kernel_blob_end) {
+        if ((void *) ((char *) kernel_blob_start + ph->p_offset + ph->p_filesz) > kernel_blob_end) {
             pr_error(pr_fmt("Kernel payload offset out of range. p_offset is 0x%lx"), ph->p_offset);
             return 1;
         }
@@ -133,6 +135,249 @@ static int load_kernel(struct kernel_loadinfo *loadinfo) {
 
 /* !KERNEL LOADING */
 
+/* MEMORY MAPPING */
+
+#define PAGE_HEAP_SIZE 8 * MiB
+
+static struct memregion page_heap;
+static u64              alloc_ptr;
+
+static int init_page_heap() {
+    page_heap = ra_get_region(PAGE_HEAP_SIZE, PAGE_SIZE);
+    if (page_heap.size == 0) {
+        pr_error(pr_fmt("Failed to allocate page heap"));
+        return 1;
+    }
+    alloc_ptr = page_heap.base;
+    return 0;
+}
+
+static void *pgheap_alloc() {
+    if (alloc_ptr + PAGE_SIZE > page_heap.base + page_heap.size) { return NULL; }
+    u64 alloc = alloc_ptr;
+    alloc_ptr += PAGE_SIZE;
+    return (void *) alloc;
+}
+
+enum {
+    PAGE_SIZE_4KiB,
+    PAGE_SIZE_2MiB,
+};
+
+#define PML4_IDX(a) ((a >> 39) & 0x1FF)
+#define PDPT_IDX(a) ((a >> 30) & 0x1FF)
+#define PD_IDX(a)   ((a >> 21) & 0x1FF)
+#define PT_IDX(a)   ((a >> 12) & 0x1FF)
+
+#define PAGE_PRESENT (1ULL << 0)
+#define PAGE_RW      (1ULL << 1)
+#define PAGE_PS      (1ULL << 7)
+
+#define PAGE_ADDR_MASK 0x000FFFFFFFFFF000ULL
+
+static int map_page(u64 *pml4, phys_addr_t paddr, virt_addr_t vaddr, int size) {
+    u64 *pdpt, *pd, *pt;
+    u64  pml4i = PML4_IDX(vaddr);
+    u64  pdpti = PDPT_IDX(vaddr);
+    u64  pdi   = PD_IDX(vaddr);
+    u64  pti   = PT_IDX(vaddr);
+
+    if (size == PAGE_SIZE_2MiB) {
+        if ((paddr & ((2 * MiB) - 1)) || (vaddr & ((2 * MiB) - 1))) {
+            pr_error(pr_fmt("Invalid alignment for 2 MiB mapping. vaddr 0x%lx paddr 0x%lx"), vaddr, paddr);
+            return 1;
+        }
+    } else if (size == PAGE_SIZE_4KiB) {
+        if ((paddr & (PAGE_SIZE - 1)) || (vaddr & (PAGE_SIZE - 1))) {
+            pr_error(pr_fmt("Invalid alignment for 4 KiB mapping. vaddr 0x%lx paddr 0x%lx"), vaddr, paddr);
+            return 1;
+        }
+    } else {
+        pr_error(pr_fmt("Invalid page size %d"), size);
+        return 1;
+    }
+
+    if (!(pml4[pml4i] & PAGE_PRESENT)) {
+        u64 page = (u64) pgheap_alloc();
+        if (page == 0) {
+            pr_error(pr_fmt("Allocation failure"));
+            return 1;
+        }
+        memsetb((void *) page, 0, PAGE_SIZE);
+        pml4[pml4i] = page | (PAGE_PRESENT | PAGE_RW);
+    }
+
+    pdpt = (u64 *) (pml4[pml4i] & PAGE_ADDR_MASK);
+
+    if (!(pdpt[pdpti] & PAGE_PRESENT)) {
+        u64 page = (u64) pgheap_alloc();
+        if (page == 0) {
+            pr_error(pr_fmt("Allocation failure"));
+            return 1;
+        }
+        memsetb((void *) page, 0, PAGE_SIZE);
+        pdpt[pdpti] = page | (PAGE_PRESENT | PAGE_RW);
+    }
+
+    pd = (u64 *) (pdpt[pdpti] & PAGE_ADDR_MASK);
+
+    if (size == PAGE_SIZE_2MiB) {
+        if (pd[pdi] & PAGE_PRESENT && (pd[pdi] & PAGE_PS)) {
+            pr_warn(pr_fmt("Remapping 2 MiB page at vaddr 0x%lx to paddr 0x%lx. "
+                           "Previous paddr was 0x%lx"),
+                    vaddr,
+                    paddr,
+                    (pd[pdi] & PAGE_ADDR_MASK));
+        }
+        pd[pdi] = (paddr | (PAGE_PRESENT | PAGE_RW | PAGE_PS)); // PS = 1, RW = 1, P = 1
+        return 0;
+    }
+
+    if (pd[pdi] & PAGE_PS) {
+        pr_error(pr_fmt("Cannot split existing 2 MiB mapping"));
+        return 1;
+    }
+
+    if (!(pd[pdi] & PAGE_PRESENT)) {
+        u64 page = (u64) pgheap_alloc();
+        if (page == 0) {
+            pr_error(pr_fmt("Allocation failure"));
+            return 1;
+        }
+        memsetb((void *) page, 0, PAGE_SIZE);
+        pd[pdi] = page | (PAGE_PRESENT | PAGE_RW);
+    }
+
+    pt = (u64 *) (pd[pdi] & PAGE_ADDR_MASK);
+
+    if (pt[pti] & PAGE_PRESENT) {
+        pr_warn(pr_fmt("Remapping 4 KiB page at vaddr 0x%lx to paddr 0x%lx. "
+                       "Previous paddr was 0x%lx"),
+                vaddr,
+                paddr,
+                (pt[pti] & PAGE_ADDR_MASK));
+    }
+
+    pt[pti] = (paddr | (PAGE_PRESENT | PAGE_RW));
+
+    return 0;
+}
+
+static int map_range(u64 *pml4, phys_addr_t paddr, virt_addr_t vaddr, u64 len) {
+    int         res;
+    phys_addr_t paddr_end = paddr + len;
+    virt_addr_t vaddr_end = vaddr + len;
+
+    if (paddr + len < paddr || vaddr + len < vaddr) {
+        pr_error(pr_fmt("Memory out of range. vaddr 0x%lx, paddr 0x%lx, length 0x%lx"), vaddr, paddr, len);
+        return 1;
+    }
+
+    if ((paddr & (PAGE_SIZE - 1)) || (vaddr & (PAGE_SIZE - 1))) {
+        pr_error(pr_fmt("Invalid alignment for range mapping. vaddr 0x%lx paddr 0x%lx"), vaddr, paddr);
+        return 1;
+    }
+
+    if (len & (PAGE_SIZE - 1)) {
+        pr_error(pr_fmt("Invalid length for range mapping. vaddr 0x%lx, paddr "
+                        "0x%lx, length 0x%lx"),
+                 vaddr,
+                 paddr,
+                 len);
+        return 1;
+    }
+
+    while (paddr < paddr_end) {
+        if (!(paddr & ((2 * MiB) - 1)) && !(vaddr & ((2 * MiB) - 1)) && (paddr_end - paddr) >= (2 * MiB) &&
+            (vaddr_end - vaddr) >= (2 * MiB)) {
+            if ((res = map_page(pml4, paddr, vaddr, PAGE_SIZE_2MiB)) != 0) { return res; }
+            paddr += 2 * MiB;
+            vaddr += 2 * MiB;
+            continue;
+        }
+
+        if ((res = map_page(pml4, paddr, vaddr, PAGE_SIZE_4KiB)) != 0) { return res; }
+        paddr += PAGE_SIZE;
+        vaddr += PAGE_SIZE;
+    }
+
+    return 0;
+}
+
+static int get_mem_range(u64 bi, u64 *loaddr, u64 *hiaddr) {
+    unsigned int         bi_size = *(unsigned int *) bi;
+    struct mb2_tag      *bi_tag  = (struct mb2_tag *) (bi + 8);
+    struct mb2_tag      *bi_end  = (struct mb2_tag *) (bi + bi_size);
+    struct mb2_tag_mmap *mmap    = NULL;
+
+    while (bi_tag <= bi_end && bi_tag->type != MB2_TAG_END) {
+        if (bi_tag->type == MB2_TAG_MMAP) { mmap = (struct mb2_tag_mmap *) bi_tag; }
+        bi_tag = (struct mb2_tag *) ((char *) bi_tag + ALIGN_UP(bi_tag->size, 8));
+    }
+
+    if (!mmap) {
+        pr_error(pr_fmt("Could not get mmap"));
+        return 1;
+    }
+
+    *loaddr = U64_MAX;
+    *hiaddr = 0;
+
+    for (u8 *p = (u8 *) mmap->entries; p < (u8 *) mmap + mmap->size; p += mmap->entry_size) {
+        struct mb2_mmap_entry *mmap_entry = (struct mb2_mmap_entry *) p;
+        if (mmap_entry->type != MB2_MMAP_AVAILABLE) { continue; }
+        *loaddr = min(*loaddr, mmap_entry->addr);
+        *hiaddr = max(*hiaddr, mmap_entry->addr + mmap_entry->len);
+    }
+
+    return 0;
+}
+
+static int map_memory(u64 bi, const struct kernel_loadinfo *loadinfo, struct memregion *pgrange) {
+    int  res;
+    u64 *pml4;
+    u64  loaddr, hiaddr;
+
+    if ((res = init_page_heap()) != 0) { return res; }
+
+    pgrange->base = page_heap.base;
+    pgrange->size = page_heap.size;
+
+    if ((res = get_mem_range(bi, &loaddr, &hiaddr)) != 0) { return res; }
+
+    pml4 = pgheap_alloc();
+    if (!pml4) {
+        pr_error(pr_fmt("Failed to allocate PML4"));
+        return 1;
+    }
+
+    // identity map memory
+    if ((res = map_range(pml4, loaddr, loaddr, hiaddr - loaddr)) != 0) { return res; }
+
+    // direct map memory
+    if ((res = map_range(pml4, loaddr, ARCH_DIRECT_MAP_BASE + loaddr, hiaddr - loaddr))) { return res; }
+
+    // map the kernel
+    if (loadinfo->k_pregion.size != loadinfo->k_vregion.size) {
+        pr_error(pr_fmt("Kernel memory regions have different sizes. Physical size %d Virtual size %d"),
+                 loadinfo->k_pregion.size,
+                 loadinfo->k_vregion.size);
+        return 1;
+    }
+
+    if ((res = map_range(pml4, loadinfo->k_pregion.base, loadinfo->k_vregion.base, loadinfo->k_vregion.size))) {
+        return res;
+    }
+
+    __asm__ volatile("mov %0, %%cr3" ::"r"(pml4) : "memory");
+
+    return 0;
+}
+
+/* !MEMORY MAPPING */
+
+extern void jump_kernel(u64 boot_params, u64 entry);
+
 /*
  * This code is responsible for loading the embeded kernel image
  * into a memory location, then mapping that memory, as well as
@@ -140,16 +385,19 @@ static int load_kernel(struct kernel_loadinfo *loadinfo) {
  * 0xFFFF888000000000, populate the boot_params structure, and jump
  * to the kernel's entry point.
  */
-void boot_main(unsigned long bi) {
+void boot_main(u64 bi) {
     struct kernel_loadinfo kloadinfo;
+    struct memregion       page_reserved_range;
 
-    (void) bi;
     boot_serial_init();
 
     if (ra_init(bi) != 0) { die(); }
     if (load_kernel(&kloadinfo) != 0) { die(); }
+    if (map_memory(bi, &kloadinfo, &page_reserved_range) != 0) { die(); }
 
     pr_dbg(pr_fmt("entry: 0x%lx"), kloadinfo.k_entry);
+
+    jump_kernel(0, kloadinfo.k_entry);
 
     hcf();
 }

@@ -38,7 +38,7 @@ int boot_serial_init() {
     outb(COM1_REG(COM_RW_MODEM_CONTROL_REG), 0x1E);
 
     outb(COM1_REG(COM_W_TX_BUFF), 0xAE);
-    if (inb(COM1_REG(COM_R_RX_BUFF)) != 0xAE) { return -1; }
+    if (inb(COM1_REG(COM_R_RX_BUFF)) != 0xAE) { return 1; }
 
     outb(COM1_REG(COM_RW_MODEM_CONTROL_REG), 0x0F);
     boot_serial_initialized = true;

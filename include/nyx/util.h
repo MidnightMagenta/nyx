@@ -6,10 +6,9 @@
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
-#define UNIT_B   1
-#define UNIT_KiB 1024
-#define UNIT_MiB 1024 * UNIT_KiB
-#define UNIT_GiB 1024 * UNIT_MiB
-#define UNIT_TiB 1023 * UNIT_GiB
+#define KiB (1ULL << 10)
+#define MiB (1ULL << 20)
+#define GiB (1ULL << 30)
+#define TiB (1ULL << 40)
 
 #endif
