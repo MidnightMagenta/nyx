@@ -15,8 +15,18 @@ void __attribute__((noreturn)) die() {
     hcf();
 }
 
+#define U64_MAX (~0ULL)
+
+/* KERNEL LOADING */
+
+struct kernel_loadinfo {
+    struct memregion k_pregion;
+    struct memregion k_vregion;
+    u64              k_entry;
+};
+
 /* This really should never fail... */
-int verify_ehdr(const Elf64_Ehdr *const ehdr) {
+static int verify_ehdr(const Elf64_Ehdr *const ehdr) {
     if (memcmpb(&ehdr->e_ident[EI_MAG0], ELFMAG, SELFMAG) != 0) { return 1; }
     if (ehdr->e_ident[EI_CLASS] != ELFCLASS64) { return 1; }
     if (ehdr->e_ident[EI_DATA] != ELFDATA2LSB) { return 1; }
@@ -26,18 +36,69 @@ int verify_ehdr(const Elf64_Ehdr *const ehdr) {
     return 0;
 }
 
-#define U64_MAX (~0ULL)
+static int get_load_range(const Elf64_Ehdr *ehdr, const Elf64_Phdr *phdrs, u64 *laddr, u64 *haddr) {
+    *laddr = U64_MAX;
+    *haddr = 0;
 
-struct kernel_loadinfo {
-    struct memregion k_pregion;
-    struct memregion k_vregion;
-    u64              k_entry;
-};
+    for (int i = 0; i < ehdr->e_phnum; ++i) {
+        if (phdrs[i].p_type != PT_LOAD) { continue; }
+        *laddr = min(*laddr, phdrs[i].p_vaddr);
+        *haddr = max(*haddr, (phdrs[i].p_vaddr + phdrs[i].p_memsz));
+    }
 
-int load_kernel(struct kernel_loadinfo *loadinfo) {
+    // really should never fail...
+    if (*laddr == U64_MAX) {
+        pr_error(pr_fmt("Kernel payload ELF contains no loadable segments"));
+        return 1;
+    }
+
+    *laddr = ALIGN_DOWN(*laddr, PAGE_SIZE);
+    *haddr = ALIGN_UP(*haddr, PAGE_SIZE);
+
+    pr_dbg(pr_fmt("Kernel payload memory range [0x%lx, 0x%lx]"), laddr, haddr);
+
+    return 0;
+}
+
+static int alloc_kernel_region(u64 laddr, u64 haddr, struct memregion *region) {
+    *region = ra_get_region(haddr - laddr, PAGE_SIZE);
+
+    if (region->size == 0) {
+        pr_error(pr_fmt("Could not allocate memory for kernel payload"));
+        return 1;
+    }
+
+    pr_dbg(pr_fmt("Kernel payload physical memory range [0x%lx, 0x%lx]"), region->base, region->base + region->size);
+
+    memsetb((void *) region->base, 0, region->size);
+
+    return 0;
+}
+
+static int load_segments(const Elf64_Ehdr *ehdr, const Elf64_Phdr *phdrs, u64 laddr, struct memregion region) {
+    for (int i = 0; i < ehdr->e_phnum; ++i) {
+        const Elf64_Phdr *ph = &phdrs[i];
+
+        if (ph->p_type != PT_LOAD) { continue; }
+        if ((void *) ((char *) ph->p_offset) > kernel_blob_end) {
+            pr_error(pr_fmt("Kernel payload offset out of range. p_offset is 0x%lx"), ph->p_offset);
+            return 1;
+        }
+        if (ph->p_memsz < ph->p_filesz) {
+            pr_error(pr_fmt("Invalid sections size. p_memsz is 0x%lx p_filesz is 0x%lx"), ph->p_memsz, ph->p_filesz);
+            return 1;
+        }
+
+        u64 load_base = (ph->p_paddr - laddr) + region.base;
+        memcpyb((void *) load_base, (void *) ((char *) kernel_blob_start + ph->p_offset), ph->p_filesz);
+    }
+
+    return 0;
+}
+
+static int load_kernel(struct kernel_loadinfo *loadinfo) {
     int              res;
-    u64              laddr = U64_MAX;
-    u64              haddr = 0;
+    u64              laddr, haddr;
     Elf64_Ehdr      *ehdr;
     Elf64_Phdr      *phdrs;
     struct memregion kernel_region;
@@ -48,61 +109,18 @@ int load_kernel(struct kernel_loadinfo *loadinfo) {
     }
 
     ehdr = (Elf64_Ehdr *) kernel_blob_start;
-    res  = verify_ehdr(ehdr);
-    if (res != 0) {
+    if ((res = verify_ehdr(ehdr)) != 0) {
         pr_error(pr_fmt("Could not verify kernel payload ELF header"));
         return res;
     }
 
     phdrs = (Elf64_Phdr *) ((char *) kernel_blob_start + ehdr->e_phoff);
 
-    // find the lowest and highest address in PT_LOAD sections
-    for (int i = 0; i < ehdr->e_phnum; ++i) {
-        if (phdrs[i].p_type != PT_LOAD) { continue; }
-        laddr = min(laddr, phdrs[i].p_vaddr);
-        haddr = max(haddr, (phdrs[i].p_vaddr + phdrs[i].p_memsz));
-    }
+    if ((res = get_load_range(ehdr, phdrs, &laddr, &haddr)) != 0) { return res; }
 
-    // really should never fail...
-    if (laddr == U64_MAX) {
-        pr_error(pr_fmt("Kernel payload ELF contains no loadable segments"));
-        return 1;
-    }
+    if ((res = alloc_kernel_region(laddr, haddr, &kernel_region)) != 0) { return res; }
 
-    laddr = ALIGN_DOWN(laddr, PAGE_SIZE);
-    haddr = ALIGN_UP(haddr, PAGE_SIZE);
-
-    pr_dbg(pr_fmt("Kernel payload memory range [0x%lx, 0x%lx]"), laddr, haddr);
-
-    kernel_region = ra_get_region(haddr - laddr, PAGE_SIZE);
-
-    if (kernel_region.size == 0) {
-        pr_error(pr_fmt("Could not allocate memory for kernel payload"));
-        return 1;
-    }
-
-    pr_dbg(pr_fmt("Kernel payload physical memory range [0x%lx, 0x%lx]"),
-           kernel_region.base,
-           kernel_region.base + kernel_region.size);
-
-    memsetb((void *) kernel_region.base, 0, kernel_region.size);
-
-    for (int i = 0; i < ehdr->e_phnum; ++i) {
-        if (phdrs[i].p_type != PT_LOAD) { continue; }
-        if ((void *) ((char *) phdrs[i].p_offset) > kernel_blob_end) {
-            pr_error(pr_fmt("Kernel payload offset out of range. p_offset is 0x%lx"), phdrs[i].p_offset);
-            return 1;
-        }
-        if (phdrs[i].p_memsz < phdrs[i].p_filesz) {
-            pr_error(pr_fmt("Invalid sections size. p_memsz is 0x%lx p_filesz is 0x%lx"),
-                     phdrs[i].p_memsz,
-                     phdrs[i].p_filesz);
-            return 1;
-        }
-
-        u64 load_base = (phdrs[i].p_paddr - laddr) + kernel_region.base;
-        memcpyb((void *) load_base, (void *) ((char *) kernel_blob_start + phdrs[i].p_offset), phdrs[i].p_filesz);
-    }
+    if ((res = load_segments(ehdr, phdrs, laddr, kernel_region)) != 0) { return res; }
 
     memsetb(loadinfo, 0, sizeof(struct kernel_loadinfo));
 
@@ -112,6 +130,8 @@ int load_kernel(struct kernel_loadinfo *loadinfo) {
 
     return 0;
 }
+
+/* !KERNEL LOADING */
 
 /*
  * This code is responsible for loading the embeded kernel image
