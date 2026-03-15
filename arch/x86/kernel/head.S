@@ -16,3 +16,7 @@ startup_64:
 .section .init.bss, "aw", @nobits
 .skip 0x1000
 init_stack_top:
+
+// TODO: this is temporary to not mess up the kernel PT_LOAD sections
+.section .data, "aw"
+.int 1

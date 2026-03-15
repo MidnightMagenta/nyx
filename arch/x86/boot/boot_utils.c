@@ -23,9 +23,17 @@ void *memmoveb(void *dest, const void *src, size_t len) {
     if (d < s)
         while (len--) *d++ = *s++;
     else {
-        char *lasts = s + (len - 1);
+        char *lasts = (char *) (s + (len - 1));
         char *lastd = d + (len - 1);
         while (len--) *lastd-- = *lasts--;
     }
+    return dest;
+}
+
+void *memcpyb(void *dest, const void *src, size_t len) {
+    unsigned char       *dstPtr = (unsigned char *) dest;
+    const unsigned char *srcPtr = (const unsigned char *) src;
+
+    while (len--) { *dstPtr++ = *srcPtr++; }
     return dest;
 }

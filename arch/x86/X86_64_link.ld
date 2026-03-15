@@ -5,11 +5,13 @@ PHDRS {
     init_data   PT_LOAD FLAGS(6);          /* RW_ */
     text        PT_LOAD FLAGS(5);          /* R_E */
     data        PT_LOAD FLAGS(6);          /* RW_ */
-    note        PT_NOTE FLAGS(0);          /* ___ */
+/*  note        PT_NOTE FLAGS(0);          /* ___ */
 }
 
+#define ARCH_KERNEL_BASE 0xFFFFFFFF80000000
+
 SECTIONS {
-    . = 0xFFFFFFFF80000000;
+    . = ARCH_KERNEL_BASE;
     __image_virt_start = .;
     __kernel_virt_start = .;
 

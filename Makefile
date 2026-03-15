@@ -49,7 +49,7 @@ CFLAGS := -nostartfiles \
 		  -fno-pic -fno-pie \
 		  -std=gnu23 \
 		  -Wall -Wextra
-CPPFLAGS :=
+CPPFLAGS := -D__KERNEL__
 ASFLAGS :=
 ASPPFLAGS := -D__ASSEMBLY__
 LDFLAGS := -static -Bsymbolic -nostdlib

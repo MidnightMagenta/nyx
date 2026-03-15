@@ -19,11 +19,11 @@ clean:
 
 %.o: %.c
 	@echo -e "CC $<"
-	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) -MMD -MP -c $< -o $@
+	$(Q)$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
 %.o: %.S
 	@echo -e "AS $@"
-	$(Q)$(CC) -x assembler-with-cpp $(ASFLAGS) $(ASPPFLAGS) -MMD -MP -c $< -o $@
+	$(Q)$(CC) -x assembler-with-cpp $(ASFLAGS) -D__ASSEMBLY__ -MMD -MP -c $< -o $@
 
 %.lds: %.ld
 	@echo -e "CPP $@"
