@@ -153,7 +153,7 @@ static int init_page_heap() {
 }
 
 static void *pgheap_alloc() {
-    if (alloc_ptr + PAGE_SIZE > page_heap.base + page_heap.size) { return NULL; }
+    if (alloc_ptr >= page_heap.base + page_heap.size) { return NULL; }
     u64 alloc = alloc_ptr;
     alloc_ptr += PAGE_SIZE;
     return (void *) alloc;

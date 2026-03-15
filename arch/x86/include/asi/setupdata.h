@@ -1,6 +1,7 @@
 #ifndef _ASI_SETUPDATA_H
 #define _ASI_SETUPDATA_H
 
+#include <nyx/compiler.h>
 #include <nyx/types.h>
 
 #define MMAP_TYPE_NONE             0
@@ -14,6 +15,6 @@ struct mmap_entry {
     u64 addr;
     u64 size;
     u32 type;
-} __attribute__((packed));
+} __packed;
 
 #endif
