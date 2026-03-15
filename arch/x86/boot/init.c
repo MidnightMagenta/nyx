@@ -55,7 +55,7 @@ static int get_load_range(const Elf64_Ehdr *ehdr, const Elf64_Phdr *phdrs, u64 *
     *laddr = ALIGN_DOWN(*laddr, PAGE_SIZE);
     *haddr = ALIGN_UP(*haddr, PAGE_SIZE);
 
-    pr_dbg(pr_fmt("Kernel payload memory range [0x%lx, 0x%lx]"), laddr, haddr);
+    pr_dbg(pr_fmt("Kernel payload memory range [0x%lx, 0x%lx]"), *laddr, *haddr);
 
     return 0;
 }
