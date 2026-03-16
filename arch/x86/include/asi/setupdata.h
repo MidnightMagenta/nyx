@@ -10,6 +10,7 @@
 #define MMAP_TYPE_ACPI_RECLAIMABLE 3
 #define MMAP_TYPE_NVS              4
 #define MMAP_TYPE_UNUSABLE         5
+#define MMAP_TYPE_BOOT_RECLAIMABLE 6
 
 struct mmap_entry {
     u64 addr;

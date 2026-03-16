@@ -3,6 +3,7 @@
 #include "multiboot2.h"
 #include "printb.h"
 #include "region_alloc.h"
+#include <asi/bootparam.h>
 #include <asi/memory.h>
 #include <asi/page.h>
 #include <nyx/util.h>
@@ -376,6 +377,185 @@ static int map_memory(u64 bi, const struct kernel_loadinfo *loadinfo, struct mem
 
 /* !MEMORY MAPPING */
 
+/* BOOT PARAMS */
+
+static void mmap_sort(struct mmap_entry *mmap, int *n) {
+    struct mmap_entry temp = {0};
+    if (*n == 0) { return; }
+
+    for (int i = 1; i < *n; ++i) {
+        temp  = mmap[i];
+        int j = i;
+
+        while (j > 0 && mmap[j - 1].addr > temp.addr) {
+            mmap[j] = mmap[j - 1];
+            j--;
+        }
+        mmap[j] = temp;
+    }
+}
+
+static void mmap_merge(struct mmap_entry *mmap, int *n) {
+    int wr = 0;
+    if (*n == 0) { return; }
+
+    for (int rd = 1; rd < *n; ++rd) {
+        u64 prev_end = mmap[wr].addr + mmap[wr].size;
+        u64 cur_end  = mmap[rd].addr + mmap[rd].size;
+
+        if (mmap[rd].addr <= prev_end && mmap[rd].type == mmap[wr].type) {
+            if (cur_end > prev_end) { mmap[wr].size = cur_end - mmap[wr].addr; }
+        } else {
+            wr++;
+            mmap[wr] = mmap[rd];
+        }
+    }
+
+    *n = wr + 1;
+}
+
+static int create_mmap(const struct mb2_tag_mmap *bi_mmap,
+                       const struct memregion    *page_reserved_range,
+                       struct boot_params        *bootparams) {
+    int                mmap_entry_count = 0;
+    struct mmap_entry *bp_mmap_ent;
+
+    for (u8 *p = (u8 *) bi_mmap->entries; p < (u8 *) bi_mmap + bi_mmap->size; p += bi_mmap->entry_size) {
+        if (mmap_entry_count >= MMAP_MAX_ENTRIES) {
+            mmap_sort(bootparams->mmap, &mmap_entry_count);
+            mmap_merge(bootparams->mmap, &mmap_entry_count);
+            if (mmap_entry_count >= MMAP_MAX_ENTRIES) {
+                pr_error(pr_fmt("Can't create boot_params memory map. Not enough space"));
+            }
+        }
+
+        struct mb2_mmap_entry *mmap_entry = (struct mb2_mmap_entry *) p;
+        bp_mmap_ent                       = &bootparams->mmap[mmap_entry_count++];
+        bp_mmap_ent->addr                 = mmap_entry->addr;
+        bp_mmap_ent->size                 = mmap_entry->len;
+
+        switch (mmap_entry->type) {
+            case MB2_MMAP_AVAILABLE:
+                bp_mmap_ent->type = MMAP_TYPE_AVAILABLE;
+                break;
+            case MB2_MMAP_ACPI_RECLAIMABLE:
+                bp_mmap_ent->type = MMAP_TYPE_ACPI_RECLAIMABLE;
+                break;
+            case MB2_MMAP_NVS:
+                bp_mmap_ent->type = MMAP_TYPE_NVS;
+                break;
+            case MB2_MMAP_BADRAM:
+                bp_mmap_ent->type = MMAP_TYPE_UNUSABLE;
+                break;
+            default:
+                bp_mmap_ent->type = MMAP_TYPE_RESERVED;
+                break;
+        }
+    }
+
+    if (mmap_entry_count >= MMAP_MAX_ENTRIES) {
+        mmap_sort(bootparams->mmap, &mmap_entry_count);
+        mmap_merge(bootparams->mmap, &mmap_entry_count);
+        if (mmap_entry_count >= MMAP_MAX_ENTRIES) {
+            pr_error(pr_fmt("Can't create boot_params memory map. Not enough space"));
+        }
+    }
+
+    bp_mmap_ent       = &bootparams->mmap[mmap_entry_count++];
+    bp_mmap_ent->addr = page_reserved_range->base;
+    bp_mmap_ent->size = page_reserved_range->size;
+    bp_mmap_ent->type = MMAP_TYPE_BOOT_RECLAIMABLE;
+
+    mmap_sort(bootparams->mmap, &mmap_entry_count);
+    mmap_merge(bootparams->mmap, &mmap_entry_count);
+
+    return 0;
+}
+
+static int create_boot_params(u64                           bi,
+                              const struct kernel_loadinfo *loadinfo,
+                              const struct memregion       *page_reserved_range,
+                              struct boot_params          **bootparams) {
+    int              res;
+    struct memregion bp_region;
+    struct mb2_tag  *bi_tag, *bi_end;
+    u32              bi_size;
+
+    bp_region = ra_get_region(ALIGN_UP(sizeof(struct boot_params), PAGE_SIZE), PAGE_SIZE);
+    if (bp_region.size == 0) {
+        pr_error(pr_fmt("Failed to allocate boot_params"));
+        return 1;
+    }
+
+    *bootparams                     = (struct boot_params *) bp_region.base;
+    (*bootparams)->version          = BP_VERSION_1;
+    (*bootparams)->size             = bp_region.size;
+    (*bootparams)->kernel_load_base = loadinfo->k_pregion.base;
+
+    bi_size = *(u32 *) bi;
+    bi_tag  = (struct mb2_tag *) (bi + 8);
+    bi_end  = (struct mb2_tag *) (bi + bi_size);
+
+    while (bi_tag <= bi_end && bi_tag->type != MB2_TAG_END) {
+        switch (bi_tag->type) {
+            case MB2_TAG_CMDLINE:
+                break;
+            case MB2_TAG_BOOTLAODER_NAME:
+                break;
+            case MB2_TAG_MODULE:
+                break;
+            case MB2_TAG_BASIC_MEMINFO:
+                break;
+            case MB2_TAG_BOOTDEV:
+                break;
+            case MB2_TAG_MMAP:
+                if ((res = create_mmap((struct mb2_tag_mmap *) bi_tag, page_reserved_range, *bootparams))) {
+                    return res;
+                }
+                break;
+            case MB2_TAG_VBE:
+                break;
+            case MB2_TAG_FB:
+                break;
+            case MB2_TAG_ELF_SECTIONS:
+                break;
+            case MB2_TAG_APM:
+                break;
+            case MB2_TAG_EFI32:
+                break;
+            case MB2_TAG_EFI64:
+                break;
+            case MB2_TAG_SMBIOS:
+                break;
+            case MB2_TAG_ACPI1:
+                break;
+            case MB2_TAG_ACPI2:
+                break;
+            case MB2_TAG_NET:
+                break;
+            case MB2_TAG_EFI_MMAP:
+                break;
+            case MB2_TAG_EFI_BS:
+                break;
+            case MB2_TAG_EFI32_IH:
+                break;
+            case MB2_TAG_EFI64_IH:
+                break;
+            case MB2_TAG_LOAD_BASE_ADDR:
+                break;
+            default:
+                pr_warn(pr_fmt("Unknown mb2 tag type %d"), bi_tag->type);
+                break;
+        }
+
+        bi_tag = (struct mb2_tag *) ((char *) bi_tag + ALIGN_UP(bi_tag->size, 8));
+    }
+
+    return 0;
+}
+
+/* !BOOT PARAMS */
+
 extern void jump_kernel(u64 boot_params, u64 entry);
 
 /*
@@ -388,14 +568,16 @@ extern void jump_kernel(u64 boot_params, u64 entry);
 void boot_main(u64 bi) {
     struct kernel_loadinfo kloadinfo;
     struct memregion       page_reserved_range;
+    struct boot_params    *bootparams;
 
     boot_serial_init();
 
     if (ra_init(bi) != 0) { die(); }
     if (load_kernel(&kloadinfo) != 0) { die(); }
     if (map_memory(bi, &kloadinfo, &page_reserved_range) != 0) { die(); }
+    if (create_boot_params(bi, &kloadinfo, &page_reserved_range, &bootparams))
 
-    pr_dbg(pr_fmt("entry: 0x%lx"), kloadinfo.k_entry);
+        pr_dbg(pr_fmt("entry: 0x%lx"), kloadinfo.k_entry);
 
     jump_kernel(0, kloadinfo.k_entry);
 
