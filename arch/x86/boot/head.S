@@ -185,8 +185,7 @@ long_mode:
     // rsi = kernel entry pointer
 .global jump_kernel
 jump_kernel:
-    mov     %rsi, %rax
-    jmp     *%rax
-    // for now halt and catch fire
+    jmp     *%rsi
+    // we shouldn't return
 1:  hlt
     jmp     1b

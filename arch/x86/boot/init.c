@@ -352,6 +352,8 @@ static int map_memory(u64 bi, const struct kernel_loadinfo *loadinfo, struct mem
         return 1;
     }
 
+    memsetb(pml4, 0, PAGE_SIZE);
+
     // identity map memory
     if ((res = map_range(pml4, loaddr, loaddr, hiaddr - loaddr)) != 0) { return res; }
 
@@ -487,6 +489,8 @@ static int create_boot_params(u64                           bi,
         return 1;
     }
 
+    memsetb(*bootparams, 0, bp_region.size);
+
     *bootparams                     = (struct boot_params *) bp_region.base;
     (*bootparams)->version          = BP_VERSION_1;
     (*bootparams)->size             = bp_region.size;
@@ -575,11 +579,11 @@ void boot_main(u64 bi) {
     if (ra_init(bi) != 0) { die(); }
     if (load_kernel(&kloadinfo) != 0) { die(); }
     if (map_memory(bi, &kloadinfo, &page_reserved_range) != 0) { die(); }
-    if (create_boot_params(bi, &kloadinfo, &page_reserved_range, &bootparams))
+    if (create_boot_params(bi, &kloadinfo, &page_reserved_range, &bootparams)) { die(); }
 
-        pr_dbg(pr_fmt("entry: 0x%lx"), kloadinfo.k_entry);
+    pr_dbg(pr_fmt("entry: 0x%lx"), kloadinfo.k_entry);
 
-    jump_kernel(0, kloadinfo.k_entry);
+    jump_kernel((u64) bootparams, kloadinfo.k_entry);
 
     hcf();
 }

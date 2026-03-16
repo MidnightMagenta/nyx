@@ -3,7 +3,7 @@ LIBS +=
 
 SUBDIRS += arch/$(ARCH)/kernel
 
-CFLAGS += -m64 -m80387 -msse -msse2 -mmmx \
+CFLAGS += -m64 -m80387 -mno-sse -mno-sse2 -mno-mmx \
           -mno-sse3 -mno-sse4 -mno-avx -mno-avx2 \
           -mno-avx512f -mcmodel=kernel \
           -mno-red-zone -fno-tree-vectorize
