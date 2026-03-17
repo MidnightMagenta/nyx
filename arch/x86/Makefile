@@ -5,7 +5,7 @@ SUBDIRS += arch/$(ARCH)/kernel
 
 CFLAGS += -m64 -m80387 -mno-sse -mno-sse2 -mno-mmx \
           -mno-sse3 -mno-sse4 -mno-avx -mno-avx2 \
-          -mno-avx512f -mcmodel=kernel \
+          -mno-avx512f -msoft-float -mcmodel=kernel \
           -mno-red-zone -fno-tree-vectorize
 ASFLAGS += -m64
 ARCH_LINK := $(TOPDIR)/arch/$(ARCH)/X86_64_link.lds

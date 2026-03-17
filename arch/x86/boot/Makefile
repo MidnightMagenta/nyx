@@ -30,7 +30,7 @@ clean:
 
 %.o: %.c
 	@echo -e "CC $<"
-	$(Q)$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
+	$(Q)$(CC) $(CFLAGS) -mgeneral-regs-only -MMD -MP -c $< -o $@
 
 %.o: %.S
 	@echo -e "AS $@"
