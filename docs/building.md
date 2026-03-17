@@ -1,6 +1,6 @@
 ## Build instructions
 
-> [!INFO]
+> [!NOTE]
 > Building this project requires the appropriate for your target cross compiler.
 
 Prior to building the project, it is required to generate the appropriate configuration files. For this purpose run `make ARCH=[target architecture] config` or `make ARCH=[target architecture] menuconfig` for a terminal GUI configuration. Select the options that you need (if not sure, leave as default), and save the resulting configuration file as `.config` (default).
