@@ -581,8 +581,6 @@ void boot_main(u64 bi) {
     if (map_memory(bi, &kloadinfo, &page_reserved_range) != 0) { die(); }
     if (create_boot_params(bi, &kloadinfo, &page_reserved_range, &bootparams)) { die(); }
 
-    pr_dbg(pr_fmt("entry: 0x%lx"), kloadinfo.k_entry);
-
     jump_kernel((u64) bootparams, kloadinfo.k_entry);
 
     hcf();

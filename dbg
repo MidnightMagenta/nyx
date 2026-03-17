@@ -11,10 +11,15 @@ run)
 run-info)
     qemu-system-x86_64 -cdrom nyxos.iso -m 2G -cpu qemu64 -vga std -d int,guest_errors,cpu_reset -no-reboot -no-shutdown
     ;;
-run-debug)
+run-debug-img)
     mkdir -p tmp
     qemu-system-x86_64 -cdrom nyxos.iso -m 2G -cpu qemu64 -vga std -s -S -d int,guest_errors,cpu_reset -no-reboot -no-shutdown -D tmp/qemu.log &
     gdb -ex "symbol-file image" -ex "target remote localhost:1234" -ex "set step-mode on"
+    ;;
+run-debug)
+    mkdir -p tmp
+    qemu-system-x86_64 -cdrom nyxos.iso -m 2G -cpu qemu64 -vga std -s -S -d int,guest_errors,cpu_reset -no-reboot -no-shutdown -D tmp/qemu.log &
+    gdb -ex "symbol-file vmnyx" -ex "target remote localhost:1234" -ex "set step-mode on"
     ;;
 *)
     echo "Usage: dbg {mkimage|run|run-info|run-debug}"
