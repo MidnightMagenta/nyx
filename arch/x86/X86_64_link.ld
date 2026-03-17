@@ -12,35 +12,35 @@ PHDRS {
 
 SECTIONS {
     . = ARCH_KERNEL_BASE;
-    __image_virt_start = .;
-    __kernel_virt_start = .;
+    __image_start = .;
+    __kernel_start = .;
 
     .text BLOCK(0x1000) : {
-        __text_virt_start = .;
+        __text_start = .;
         *(.text*)
-        __text_virt_end = .;
+        __text_end = .;
     } :text
 
     .rodata BLOCK(0x1000) : {
-        __rodata_virt_start = .;
+        __rodata_start = .;
         *(.rodata*)
-        __rodata_virt_end = .;
+        __rodata_end = .;
     } :text
 
     .data BLOCK(0x1000) : {
-        __data_virt_start = .;
+        __data_start = .;
         *(.data*)
     } :data
  
     .bss BLOCK(0x1000) (NOLOAD) : {
         *(COMMON)
         *(.bss*)
-        __data_virt_end = .;
+        __data_end = .;
     } :data
  
-    __kernel_virt_end = .;
+    __kernel_end = .;
 
-    __init_virt_start = .;
+    __init_start = .;
 
     .init.text BLOCK(0x1000) : {
         *(.init.text*)
@@ -55,9 +55,9 @@ SECTIONS {
         *(.init.bss*)
     } :init_data
 
-    __init_virt_end = .;
+    __init_end = .;
     
-    __image_virt_end = .;
+    __image_end = .;
 
     /DISCARD/ : {
         *(.note.gnu.property)

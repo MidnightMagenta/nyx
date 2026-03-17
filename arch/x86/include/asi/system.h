@@ -1,0 +1,10 @@
+#ifndef _ASI_SYSTEM_H
+#define _ASI_SYSTEM_H
+
+#define cli() __asm__ volatile("cli");
+#define hlt() __asm__ volatile("hlt");
+
+#define hcf()                                                                                                          \
+    while (1) { hlt(); }
+
+#endif

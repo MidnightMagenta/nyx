@@ -471,6 +471,8 @@ static int create_mmap(const struct mb2_tag_mmap *bi_mmap,
     mmap_sort(bootparams->mmap, &mmap_entry_count);
     mmap_merge(bootparams->mmap, &mmap_entry_count);
 
+    bootparams->mmap_entry_count = mmap_entry_count;
+
     return 0;
 }
 

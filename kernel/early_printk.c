@@ -86,7 +86,7 @@ static void __init early_internal_print_str(const char *str, size_t len) {
     for (size_t i = 0; i < len; i++) { early_serial_putc(str[i]); }
 }
 
-static size_t __init early_internal_print(const char *fmt, va_list params) {
+size_t __init early_vprintk(const char *fmt, va_list params) {
     size_t written = 0;
     while (*fmt != '\0') {
         size_t maxrem = SIZE_MAX - written;
@@ -223,7 +223,7 @@ int __init early_printk(const char *fmt, ...) {
     va_list params;
     va_start(params, fmt);
 
-    size_t written = early_internal_print(fmt, params);
+    size_t written = early_vprintk(fmt, params);
 
     va_end(params);
     return (int) written;
