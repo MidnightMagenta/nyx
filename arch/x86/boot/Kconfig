@@ -1,0 +1,12 @@
+menu "Boot options"
+
+choice
+    prompt "Boot protocol"
+    default MULTIBOOT2
+
+config MULTIBOOT2
+    bool "Multiboot 2"
+
+endchoice
+
+endmenu

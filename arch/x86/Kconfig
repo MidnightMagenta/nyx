@@ -6,3 +6,4 @@ config 64BIT
     bool
     default y if X86
 
+rsource "boot/Kconfig"

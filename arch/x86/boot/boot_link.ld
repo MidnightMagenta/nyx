@@ -12,7 +12,9 @@ SECTIONS {
     __image_start = .;
 
     .text BLOCK(0x1000) : {
+    #ifdef CONFIG_MULTIBOOT2
         KEEP(*(.multiboot*))
+    #endif
         *(.text*)
         *(.rodata*)
     } :text

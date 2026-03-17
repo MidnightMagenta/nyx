@@ -1,8 +1,8 @@
-#include "boot_utils.h"
-#include "elf.h"
+#include "../boot_utils.h"
+#include "../elf.h"
+#include "../printb.h"
+#include "../region_alloc.h"
 #include "multiboot2.h"
-#include "printb.h"
-#include "region_alloc.h"
 #include <asi/bootparam.h>
 #include <asi/memory.h>
 #include <asi/page.h>

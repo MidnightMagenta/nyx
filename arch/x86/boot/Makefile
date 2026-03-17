@@ -1,5 +1,12 @@
 SYSTEM := $(TOPDIR)/vmnyx
-I_OBJS := head.o init.o printb.o boot_utils.o region_alloc.o vmnyx.o
+I_OBJS := printb.o boot_utils.o region_alloc.o vmnyx.o
+
+ifdef CONFIG_MULTIBOOT2
+P_DIR := multiboot2
+P_OBJ := multiboot2/mb2ar.o
+endif
+
+I_OBJS += $(P_OBJ)
 
 .PHONY: image clean
 
@@ -14,7 +21,11 @@ vmnyx.o: $(SYSTEM)
 	$(Q)$(OBJCOPY) -I binary -O elf64-x86-64 \
 		--rename-section .data=.kernel_blob,alloc,load,readonly,data,contents $< $@
 
+$(P_OBJ):
+	$(Q)$(MAKE) -C $(P_DIR)
+
 clean:
+	$(MAKE) -C $(P_DIR) clean
 	rm -f image vmnyx.o boot_link.lds
 
 %.o: %.c
@@ -30,3 +41,6 @@ clean:
 	$(Q)$(CPP) -P -x assembler-with-cpp -include $(TOPDIR)/include/generated/autoconf.h $^ -o $@
 
 -include $(I_OBJS:.o=.d)
+
+unexport SYSTEM
+unexport I_OBJS
