@@ -7,7 +7,9 @@
 extern char __image_start;
 extern char __image_end;
 
-void memblock_init(phys_addr_t bootparams) {
+extern struct boot_params *bootparams;
+
+void memblock_init() {
     int                 res;
     struct boot_params *bp = (struct boot_params *) bootparams;
 
@@ -24,7 +26,7 @@ void memblock_init(phys_addr_t bootparams) {
         entry = (struct mmap_entry *) ((char *) entry + sizeof(struct mmap_entry));
     }
 
-    if ((res = memblock_reserve(bootparams, ALIGN_UP(sizeof(struct boot_params), PAGE_SIZE))) != 0) {
+    if ((res = memblock_reserve((phys_addr_t) bootparams, ALIGN_UP(sizeof(struct boot_params), PAGE_SIZE))) != 0) {
         early_panic("memblock: failed to reserve boot_params. ecode: %d", res);
     }
 

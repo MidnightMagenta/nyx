@@ -31,7 +31,7 @@ enum {
     MEMBLOCK_STAT_RES_REGION_CNT,
 };
 
-void memblock_init(phys_addr_t bootparams);
+void memblock_init();
 int  memblock_add_memory(phys_addr_t addr, size_t size);
 int  memblock_delete_memory(phys_addr_t addr, size_t size);
 int  memblock_reserve(phys_addr_t addr, size_t size);

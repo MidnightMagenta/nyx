@@ -9,7 +9,7 @@
  */
 startup_64:
     cli
-    mov     %rdi, %r15
+    mov     %rdi, bootparams(%rip)
     xor     %rbp, %rbp
     leaq    init_stack_top(%rip), %rsp
     pushq   %rbp
@@ -21,7 +21,6 @@ startup_64:
     retfq
 
 1:  call    setup_idt
-    mov     %r15, %rdi
     call    EXT_C(start_kernel)
 
     cli
@@ -89,3 +88,7 @@ gdt:
     .8byte  0x00af92000000ffff
     .skip   253 * 8
 
+.section    .init.bss, "aw", @nobits
+.global bootparams
+bootparams:
+    .8byte  0
