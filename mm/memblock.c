@@ -11,11 +11,11 @@ static struct memblock_region memblock_reserved_init_regions[MEMBLOCK_INIT_REGIO
 
 struct memblock memblock __initdata = {
         .memory.regions = memblock_memory_init_regions,
-        .memory.cnt     = 1,
+        .memory.cnt     = 0,
         .memory.max     = MEMBLOCK_INIT_REGIONS,
 
         .reserved.regions = memblock_reserved_init_regions,
-        .reserved.cnt     = 1,
+        .reserved.cnt     = 0,
         .reserved.max     = MEMBLOCK_INIT_REGIONS,
 
         .bottom_up = false,
