@@ -491,7 +491,7 @@ static int create_boot_params(u64                           bi,
         return 1;
     }
 
-    memsetb(*bootparams, 0, bp_region.size);
+    memsetb((void *) bp_region.base, 0, bp_region.size);
 
     *bootparams                     = (struct boot_params *) bp_region.base;
     (*bootparams)->version          = BP_VERSION_1;
