@@ -74,7 +74,6 @@ static int __init memblock_subtract_region(struct memblock_type *regions, phys_a
     u64    se;
     size_t i;
 
-    /* Overflow check */
     if (size == 0) return 0;
 
     se = sb + size;
@@ -85,10 +84,8 @@ static int __init memblock_subtract_region(struct memblock_type *regions, phys_a
         u64                     rb = r->base;
         u64                     re = r->base + r->size;
 
-        /* Case 0: No overlap */
         if (se <= rb || sb >= re) continue;
 
-        /* Case 1: remove entire region */
         if (sb <= rb && se >= re) {
             regions->total_size -= r->size;
 
@@ -99,7 +96,6 @@ static int __init memblock_subtract_region(struct memblock_type *regions, phys_a
             continue;
         }
 
-        /* Case 2: trim from left */
         if (sb <= rb) {
             phys_addr_t new_base = se;
             phys_addr_t new_size = re - se;
@@ -111,7 +107,6 @@ static int __init memblock_subtract_region(struct memblock_type *regions, phys_a
             continue;
         }
 
-        /* Case 3: trim from right */
         if (se >= re) {
             phys_addr_t removed = re - sb;
 
@@ -121,7 +116,6 @@ static int __init memblock_subtract_region(struct memblock_type *regions, phys_a
             continue;
         }
 
-        /* Case 4: split region */
         if (regions->cnt >= regions->max) return -ENOMEM;
 
         memmove(&regions->regions[i + 2], &regions->regions[i + 1], (regions->cnt - i - 1) * sizeof(*r));
