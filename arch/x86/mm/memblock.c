@@ -7,8 +7,6 @@
 extern char __image_start;
 extern char __image_end;
 
-extern struct boot_params *bootparams;
-
 void memblock_init() {
     int                 res;
     struct boot_params *bp = (struct boot_params *) bootparams;

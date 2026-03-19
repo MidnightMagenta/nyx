@@ -13,9 +13,8 @@ Allocation and freeing:
 
 - `phys_addr_t pm_alloc_page()`
 - `void pm_free_page(phys_addr_t page)`
-- `phys_addr_t pm_alloc_pages(size_t count)`
+- `phys_addr_t pm_alloc_pages(size_t count, phys_addr_t align, u32 flags)`
 - `void pm_free_pages(phys_addr_t base, size_t count)`
-- `phys_addr_t pm_alloc_pages_ex(size_t count, u32 flags)`
 
 All allocations are contiguous.
 
@@ -26,7 +25,7 @@ All allocations are contiguous.
 | 0     | PM_MEM_LOMEM      | Memory between 0 and 1 MiB                                                                                                                                |
 | 1     | PM_MEM_NORMAL     | Memory between 1 MiB and 4 GiB                                                                                                                            |
 | 2     | PM_MEM_HIMEM      | Memory between 4 GiB and the ISA limit                                                                                                                    |
-| 3-8   | PM_ALIGN(a)       | Alignment exponent                                                                                                                                        |
+| 3-8   | PM_MBZ            | Reserved for future use. Must be zero                                                                                                                     |
 | 9     | PM_ZERO           | Return pre-zeroed memory                                                                                                                                  |
 | 10    | PM_ALLOC_BOTTOMUP | Allocate starting at the lowest address first. By default (if this bit is cleared) the allocator will allocate starting from the highest address          |
 | 11    | PM_ALLOC_RELAX    | If this bit is set, if memory from a requested pool is not available, the allocator may fall back to a different pool. Otherwise the allocation must fail |
@@ -42,8 +41,6 @@ Additionally the following macros must be defined:
 - `PM_MEM_DMA16` is equal to `PM_MEM_LOMEM`
 - `PM_MEM_DMA32` is equal to `PM_MEM_LOMEM | PM_MEM_NORMAL`
 - `PM_MEM_PREFERRED` defined by the architecture as the preferred allocation range
-- `PM_MIN_ALIGN` defined as the minimum alignment the allocator can return
-- `PM_MAX_ALIGN` defined as the maximum alignment the allocator can return
 - `PM_ALLOC_TOPDOWN` set to zero (`PM_ALLOC_BOTTOMUP` bit clear)
 
 Values of `PM_ALIGN` lower than `PM_MIN_ALIGN` are equivalent to `PM_MIN_ALIGN`
@@ -60,6 +57,8 @@ Stats:
 
 `pm_getstat` stat values:
 
+- PM_MIN_ALIGN
+- PM_MAX_ALIGN
 - PM_STAT_TOTAL
 - PM_STAT_FREE
 - PM_STAT_USED

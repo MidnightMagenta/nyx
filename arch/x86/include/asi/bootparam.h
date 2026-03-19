@@ -18,4 +18,6 @@ struct boot_params {
     u64               kernel_load_base;       /* 0xA10 */
 } __packed;
 
+extern struct boot_params *bootparams;
+
 #endif
