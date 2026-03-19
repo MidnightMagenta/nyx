@@ -1,7 +1,9 @@
 #include <asi/bootparam.h>
 #include <asi/page.h>
+#include <asi/setupdata.h>
 #include <mm/memblock.h>
 #include <nyx/panic.h>
+#include <nyx/types.h>
 #include <nyx/util.h>
 
 extern char __image_start;

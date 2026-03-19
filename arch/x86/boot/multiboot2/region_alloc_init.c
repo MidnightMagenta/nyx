@@ -2,6 +2,7 @@
 #include "../region_alloc.h"
 #include "multiboot2.h"
 #include <asi/page.h>
+#include <nyx/types.h>
 #include <nyx/util.h>
 #include <stddef.h>
 

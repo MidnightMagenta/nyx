@@ -1,5 +1,4 @@
 #include <mm/memblock.h>
-#include <nyx/types.h>
 
 void start_kernel() {
     memblock_init();

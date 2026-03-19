@@ -1,6 +1,7 @@
 #include <mm/memblock.h>
 #include <nyx/errno.h>
 #include <nyx/linkage.h>
+#include <nyx/types.h>
 #include <nyx/util.h>
 #include <string.h>
 

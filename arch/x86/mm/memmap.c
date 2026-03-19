@@ -1,4 +1,5 @@
 #include <asi/bootparam.h>
+#include <asi/setupdata.h>
 #include <mm/memmap.h>
 #include <nyx/linkage.h>
 #include <nyx/panic.h>
@@ -39,8 +40,10 @@ static void __init memmap_make() {
                 break;
             case MMAP_TYPE_NONE:
                 early_panic("memmap: unexpected MMAP_TYPE_NONE entry");
+                __builtin_unreachable();
             default:
                 early_panic("memmap: unknown memory map type");
+                __builtin_unreachable();
         }
     }
 }

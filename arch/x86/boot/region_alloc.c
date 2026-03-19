@@ -1,6 +1,7 @@
 #include "region_alloc.h"
 #include "boot_utils.h"
-#include <asi/page.h>
+#include "printb.h"
+#include <nyx/types.h>
 #include <nyx/util.h>
 #include <stddef.h>
 
