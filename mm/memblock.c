@@ -60,7 +60,7 @@ static void __init memblock_merge_regions(struct memblock_region *const r, size_
     memblock_sort(r, n);                                                                                               \
     memblock_merge_regions(r, n);
 
-static int memblock_add_region(struct memblock_type *regions, phys_addr_t addr, size_t size) {
+static int __init memblock_add_region(struct memblock_type *regions, phys_addr_t addr, size_t size) {
     if (regions->cnt >= regions->max) { return -ENOSPC; }
     regions->regions[regions->cnt++] = (struct memblock_region) {addr, size};
     memblock_sort_and_merge(regions->regions, &regions->cnt);
@@ -68,7 +68,7 @@ static int memblock_add_region(struct memblock_type *regions, phys_addr_t addr, 
     return 0;
 }
 
-static int memblock_subtract_region(struct memblock_type *regions, phys_addr_t addr, size_t size) {
+static int __init memblock_subtract_region(struct memblock_type *regions, phys_addr_t addr, size_t size) {
     u64    sb = addr;
     u64    se;
     size_t i;
@@ -140,23 +140,23 @@ static int memblock_subtract_region(struct memblock_type *regions, phys_addr_t a
     return 0;
 }
 
-int memblock_add_memory(phys_addr_t addr, size_t size) {
+int __init memblock_add_memory(phys_addr_t addr, size_t size) {
     return memblock_add_region(&memblock.memory, addr, size);
 }
 
-int memblock_delete_memory(phys_addr_t addr, size_t size) {
+int __init memblock_delete_memory(phys_addr_t addr, size_t size) {
     return memblock_subtract_region(&memblock.memory, addr, size);
 }
 
-int memblock_reserve(phys_addr_t addr, size_t size) {
+int __init memblock_reserve(phys_addr_t addr, size_t size) {
     return memblock_add_region(&memblock.reserved, addr, size);
 }
 
-int memblock_unreserve(phys_addr_t addr, size_t size) {
+int __init memblock_unreserve(phys_addr_t addr, size_t size) {
     return memblock_subtract_region(&memblock.reserved, addr, size);
 }
 
-int memblock_is_reserved(phys_addr_t addr, size_t size) {
+int __init memblock_is_reserved(phys_addr_t addr, size_t size) {
     for (size_t i = 0; i < memblock.reserved.cnt; ++i) {
         struct memblock_region *r = &memblock.reserved.regions[i];
 
@@ -170,7 +170,7 @@ int memblock_is_reserved(phys_addr_t addr, size_t size) {
     return 0;
 }
 
-int memblock_is_memory(phys_addr_t addr, size_t size) {
+int __init memblock_is_memory(phys_addr_t addr, size_t size) {
     for (size_t i = 0; i < memblock.memory.cnt; ++i) {
         struct memblock_region *r = &memblock.memory.regions[i];
 
@@ -184,7 +184,7 @@ int memblock_is_memory(phys_addr_t addr, size_t size) {
     return 0;
 }
 
-static int memblock_alloc_bottom_up(size_t *size, size_t alignment, phys_addr_t *out) {
+static int __init memblock_alloc_bottom_up(size_t *size, size_t alignment, phys_addr_t *out) {
     size_t sz = ALIGN_UP(*size, alignment);
 
     struct memblock_type *mem = &memblock.memory;
@@ -214,7 +214,7 @@ static int memblock_alloc_bottom_up(size_t *size, size_t alignment, phys_addr_t 
     return -ENOMEM;
 }
 
-static int memblock_alloc_top_down(size_t *size, size_t alignment, phys_addr_t *out) {
+static int __init memblock_alloc_top_down(size_t *size, size_t alignment, phys_addr_t *out) {
     size_t sz = ALIGN_UP(*size, alignment);
 
     struct memblock_type *mem = &memblock.memory;
@@ -244,11 +244,11 @@ static int memblock_alloc_top_down(size_t *size, size_t alignment, phys_addr_t *
     return -ENOMEM;
 }
 
-int memblock_alloc(size_t *size, phys_addr_t *out) {
+int __init memblock_alloc(size_t *size, phys_addr_t *out) {
     return memblock_aligned_alloc(size, 1, out);
 }
 
-int memblock_aligned_alloc(size_t *size, size_t alignment, phys_addr_t *out) {
+int __init memblock_aligned_alloc(size_t *size, size_t alignment, phys_addr_t *out) {
     if (!size || !out) { return -EINVAL; }
     if (*size == 0 || alignment == 0) { return -EINVAL; }
 
@@ -256,7 +256,7 @@ int memblock_aligned_alloc(size_t *size, size_t alignment, phys_addr_t *out) {
     return memblock_alloc_top_down(size, alignment, out);
 }
 
-u64 memblock_getstat(int stat) {
+u64 __init memblock_getstat(int stat) {
     switch (stat) {
         case MEMBLOCK_STAT_MEMSZ:
             return memblock.memory.total_size;
