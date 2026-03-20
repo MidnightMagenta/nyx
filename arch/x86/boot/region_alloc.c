@@ -66,10 +66,8 @@ int ra_subtract_region(struct memregion region) {
         u64 rb = r->base;
         u64 re = r->base + r->size;
 
-        // no overlap
         if (se <= rb || sb >= re) { continue; }
 
-        // fully covered region
         if (sb <= rb && se >= re) {
             memmoveb(&free_regions[i], &free_regions[i + 1], (region_count - i - 1) * sizeof(*r));
             region_count--;
@@ -77,20 +75,17 @@ int ra_subtract_region(struct memregion region) {
             continue;
         }
 
-        // trim front
         if (sb <= rb) {
             r->base = se;
             r->size = re - se;
             continue;
         }
 
-        // trim end
         if (se >= re) {
             r->size = sb - rb;
             continue;
         }
 
-        // split
         if (region_count >= MAX_REGIONS) return 1;
 
         memmoveb(&free_regions[i + 2], &free_regions[i + 1], (region_count - i - 1) * sizeof(*r));
