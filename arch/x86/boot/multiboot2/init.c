@@ -94,6 +94,7 @@ static int load_segments(const Elf64_Ehdr *ehdr, const Elf64_Phdr *phdrs, u64 la
             pr_error(pr_fmt("Invalid sections size. p_memsz is 0x%lx p_filesz is 0x%lx"), ph->p_memsz, ph->p_filesz);
             return 1;
         }
+        if (ph->p_memsz == 0) { continue; }
 
         u64 load_base = (ph->p_paddr - laddr) + region.base;
         memcpyb((void *) load_base, (void *) ((char *) kernel_blob_start + ph->p_offset), ph->p_filesz);
