@@ -5,6 +5,7 @@
 #define hlt() __asm__ volatile("hlt");
 
 #define hcf()                                                                                                          \
+    cli();                                                                                                             \
     while (1) { hlt(); }
 
 #endif
