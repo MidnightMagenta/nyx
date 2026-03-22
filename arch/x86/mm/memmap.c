@@ -48,7 +48,7 @@ static void __init memmap_make() {
     }
 }
 
-const struct memmap *memmap_get() {
+const struct memmap __init *memmap_get() {
     if (memmap.region_cnt == (size_t) -1) { memmap_make(); }
     return &memmap;
 }

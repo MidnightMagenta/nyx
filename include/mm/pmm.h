@@ -2,6 +2,7 @@
 #define _MM_PMM_H
 
 #include <asi/page.h>
+#include <mm/mm_types.h>
 #include <nyx/types.h>
 #include <stddef.h>
 #include <string.h>
@@ -29,6 +30,8 @@ struct pm_constraint {
         phys_addr_t align;
     };
 };
+
+extern struct page *page_map;
 
 int pm_reserve_region(phys_addr_t addr, size_t count);
 int pm_free_region(phys_addr_t addr, size_t count);

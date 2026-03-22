@@ -1,8 +1,11 @@
 #ifndef _NYX_UTIL_H
 #define _NYX_UTIL_H
 
-#define ALIGN_UP(v, a)   ((v + (a - 1)) & (~(a - 1)))
-#define ALIGN_DOWN(v, a) (v & ~(a - 1))
+#define ALIGN_UP(v, a)   (((v) + ((a) - 1)) & (~((a) - 1)))
+#define ALIGN_DOWN(v, a) ((v) & ~((a) - 1))
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
