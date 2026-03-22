@@ -6,16 +6,20 @@
 #include <nyx/limits.h>
 #include <nyx/linkage.h>
 #include <nyx/panic.h>
+#include <nyx/printk.h>
 #include <nyx/types.h>
 #include <nyx/util.h>
 
-#define pr_fmt(fmt) ("pmm: " fmt "\n")
+#define pr_fmt(fmt) "pmm: " fmt "\n"
 
 struct page *page_map;
 
 typedef u64       bm_word_t;
 static bm_word_t *bm;
 static size_t     bm_size; // in bits
+static pfn_t      first_pfn;
+static pfn_t      first_free_pfn_hint;
+static pfn_t      last_free_pfn_hint;
 
 #define BM_WORD_BITS  (sizeof(bm_word_t) * 8)
 #define BM_WORD_SHIFT (__builtin_ctz(BM_WORD_BITS))
@@ -27,6 +31,10 @@ static size_t     bm_size; // in bits
 static size_t free;
 static size_t reserved;
 static size_t total;
+
+static inline void bm_set(size_t bit);
+static inline void bm_clear(size_t bit);
+static inline int  bm_get(size_t bit);
 
 static void __init get_memory_range(const struct memmap *memmap, phys_addr_t *loaddr, phys_addr_t *hiaddr) {
     *loaddr = U64_MAX;
@@ -46,40 +54,8 @@ static void __init get_memory_range(const struct memmap *memmap, phys_addr_t *lo
 
 extern void pm_arch_reserve_regions();
 
-void __init __do_pm_init(const struct memmap *memmap) {
-    int         res;
-    phys_addr_t loaddr, hiaddr;
-    size_t      page_count;
-    size_t      alloc_size;
-    phys_addr_t alloc_addr;
-
-    if (!memmap || !memmap->region_cnt) { early_panic(pr_fmt("Invalid memory map")); }
-
-    get_memory_range(memmap, &loaddr, &hiaddr);
-
-    page_count = (hiaddr - loaddr) / PAGE_SIZE;
-    alloc_size = page_count / 8;
-
-    if ((res = memblock_aligned_alloc(&alloc_size, PAGE_SIZE, &alloc_addr))) {
-        early_panic(pr_fmt("could not allocate memory bitmap with %d"), res);
-    }
-
-    bm_size = page_count;
-
-    bm = (bm_word_t *) alloc_addr;
-    memset(bm, 0xFF, alloc_size);
-
-    free     = 0;
-    reserved = page_count;
-    total    = page_count;
-
-    alloc_size = page_count * sizeof(struct page);
-    if ((res = memblock_aligned_alloc(&alloc_size, PAGE_SIZE, &alloc_addr))) {
-        early_panic(pr_fmt("could not allocate page map with %d"), res);
-    }
-
-    page_map = (struct page *) alloc_addr;
-    memset(page_map, 0, alloc_size);
+static void __init setup_regions(const struct memmap *memmap) {
+    int res;
 
     for (size_t i = 0; i < memmap->region_cnt; ++i) {
         const struct mem_region *r = &memmap->regions[i];
@@ -97,20 +73,64 @@ void __init __do_pm_init(const struct memmap *memmap) {
     }
 
     if ((res = pm_reserve_region((phys_addr_t) page_map,
-                                 ALIGN_UP(page_count * sizeof(struct page), PAGE_SIZE) >> PAGE_SHIFT))) {
+                                 ALIGN_UP(total * sizeof(struct page), PAGE_SIZE) >> PAGE_SHIFT))) {
         early_panic(pr_fmt("could not reserve page map with %d"), res);
     }
+
+    bm_set(0); // reserve PFN 0 as the NULL page
 }
 
-static void bm_set(size_t bit) {
+void __init __do_pm_init(const struct memmap *memmap) {
+    int         res;
+    phys_addr_t loaddr, hiaddr;
+    size_t      page_count;
+    size_t      alloc_size;
+    phys_addr_t alloc_addr;
+
+    if (!memmap || !memmap->region_cnt) { early_panic(pr_fmt("Invalid memory map")); }
+
+    get_memory_range(memmap, &loaddr, &hiaddr);
+    page_count = (hiaddr - loaddr) / PAGE_SIZE;
+    alloc_size = page_count / 8;
+
+    if ((res = memblock_aligned_alloc(&alloc_size, PAGE_SIZE, &alloc_addr))) {
+        early_panic(pr_fmt("could not allocate memory bitmap with %d"), res);
+    }
+
+    bm_size = page_count;
+
+    bm = (bm_word_t *) alloc_addr;
+    memset(bm, 0xFF, alloc_size);
+
+
+    alloc_size = page_count * sizeof(struct page);
+    if ((res = memblock_aligned_alloc(&alloc_size, PAGE_SIZE, &alloc_addr))) {
+        early_panic(pr_fmt("could not allocate page map with %d"), res);
+    }
+
+    page_map = (struct page *) alloc_addr;
+    memset(page_map, 0, alloc_size);
+
+    first_pfn           = addr_to_pfn(loaddr);
+    first_free_pfn_hint = 0;
+    last_free_pfn_hint  = bm_size;
+
+    free     = 0;
+    reserved = page_count;
+    total    = page_count;
+
+    setup_regions(memmap);
+}
+
+static inline void bm_set(size_t bit) {
     bm[bit >> BM_WORD_SHIFT] |= (BM_ONE << (bit & BM_WORD_MASK));
 }
 
-static void bm_clear(size_t bit) {
+static inline void bm_clear(size_t bit) {
     bm[bit >> BM_WORD_SHIFT] &= ~(BM_ONE << (bit & BM_WORD_MASK));
 }
 
-static int bm_get(size_t bit) {
+static inline int bm_get(size_t bit) {
     return ((bm[bit >> BM_WORD_SHIFT] >> (bit & BM_WORD_MASK)) & BM_ONE);
 }
 
@@ -130,8 +150,7 @@ int pm_reserve_region(phys_addr_t addr, size_t count) {
             free--;
             reserved++;
         } else {
-            // TODO: resplace with runtime printk()
-            early_printk(pr_fmt("warning: reserving an already reserved region at PFN %ld"), pfn);
+            pr_warn(pr_fmt("reserving an already reserved region at PFN %ld"), pfn);
         }
         pfn++;
     }
@@ -155,13 +174,32 @@ int pm_free_region(phys_addr_t addr, size_t count) {
             free++;
             reserved--;
         } else {
-            // TODO: resplace with runtime printk()
-            early_printk(pr_fmt("warning: freeing an already free region at PFN %ld"), pfn);
+            pr_warn(pr_fmt("freeing an already free region at PFN %ld"), pfn);
         }
         pfn++;
     }
 
     return 0;
+}
+
+phys_addr_t __pm_alloc_page() {
+    return 0;
+}
+
+void pm_free_page(phys_addr_t addr) {
+#ifdef CONFIG_DEBUG
+    if (!bm_get(addr_to_pfn(addr))) { pr_warn(pr_fmt("freeing an already free page at address 0x%lx"), addr); }
+#endif
+
+    bm_clear(addr_to_pfn(addr));
+}
+
+int pm_is_free(phys_addr_t addr) {
+    return !bm_get(addr_to_pfn(addr));
+}
+
+int pm_is_reserved(phys_addr_t addr) {
+    return bm_get(addr_to_pfn(addr));
 }
 
 size_t pm_getstat(enum pm_stat stat) {
