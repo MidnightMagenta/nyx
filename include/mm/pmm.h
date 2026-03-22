@@ -73,12 +73,6 @@ enum pm_stat {
     PM_STAT_TOTAL,
     PM_STAT_FREE,
     PM_STAT_USED,
-    PM_STAT_FREE_LOMEM,
-    PM_STAT_USED_LOMEM,
-    PM_STAT_FREE_NORMAL,
-    PM_STAT_USED_NORMAL,
-    PM_STAT_FREE_HIMEM,
-    PM_STAT_USED_HIMEM,
 };
 
 size_t pm_getstat(enum pm_stat stat);

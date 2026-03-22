@@ -22,8 +22,11 @@ static size_t     bm_size; // in bits
 #define BM_WORD_MASK  (BM_WORD_BITS - 1)
 #define BM_ONE        ((bm_word_t) 1)
 
+#define PM_MAX_ALIGN PHYS_ADDR_MAX;
+
 static size_t free;
 static size_t reserved;
+static size_t total;
 
 static void __init get_memory_range(const struct memmap *memmap, phys_addr_t *loaddr, phys_addr_t *hiaddr) {
     *loaddr = U64_MAX;
@@ -68,6 +71,7 @@ void __init __do_pm_init(const struct memmap *memmap) {
 
     free     = 0;
     reserved = page_count;
+    total    = page_count;
 
     alloc_size = page_count * sizeof(struct page);
     if ((res = memblock_aligned_alloc(&alloc_size, PAGE_SIZE, &alloc_addr))) {
@@ -158,4 +162,21 @@ int pm_free_region(phys_addr_t addr, size_t count) {
     }
 
     return 0;
+}
+
+size_t pm_getstat(enum pm_stat stat) {
+    switch (stat) {
+        case PM_STAT_MIN_ALIGN:
+            return PAGE_SIZE;
+        case PM_STAT_MAX_ALIGN:
+            return PM_MAX_ALIGN;
+        case PM_STAT_TOTAL:
+            return total;
+        case PM_STAT_FREE:
+            return free;
+        case PM_STAT_USED:
+            return reserved;
+        default:
+            return 0;
+    }
 }

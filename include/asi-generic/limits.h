@@ -55,4 +55,12 @@
 #define S64_MIN __TYPE_SIGNED_MIN(s64)
 #endif
 
+#ifndef PHYS_ADDR_MAX
+#define PHYS_ADDR_MAX __TYPE_MAX(phys_addr_t)
+#endif
+
+#ifndef VIRT_ADDR_MAX
+#define VIRT_ADDR_MAX __TYPE_MAX(virt_addr_t)
+#endif
+
 #endif
