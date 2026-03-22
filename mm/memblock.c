@@ -159,7 +159,7 @@ int __init memblock_is_reserved(phys_addr_t addr, size_t size) {
         u64 re  = r->base + r->size;
         u64 end = addr + size;
 
-        if (addr >= rb && end <= re) return 1;
+        if (addr < re && end > rb) { return 1; }
     }
 
     return 0;
