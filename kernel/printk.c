@@ -3,26 +3,26 @@
 
 static int printk_ready = 0;
 
-int vprintk(const char *fmt, va_list params) {
+int vprintk(const char *fmt, va_list args) {
     // TODO: implement printk()
     (void) fmt;
-    (void) params;
+    (void) args;
     return 0;
 }
 
-extern size_t early_vprintk(const char *fmt, va_list params);
+extern size_t early_vprintk(const char *fmt, va_list args);
 
 int printk(const char *fmt, ...) {
-    va_list params;
+    va_list args;
     int     written;
 
-    va_start(params, fmt);
+    va_start(args, fmt);
 
     if (printk_ready) {
-        written = vprintk(fmt, params);
+        written = vprintk(fmt, args);
     } else {
-        written = early_vprintk(fmt, params);
+        written = early_vprintk(fmt, args);
     }
-    va_end(params);
+    va_end(args);
     return (int) written;
 }

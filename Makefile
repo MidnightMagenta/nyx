@@ -84,6 +84,11 @@ else
 CFLAGS += -O2
 endif
 
+ifdef CONFIG_KERNEL_TESTS
+SUBDIRS += tests
+ARCHIVES += tests/kerneltestsar.o
+endif
+
 ifeq ($(CONFIG_EXTRA_WARNINGS),y)
 CFLAGS += -Wconversion -Wsign-conversion -Wundef -Wcast-align \
           -Wshift-overflow -Wdouble-promotion -Wpedantic

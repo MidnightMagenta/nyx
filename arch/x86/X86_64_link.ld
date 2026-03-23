@@ -57,10 +57,21 @@ SECTIONS {
 
     __init_end = .;
     
+#ifdef CONFIG_KERNEL_TESTS
+    .kernel_tests BLOCK(0x1000) : {
+        __kernel_tests_start = .;
+        KEEP(*(.kernel_tests*))
+        __kernel_tests_end = .;
+    } :init_data
+#endif
+
     __image_end = .;
 
     /DISCARD/ : {
         *(.note.gnu.property)
         *(.eh_frame)
+#ifndef CONFIG_KERNEL_TESTS
+        *(.kernel_tests)
+#endif
     }
 }

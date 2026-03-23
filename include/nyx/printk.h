@@ -3,7 +3,7 @@
 
 #include <stdarg.h>
 
-int vprintk(const char *fmt, va_list params);
+int vprintk(const char *fmt, va_list args);
 int printk(const char *fmt, ...);
 
 #define pr_error(f, ...) printk("error [%s:%d]: " f, __FILE__, __LINE__, ##__VA_ARGS__)

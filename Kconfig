@@ -6,6 +6,10 @@ config DEBUG
     bool "Enable debug build"
     default n
 
+config KERNEL_TESTS
+    bool "Enable kernel unit tests"
+    default n
+
 config EXTRA_WARNINGS
     bool "Enable extra warnings"
     default n
