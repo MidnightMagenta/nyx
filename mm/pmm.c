@@ -212,6 +212,14 @@ void pm_free_pages(phys_addr_t addr) {
     free_page(addr_to_pfn(addr));
 }
 
+phys_addr_t pm_page_to_phys(struct page *pg) {
+    return ((pg - page_map) + first_pfn) << PAGE_SHIFT;
+}
+
+struct page *pm_phys_to_page(phys_addr_t addr) {
+    return &page_map[(addr >> PAGE_SHIFT) - first_pfn];
+}
+
 int pm_is_free(phys_addr_t addr) {
     return !bm_get(addr_to_pfn(addr));
 }

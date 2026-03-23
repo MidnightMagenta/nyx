@@ -18,22 +18,23 @@
 #define PM_TYPE_MASK 0x0F
 #define PM_ZONE_MASK 0x40
 
-enum {
-    PM_CONSTRAINT_MAX,
-    PM_CONSTRAINT_MIN,
-    PM_CONSTRAINT_RANGE,
-};
-
-struct pm_constraint {
-    u32 type;
-    union {
-        struct {
-            phys_addr_t min;
-            phys_addr_t max;
-        };
-    };
-};
-
+// FIXME: implement __pm_get_pages_ex and __pm_alloc_pages_ex
+// enum {
+//     PM_CONSTRAINT_MAX,
+//     PM_CONSTRAINT_MIN,
+//     PM_CONSTRAINT_RANGE,
+// };
+//
+// struct pm_constraint {
+//     u32 type;
+//     union {
+//         struct {
+//             phys_addr_t min;
+//             phys_addr_t max;
+//         };
+//     };
+// };
+//
 extern struct page *page_map;
 
 int pm_reserve_region(phys_addr_t addr, size_t count);
@@ -45,10 +46,14 @@ phys_addr_t  __pm_get_pages(u64 flags, u64 order);
 
 void pm_free_pages(phys_addr_t addr);
 
-phys_addr_t __pm_get_pages_ex(u64                               flags,
-                              u64                               order,
-                              const struct pm_constraint *const constraint,
-                              size_t                            constraint_cnt);
+// FIXME: implement __pm_get_pages_ex and __pm_alloc_pages_ex
+// phys_addr_t __pm_get_pages_ex(u64                               flags,
+//                               u64                               order,
+//                               const struct pm_constraint *const constraint,
+//                               size_t                            constraint_cnt);
+
+phys_addr_t  pm_page_to_phys(struct page *pg);
+struct page *pm_phys_to_page(phys_addr_t addr);
 
 int pm_is_free(phys_addr_t addr);
 int pm_is_reserved(phys_addr_t addr);
