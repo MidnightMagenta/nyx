@@ -42,7 +42,7 @@ static void __init get_memory_range(const struct memmap *memmap, phys_addr_t *lo
 
     for (size_t i = 0; i < memmap->region_cnt; ++i) {
         const struct mem_region *r = &memmap->regions[i];
-        early_printk(pr_fmt("mmap entry %d: [0x%lx, 0x%lx]"), r->type, r->base, r->base + r->length);
+        early_printk(pr_fmt("mmap entry: type %d [0x%lx, 0x%lx]"), r->type, r->base, r->base + r->length);
         if (r->type != MEM_REGION_TYPE_AVAILABLE) { continue; }
         *loaddr = MIN(*loaddr, r->base);
         *hiaddr = MAX(*hiaddr, r->base + r->length);
@@ -134,6 +134,18 @@ static inline int bm_get(size_t bit) {
     return ((bm[bit >> BM_WORD_SHIFT] >> (bit & BM_WORD_MASK)) & BM_ONE);
 }
 
+static inline void reserve_page(pfn_t page) {
+    bm_set(page);
+    reserved++;
+    free--;
+}
+
+static inline void free_page(pfn_t page) {
+    bm_clear(page);
+    reserved--;
+    free++;
+}
+
 int pm_reserve_region(phys_addr_t addr, size_t count) {
     pfn_t pfn;
 
@@ -146,9 +158,7 @@ int pm_reserve_region(phys_addr_t addr, size_t count) {
 
     while (count--) {
         if (!bm_get(pfn)) {
-            bm_set(pfn);
-            free--;
-            reserved++;
+            reserve_page(pfn);
         } else {
             pr_warn(pr_fmt("reserving an already reserved region at PFN %ld"), pfn);
         }
@@ -170,9 +180,7 @@ int pm_free_region(phys_addr_t addr, size_t count) {
 
     while (count--) {
         if (bm_get(pfn)) {
-            bm_clear(pfn);
-            free++;
-            reserved--;
+            free_page(pfn);
         } else {
             pr_warn(pr_fmt("freeing an already free region at PFN %ld"), pfn);
         }
@@ -182,16 +190,26 @@ int pm_free_region(phys_addr_t addr, size_t count) {
     return 0;
 }
 
-phys_addr_t __pm_alloc_page() {
+phys_addr_t __pm_get_pages(u64 flags, u64 order) {
+    pfn_t page;
+
+    // TODO: this can be prtty heavily optimized
+    for (page = last_free_pfn_hint; page > 0; --page) {
+        if (!bm_get(page)) {
+            reserve_page(page);
+            return pfn_to_addr(page);
+        }
+    }
+
     return 0;
 }
 
-void pm_free_page(phys_addr_t addr) {
+void pm_free_pages(phys_addr_t addr) {
 #ifdef CONFIG_DEBUG
     if (!bm_get(addr_to_pfn(addr))) { pr_warn(pr_fmt("freeing an already free page at address 0x%lx"), addr); }
 #endif
 
-    bm_clear(addr_to_pfn(addr));
+    free_page(addr_to_pfn(addr));
 }
 
 int pm_is_free(phys_addr_t addr) {
