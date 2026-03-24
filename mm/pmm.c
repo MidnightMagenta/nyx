@@ -190,27 +190,63 @@ int pm_free_region(phys_addr_t addr, size_t count) {
     return 0;
 }
 
-phys_addr_t __pm_get_pages(u64 flags, u64 order) {
-    pfn_t page;
+struct page *__pm_alloc_pages(u64 flags, u64 order) {
+    size_t num_pages = (size_t) 1 << order;
+    (void) flags;
 
-    // TODO: this can be prtty heavily optimized
-    for (page = last_free_pfn_hint; page > 0; --page) {
-        if (!bm_get(page)) {
-            reserve_page(page);
-            return pfn_to_addr(page);
+    for (size_t i = 0; i < bm_size; i += num_pages) {
+        bool found = true;
+        for (size_t j = i; j < i + num_pages; j++) {
+            if (bm_get(j)) {
+                found = false;
+                break;
+            }
         }
+        if (!found) { continue; }
+
+        for (size_t j = i; j < i + num_pages; j++) { reserve_page(j); }
+
+        struct page *head = &page_map[i];
+        head->order       = order;
+        head->flags |= PAGE_FLAG_HEAD;
+
+        for (size_t j = 1; j < num_pages; j++) {
+            page_map[i + j].order = order;
+            page_map[i + j].flags |= PAGE_FLAG_TAIL;
+        }
+
+        return head;
     }
 
-    return 0;
+    return NULL;
 }
+
 
 void pm_free_pages(phys_addr_t addr) {
-#ifdef CONFIG_DEBUG
-    if (!bm_get(addr_to_pfn(addr))) { pr_warn(pr_fmt("freeing an already free page at address 0x%lx"), addr); }
-#endif
+    size_t       num_pages;
+    size_t       first_page = (addr >> PAGE_SHIFT) - first_pfn;
+    struct page *head       = &page_map[first_page];
 
-    free_page(addr_to_pfn(addr));
+    if (!(head->flags & PAGE_FLAG_HEAD)) {
+        pr_warn(pr_fmt("freeing a non-head page"));
+        return;
+    }
+
+    num_pages = (size_t) 1 << head->order;
+
+    for (size_t i = 1; i < num_pages; ++i) {
+        struct page *tail = &page_map[first_page + i];
+        if (!(tail->flags & PAGE_FLAG_TAIL)) { pr_warn(pr_fmt("freeing a non-tail page")); }
+        tail->flags &= ~PAGE_FLAG_TAIL;
+        tail->order = 0;
+        free_page(first_page + i);
+    }
+
+    head->flags &= ~PAGE_FLAG_HEAD;
+    head->order = 0;
+    free_page(first_page);
 }
+
 
 phys_addr_t pm_page_to_phys(struct page *pg) {
     return ((pg - page_map) + first_pfn) << PAGE_SHIFT;

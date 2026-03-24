@@ -12,10 +12,11 @@ struct test_state {
 struct kernel_test {
     void (*fn)(struct test_state *);
     const char name[64];
-};
+} __attribute__((packed, aligned(8)));
 
 #define DEFINE_KERNEL_TEST(name, fn)                                                                                   \
-    static const struct kernel_test __test_##name __attribute__((section(".kernel_tests"), used)) = {fn, #name};
+    static const struct kernel_test __test_##name                                                                      \
+            __attribute__((aligned(1), section(".kernel_tests"), used)) = {fn, #name};
 
 #define KERNEL_TEST(name)                                                                                              \
     void __test_fn_##name(struct test_state *state);                                                                   \
@@ -23,6 +24,12 @@ struct kernel_test {
     void __test_fn_##name(struct test_state *state)
 
 void __fail_test(struct test_state *state, const char *fmt, ...);
+
+#define EXPECT_TRUE(c)                                                                                                 \
+    if (!(c)) { __fail_test(state, "%s:%d: '%s' was false. Expected true.", __FILE__, __LINE__, #c); }
+
+#define EXPECT_FALSE(c)                                                                                                \
+    if (!!(c)) { __fail_test(state, "%s:%d: '%s' was true. Expected false.", __FILE__, __LINE__, #c); }
 
 #define EXPECT_EQ(a, b)                                                                                                \
     if ((a) != (b)) {                                                                                                  \

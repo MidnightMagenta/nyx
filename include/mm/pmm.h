@@ -3,6 +3,7 @@
 
 #include <asi/page.h>
 #include <mm/mm_types.h>
+#include <nyx/limits.h>
 #include <nyx/types.h>
 #include <stddef.h>
 #include <string.h>
@@ -14,9 +15,10 @@
 #define PMZ_DMA_32  2
 #define PMF_ZERO    (1 << 7)
 
-
 #define PM_TYPE_MASK 0x0F
 #define PM_ZONE_MASK 0x40
+
+#define PM_INVALID_ADDR PHYS_ADDR_MAX;
 
 // FIXME: implement __pm_get_pages_ex and __pm_alloc_pages_ex
 // enum {
@@ -34,15 +36,20 @@
 //         };
 //     };
 // };
-//
+
 extern struct page *page_map;
+
+phys_addr_t  pm_page_to_phys(struct page *pg);
+struct page *pm_phys_to_page(phys_addr_t addr);
 
 int pm_reserve_region(phys_addr_t addr, size_t count);
 int pm_free_region(phys_addr_t addr, size_t count);
 
-struct page *__pm_alloc_pages(u64 flags, u64 order);
-phys_addr_t  __pm_get_pages(u64 flags, u64 order);
-#define pm_alloc_page(flags) __pm_get_pages((priority), 0);
+struct page       *__pm_alloc_pages(u64 flags, u64 order);
+inline phys_addr_t __pm_get_pages(u64 flags, u64 order) {
+    return pm_page_to_phys(__pm_alloc_pages(flags, order));
+}
+#define pm_get_page(flags) __pm_get_pages((priority), 0);
 
 void pm_free_pages(phys_addr_t addr);
 
@@ -51,9 +58,6 @@ void pm_free_pages(phys_addr_t addr);
 //                               u64                               order,
 //                               const struct pm_constraint *const constraint,
 //                               size_t                            constraint_cnt);
-
-phys_addr_t  pm_page_to_phys(struct page *pg);
-struct page *pm_phys_to_page(phys_addr_t addr);
 
 int pm_is_free(phys_addr_t addr);
 int pm_is_reserved(phys_addr_t addr);
