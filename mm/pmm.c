@@ -14,12 +14,7 @@
 
 struct page *page_map;
 
-typedef u64       bm_word_t;
-static bm_word_t *bm;
-static size_t     bm_size; // in bits
-static pfn_t      first_pfn;
-static pfn_t      first_free_pfn_hint;
-static pfn_t      last_free_pfn_hint;
+typedef u64 bm_word_t;
 
 #define BM_WORD_BITS  (sizeof(bm_word_t) * 8)
 #define BM_WORD_SHIFT (__builtin_ctz(BM_WORD_BITS))
@@ -28,9 +23,21 @@ static pfn_t      last_free_pfn_hint;
 
 #define PM_MAX_ALIGN PHYS_ADDR_MAX;
 
-static size_t free;
-static size_t reserved;
-static size_t total;
+struct bitmap {
+    bm_word_t *data;
+    size_t     size;
+    size_t     page_count;
+
+    pfn_t first_free_hint;
+    pfn_t last_free_hint;
+
+    // memory tracking
+    size_t mem_total;
+    size_t mem_free;
+    size_t mem_reserved;
+};
+
+static struct bitmap bitmap;
 
 static inline void bm_set(size_t bit);
 static inline void bm_clear(size_t bit);
@@ -68,12 +75,12 @@ static void __init setup_regions(const struct memmap *memmap) {
 
     pm_arch_reserve_regions();
 
-    if ((res = pm_reserve_region((phys_addr_t) bm, ALIGN_UP(bm_size / 8, PAGE_SIZE) >> PAGE_SHIFT))) {
+    if ((res = pm_reserve_region((phys_addr_t) bitmap.data, ALIGN_UP(bitmap.size, PAGE_SIZE) >> PAGE_SHIFT))) {
         early_panic(pr_fmt("could not reserve bitmap with %d"), res);
     }
 
     if ((res = pm_reserve_region((phys_addr_t) page_map,
-                                 ALIGN_UP(total * sizeof(struct page), PAGE_SIZE) >> PAGE_SHIFT))) {
+                                 ALIGN_UP(bitmap.mem_total * sizeof(struct page), PAGE_SIZE) >> PAGE_SHIFT))) {
         early_panic(pr_fmt("could not reserve page map with %d"), res);
     }
 
@@ -90,17 +97,17 @@ void __init __do_pm_init(const struct memmap *memmap) {
     if (!memmap || !memmap->region_cnt) { early_panic(pr_fmt("Invalid memory map")); }
 
     get_memory_range(memmap, &loaddr, &hiaddr);
-    page_count = (hiaddr - loaddr) / PAGE_SIZE;
+    page_count = hiaddr / PAGE_SIZE;
     alloc_size = page_count / 8;
 
     if ((res = memblock_aligned_alloc(&alloc_size, PAGE_SIZE, &alloc_addr))) {
         early_panic(pr_fmt("could not allocate memory bitmap with %d"), res);
     }
 
-    bm_size = page_count;
-
-    bm = (bm_word_t *) alloc_addr;
-    memset(bm, 0xFF, alloc_size);
+    bitmap.page_count = page_count;
+    bitmap.size       = (page_count >> BM_WORD_SHIFT) * sizeof(bm_word_t);
+    bitmap.data       = (bm_word_t *) alloc_addr;
+    memset(bitmap.data, 0xFF, alloc_size);
 
 
     alloc_size = page_count * sizeof(struct page);
@@ -111,39 +118,38 @@ void __init __do_pm_init(const struct memmap *memmap) {
     page_map = (struct page *) alloc_addr;
     memset(page_map, 0, alloc_size);
 
-    first_pfn           = addr_to_pfn(loaddr);
-    first_free_pfn_hint = 0;
-    last_free_pfn_hint  = bm_size;
+    bitmap.first_free_hint = 0;
+    bitmap.last_free_hint  = bitmap.page_count;
 
-    free     = 0;
-    reserved = page_count;
-    total    = page_count;
+    bitmap.mem_free     = 0;
+    bitmap.mem_reserved = page_count;
+    bitmap.mem_total    = page_count;
 
     setup_regions(memmap);
 }
 
 static inline void bm_set(size_t bit) {
-    bm[bit >> BM_WORD_SHIFT] |= (BM_ONE << (bit & BM_WORD_MASK));
+    bitmap.data[bit >> BM_WORD_SHIFT] |= (BM_ONE << (bit & BM_WORD_MASK));
 }
 
 static inline void bm_clear(size_t bit) {
-    bm[bit >> BM_WORD_SHIFT] &= ~(BM_ONE << (bit & BM_WORD_MASK));
+    bitmap.data[bit >> BM_WORD_SHIFT] &= ~(BM_ONE << (bit & BM_WORD_MASK));
 }
 
 static inline int bm_get(size_t bit) {
-    return ((bm[bit >> BM_WORD_SHIFT] >> (bit & BM_WORD_MASK)) & BM_ONE);
+    return ((bitmap.data[bit >> BM_WORD_SHIFT] >> (bit & BM_WORD_MASK)) & BM_ONE);
 }
 
 static inline void reserve_page(pfn_t page) {
     bm_set(page);
-    reserved++;
-    free--;
+    bitmap.mem_reserved++;
+    bitmap.mem_free--;
 }
 
 static inline void free_page(pfn_t page) {
     bm_clear(page);
-    reserved--;
-    free++;
+    bitmap.mem_reserved--;
+    bitmap.mem_free++;
 }
 
 int pm_reserve_region(phys_addr_t addr, size_t count) {
@@ -154,7 +160,7 @@ int pm_reserve_region(phys_addr_t addr, size_t count) {
 
     pfn = addr_to_pfn(addr);
 
-    if (pfn + count > bm_size) { return -ERANGE; }
+    if (pfn + count > bitmap.page_count) { return -ERANGE; }
 
     while (count--) {
         if (!bm_get(pfn)) {
@@ -176,7 +182,7 @@ int pm_free_region(phys_addr_t addr, size_t count) {
 
     pfn = addr_to_pfn(addr);
 
-    if (pfn + count > bm_size) { return -ERANGE; }
+    if (pfn + count > bitmap.page_count) { return -ERANGE; }
 
     while (count--) {
         if (bm_get(pfn)) {
@@ -194,7 +200,7 @@ struct page *__pm_alloc_pages(u64 flags, u64 order) {
     size_t num_pages = (size_t) 1 << order;
     (void) flags;
 
-    for (size_t i = 0; i < bm_size; i += num_pages) {
+    for (size_t i = 0; i < bitmap.page_count; i += num_pages) {
         bool found = true;
         for (size_t j = i; j < i + num_pages; j++) {
             if (bm_get(j)) {
@@ -224,7 +230,7 @@ struct page *__pm_alloc_pages(u64 flags, u64 order) {
 
 void pm_free_pages(phys_addr_t addr) {
     size_t       num_pages;
-    size_t       first_page = (addr >> PAGE_SHIFT) - first_pfn;
+    size_t       first_page = (addr >> PAGE_SHIFT);
     struct page *head       = &page_map[first_page];
 
     if (!(head->flags & PAGE_FLAG_HEAD)) {
@@ -249,11 +255,11 @@ void pm_free_pages(phys_addr_t addr) {
 
 
 phys_addr_t pm_page_to_phys(struct page *pg) {
-    return ((pg - page_map) + first_pfn) << PAGE_SHIFT;
+    return (pg - page_map) << PAGE_SHIFT;
 }
 
 struct page *pm_phys_to_page(phys_addr_t addr) {
-    return &page_map[(addr >> PAGE_SHIFT) - first_pfn];
+    return &page_map[addr >> PAGE_SHIFT];
 }
 
 int pm_is_free(phys_addr_t addr) {
@@ -271,11 +277,11 @@ size_t pm_getstat(enum pm_stat stat) {
         case PM_STAT_MAX_ALIGN:
             return PM_MAX_ALIGN;
         case PM_STAT_TOTAL:
-            return total;
+            return bitmap.mem_total;
         case PM_STAT_FREE:
-            return free;
+            return bitmap.mem_free;
         case PM_STAT_USED:
-            return reserved;
+            return bitmap.mem_reserved;
         default:
             return 0;
     }
