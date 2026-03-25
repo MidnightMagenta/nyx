@@ -39,14 +39,19 @@
 
 extern struct page *page_map;
 
-phys_addr_t  pm_page_to_phys(struct page *pg);
-struct page *pm_phys_to_page(phys_addr_t addr);
+static inline phys_addr_t pm_page_to_phys(struct page *pg) {
+    return (pg - page_map) << PAGE_SHIFT;
+}
+
+static inline struct page *pm_phys_to_page(phys_addr_t addr) {
+    return &page_map[addr >> PAGE_SHIFT];
+}
 
 int pm_reserve_region(phys_addr_t addr, size_t count);
 int pm_free_region(phys_addr_t addr, size_t count);
 
-struct page       *__pm_alloc_pages(u64 flags, u64 order);
-inline phys_addr_t __pm_get_pages(u64 flags, u64 order) {
+struct page              *__pm_alloc_pages(u64 flags, u64 order);
+static inline phys_addr_t __pm_get_pages(u64 flags, u64 order) {
     return pm_page_to_phys(__pm_alloc_pages(flags, order));
 }
 #define pm_get_page(flags) __pm_get_pages((priority), 0);
@@ -68,6 +73,7 @@ enum pm_stat {
     PM_STAT_TOTAL,
     PM_STAT_FREE,
     PM_STAT_USED,
+    PM_STAT_FRAG,
 };
 
 size_t pm_getstat(enum pm_stat stat);

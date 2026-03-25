@@ -98,14 +98,14 @@ void __init __do_pm_init(const struct memmap *memmap) {
 
     get_memory_range(memmap, &loaddr, &hiaddr);
     page_count = hiaddr / PAGE_SIZE;
-    alloc_size = page_count / 8;
+    alloc_size = page_count >> 3;
 
     if ((res = memblock_aligned_alloc(&alloc_size, PAGE_SIZE, &alloc_addr))) {
         early_panic(pr_fmt("could not allocate memory bitmap with %d"), res);
     }
 
     bitmap.page_count = page_count;
-    bitmap.size       = (page_count >> BM_WORD_SHIFT) * sizeof(bm_word_t);
+    bitmap.size       = alloc_size;
     bitmap.data       = (bm_word_t *) alloc_addr;
     memset(bitmap.data, 0xFF, alloc_size);
 
@@ -254,20 +254,24 @@ void pm_free_pages(phys_addr_t addr) {
 }
 
 
-phys_addr_t pm_page_to_phys(struct page *pg) {
-    return (pg - page_map) << PAGE_SHIFT;
-}
-
-struct page *pm_phys_to_page(phys_addr_t addr) {
-    return &page_map[addr >> PAGE_SHIFT];
-}
-
 int pm_is_free(phys_addr_t addr) {
     return !bm_get(addr_to_pfn(addr));
 }
 
 int pm_is_reserved(phys_addr_t addr) {
     return bm_get(addr_to_pfn(addr));
+}
+
+static size_t pm_largest_free_run(void) {
+    size_t best = 0, run = 0;
+    for (size_t i = 0; i < bitmap.page_count; i++) {
+        if (!bm_get(i)) {
+            if (++run > best) { best = run; }
+        } else {
+            run = 0;
+        }
+    }
+    return best;
 }
 
 size_t pm_getstat(enum pm_stat stat) {
@@ -282,6 +286,11 @@ size_t pm_getstat(enum pm_stat stat) {
             return bitmap.mem_free;
         case PM_STAT_USED:
             return bitmap.mem_reserved;
+        case PM_STAT_FRAG: {
+            if (bitmap.mem_free == 0) { return 0; }
+            size_t largest = pm_largest_free_run();
+            return 10000 - ((largest * 10000) / bitmap.mem_free);
+        }
         default:
             return 0;
     }

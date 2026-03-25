@@ -3,6 +3,8 @@
 #ifndef _NYX_TESTING_H
 #define _NYX_TESTING_H
 
+#include <nyx/printk.h>
+
 struct test_state {
     const char *test_name;
     bool        failed;
@@ -25,6 +27,9 @@ struct kernel_test {
 
 void __fail_test(struct test_state *state, const char *fmt, ...);
 
+#define TEST_PRINT(fmt, ...)                                                                                           \
+    do { printk("[TEST: %s] " fmt "\n", state->test_name, ##__VA_ARGS__); } while (0);
+
 #define EXPECT_TRUE(c)                                                                                                 \
     if (!(c)) { __fail_test(state, "%s:%d: '%s' was false. Expected true.", __FILE__, __LINE__, #c); }
 
@@ -35,6 +40,18 @@ void __fail_test(struct test_state *state, const char *fmt, ...);
     if ((a) != (b)) {                                                                                                  \
         __fail_test(state,                                                                                             \
                     "%s:%d: '%s' was %ld. Expected %ld.",                                                              \
+                    __FILE__,                                                                                          \
+                    __LINE__,                                                                                          \
+                    #a,                                                                                                \
+                    (unsigned long) (a),                                                                               \
+                    (unsigned long) (b));                                                                              \
+        return;                                                                                                        \
+    }
+
+#define EXPECT_NEQ(a, b)                                                                                               \
+    if ((a) == (b)) {                                                                                                  \
+        __fail_test(state,                                                                                             \
+                    "%s:%d: '%s' was %ld. Expected not %ld.",                                                          \
                     __FILE__,                                                                                          \
                     __LINE__,                                                                                          \
                     #a,                                                                                                \
