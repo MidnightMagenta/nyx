@@ -1,10 +1,10 @@
 #include <nyx/early_printk.h>
 #include <nyx/early_serial.h>
 #include <nyx/linkage.h>
+#include <nyx/stdarg.h>
+#include <nyx/stddef.h>
+#include <nyx/string.h>
 #include <nyx/types.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <string.h>
 
 char __initdata buf_to_u64[128];
 char __initdata buf_to_h64[128];

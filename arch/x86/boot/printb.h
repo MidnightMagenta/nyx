@@ -1,7 +1,7 @@
 #ifndef _BOOT_PRINTB_H
 #define _BOOT_PRINTB_H
 
-#include <stdarg.h>
+#include <nyx/stdarg.h>
 
 int  boot_serial_init();
 void boot_serial_putc(char c);

@@ -1,8 +1,6 @@
 #ifndef _ASI_GENERIC_TYPES_H
 #define _ASI_GENERIC_TYPES_H
 
-#include <generated/autoconf.h>
-
 typedef unsigned char     __u8;
 typedef unsigned short    __u16;
 typedef unsigned int      __u32;

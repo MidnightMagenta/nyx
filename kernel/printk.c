@@ -1,5 +1,5 @@
 #include <nyx/printk.h>
-#include <stddef.h>
+#include <nyx/stddef.h>
 
 static int printk_ready = 0;
 

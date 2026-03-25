@@ -4,9 +4,9 @@
 #include <asi/page.h>
 #include <mm/mm_types.h>
 #include <nyx/limits.h>
+#include <nyx/stddef.h>
+#include <nyx/string.h>
 #include <nyx/types.h>
-#include <stddef.h>
-#include <string.h>
 
 #define PMT_NONE    0
 #define PMT_KERNEL  1

@@ -2,8 +2,8 @@
 #include <nyx/early_printk.h>
 #include <nyx/linkage.h>
 #include <nyx/panic.h>
-#include <stdarg.h>
-#include <stddef.h>
+#include <nyx/stdarg.h>
+#include <nyx/stddef.h>
 
 extern size_t early_vprintk(const char *fmt, va_list params);
 

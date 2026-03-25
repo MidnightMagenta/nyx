@@ -3,7 +3,7 @@
 #include <mm/memmap.h>
 #include <nyx/linkage.h>
 #include <nyx/panic.h>
-#include <string.h>
+#include <nyx/string.h>
 
 static struct memmap memmap __initdata = {
         .region_cnt = (size_t) -1,

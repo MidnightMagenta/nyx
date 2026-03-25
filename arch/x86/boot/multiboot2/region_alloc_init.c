@@ -2,9 +2,9 @@
 #include "../region_alloc.h"
 #include "multiboot2.h"
 #include <asi/page.h>
+#include <nyx/stddef.h>
 #include <nyx/types.h>
 #include <nyx/util.h>
-#include <stddef.h>
 
 static struct mb2_tag_mmap *get_mmap(u64 bi) {
     unsigned int    bi_size = *(unsigned int *) bi;

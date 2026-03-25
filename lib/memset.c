@@ -1,4 +1,4 @@
-#include <string.h>
+#include <nyx/string.h>
 
 void *memset(void *ptr, int v, size_t num) {
     unsigned char *strPtr = (unsigned char *) ptr;

@@ -2,8 +2,8 @@
 #include <asi/io.h>
 #include <nyx/early_serial.h>
 #include <nyx/linkage.h>
+#include <nyx/string.h>
 #include <nyx/types.h>
-#include <string.h>
 
 #define COM1_PORT     0x3F8
 #define COM1_REG(reg) (u16)(COM1_PORT + reg)

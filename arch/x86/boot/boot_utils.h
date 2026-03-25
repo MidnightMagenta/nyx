@@ -2,7 +2,7 @@
 #define _BOOT_UTILS_H
 
 #include "printb.h"
-#include <stddef.h>
+#include <nyx/stddef.h>
 
 #define hcf()                                                                                                          \
     while (1) { __asm__ volatile("hlt"); }

@@ -1,8 +1,8 @@
 #ifndef _MM_MEMMAP_H
 #define _MM_MEMMAP_H
 
+#include <nyx/stddef.h>
 #include <nyx/types.h>
-#include <stddef.h>
 
 #define MEMMAP_MAX_REGIONS 128
 

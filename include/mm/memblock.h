@@ -1,8 +1,8 @@
 #ifndef _MM_MEMBLOCK_H
 #define _MM_MEMBLOCK_H
 
+#include <nyx/stddef.h>
 #include <nyx/types.h>
-#include <stddef.h>
 
 struct memblock_region {
     phys_addr_t base;
