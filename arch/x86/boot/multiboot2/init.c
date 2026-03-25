@@ -420,11 +420,50 @@ static void mmap_merge(struct mmap_entry *mmap, int *n) {
     *n = wr + 1;
 }
 
+static void mmap_insert_region(struct mmap_entry *mmap, int *n, u64 base, u64 size, u32 type) {
+    u64 end = base + size;
+
+    int orig_n = *n;
+    for (int i = 0; i < orig_n; i++) {
+        u64 e_base = mmap[i].addr;
+        u64 e_end  = mmap[i].addr + mmap[i].size;
+        u32 e_type = mmap[i].type;
+
+        if (e_end <= base || e_base >= end) { continue; }
+
+        if (e_base >= base && e_end <= end) {
+            mmap[i] = mmap[--(*n)];
+            orig_n--;
+            i--;
+        } else if (e_base < base && e_end > end) {
+            mmap[i].size = base - e_base;
+
+            mmap[*n].addr = end;
+            mmap[*n].size = e_end - end;
+            mmap[*n].type = e_type;
+            (*n)++;
+        } else if (e_base < base) {
+            mmap[i].size = base - e_base;
+        } else {
+            mmap[i].addr = end;
+            mmap[i].size = e_end - end;
+        }
+    }
+
+    mmap[*n].addr = base;
+    mmap[*n].size = size;
+    mmap[*n].type = type;
+    (*n)++;
+
+    mmap_sort(mmap, n);
+}
+
 static int create_mmap(const struct mb2_tag_mmap *bi_mmap,
                        const struct memregion    *page_reserved_range,
                        struct boot_params        *bootparams) {
-    int                mmap_entry_count = 0;
-    struct mmap_entry *bp_mmap_ent;
+    int mmap_entry_count = 0;
+    u64 mmap_base, mmap_size;
+    u32 mmap_type;
 
     for (u8 *p = (u8 *) bi_mmap->entries; p < (u8 *) bi_mmap + bi_mmap->size; p += bi_mmap->entry_size) {
         if (mmap_entry_count >= MMAP_MAX_ENTRIES) {
@@ -436,27 +475,28 @@ static int create_mmap(const struct mb2_tag_mmap *bi_mmap,
         }
 
         struct mb2_mmap_entry *mmap_entry = (struct mb2_mmap_entry *) p;
-        bp_mmap_ent                       = &bootparams->mmap[mmap_entry_count++];
-        bp_mmap_ent->addr                 = mmap_entry->addr;
-        bp_mmap_ent->size                 = mmap_entry->len;
+        mmap_base                         = mmap_entry->addr;
+        mmap_size                         = mmap_entry->len;
 
         switch (mmap_entry->type) {
             case MB2_MMAP_AVAILABLE:
-                bp_mmap_ent->type = MMAP_TYPE_AVAILABLE;
+                mmap_type = MMAP_TYPE_AVAILABLE;
                 break;
             case MB2_MMAP_ACPI_RECLAIMABLE:
-                bp_mmap_ent->type = MMAP_TYPE_ACPI_RECLAIMABLE;
+                mmap_type = MMAP_TYPE_ACPI_RECLAIMABLE;
                 break;
             case MB2_MMAP_NVS:
-                bp_mmap_ent->type = MMAP_TYPE_NVS;
+                mmap_type = MMAP_TYPE_NVS;
                 break;
             case MB2_MMAP_BADRAM:
-                bp_mmap_ent->type = MMAP_TYPE_UNUSABLE;
+                mmap_type = MMAP_TYPE_UNUSABLE;
                 break;
             default:
-                bp_mmap_ent->type = MMAP_TYPE_RESERVED;
+                mmap_type = MMAP_TYPE_RESERVED;
                 break;
         }
+
+        mmap_insert_region(bootparams->mmap, &mmap_entry_count, mmap_base, mmap_size, mmap_type);
     }
 
     if (mmap_entry_count >= MMAP_MAX_ENTRIES) {
@@ -467,10 +507,11 @@ static int create_mmap(const struct mb2_tag_mmap *bi_mmap,
         }
     }
 
-    bp_mmap_ent       = &bootparams->mmap[mmap_entry_count++];
-    bp_mmap_ent->addr = page_reserved_range->base;
-    bp_mmap_ent->size = page_reserved_range->size;
-    bp_mmap_ent->type = MMAP_TYPE_BOOT_RECLAIMABLE;
+    mmap_insert_region(bootparams->mmap,
+                       &mmap_entry_count,
+                       page_reserved_range->base,
+                       page_reserved_range->size,
+                       MMAP_TYPE_BOOT_RECLAIMABLE);
 
     mmap_sort(bootparams->mmap, &mmap_entry_count);
     mmap_merge(bootparams->mmap, &mmap_entry_count);
