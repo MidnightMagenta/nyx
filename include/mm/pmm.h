@@ -22,7 +22,7 @@
 #ifdef CONFIG_32BIT
 #define SIZE_TO_ORDER(size) ((size) <= PAGE_SIZE ? 0 : 32 - __builtin_clz(((size) - 1) >> PAGE_SHIFT))
 #elif defined(CONFIG_64BIT)
-#define SIZE_TO_ORDER(size) ((size) <= PAGE_SIZE ? 0 : 32 - __builtin_clz(((size) - 1) >> PAGE_SHIFT))
+#define SIZE_TO_ORDER(size) ((size) <= PAGE_SIZE ? 0 : 64 - __builtin_clzll(((size) - 1) >> PAGE_SHIFT))
 #endif
 
 #define PM_ORDER_2M SIZE_TO_ORDER(2 * MiB)
