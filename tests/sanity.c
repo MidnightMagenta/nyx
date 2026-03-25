@@ -2,4 +2,6 @@
 
 KERNEL_TEST(sanity_test) {
     EXPECT_EQ(1 + 1, 2);
+    EXPECT_TRUE(true);
+    EXPECT_FALSE(false);
 }

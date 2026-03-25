@@ -17,7 +17,7 @@ debug)
     gdb
     ;;
 *)
-    echo "Usage: dbg {mkimage|run|run-info|run-debug}"
+    echo "Usage: dbg {mkimage|run|run-info|debug}"
     exit 1
     ;;
 esac

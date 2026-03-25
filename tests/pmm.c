@@ -1,5 +1,6 @@
 #include <mm/pmm.h>
 #include <nyx/testing.h>
+#include <nyx/util.h>
 
 KERNEL_TEST(pmm_sanity) {
     size_t      free, used, total, old_total;
@@ -40,9 +41,112 @@ KERNEL_TEST(pmm_alloc_free) {
     EXPECT_TRUE(alloc);
     EXPECT_EQ(pm_getstat(PM_STAT_FREE), initial_free_cnt - 1);
     EXPECT_TRUE(alloc->flags & PAGE_FLAG_HEAD);
+    EXPECT_TRUE(pm_is_reserved(pm_page_to_phys(alloc)));
+    EXPECT_FALSE(pm_is_free(pm_page_to_phys(alloc)));
 
     pm_free_pages(pm_page_to_phys(alloc));
 
     EXPECT_EQ(pm_getstat(PM_STAT_FREE), initial_free_cnt);
     EXPECT_FALSE(alloc->flags & PAGE_FLAG_HEAD);
+    EXPECT_FALSE(pm_is_reserved(pm_page_to_phys(alloc)));
+    EXPECT_TRUE(pm_is_free(pm_page_to_phys(alloc)));
+}
+
+KERNEL_TEST(pmm_large_alloc_free) {
+    struct page *alloc;
+    size_t       initial_free_cnt = pm_getstat(PM_STAT_FREE);
+
+    alloc = __pm_alloc_pages(0, PM_ORDER_2M);
+
+    EXPECT_TRUE(alloc);
+    EXPECT_EQ(pm_getstat(PM_STAT_FREE), initial_free_cnt - ((2 * MiB) >> PAGE_SHIFT));
+    EXPECT_TRUE(alloc->flags & PAGE_FLAG_HEAD);
+    EXPECT_EQ(alloc->order, PM_ORDER_2M);
+    EXPECT_EQ(pm_page_to_phys(alloc) % (2 * MiB), 0);
+    EXPECT_TRUE(pm_is_reserved(pm_page_to_phys(alloc)));
+    EXPECT_FALSE(pm_is_free(pm_page_to_phys(alloc)));
+
+    for (struct page *pg = alloc + 1; pg < (alloc + ((2 * MiB) >> PAGE_SHIFT)); pg++) {
+        EXPECT_TRUE(pg->flags & PAGE_FLAG_TAIL);
+        EXPECT_EQ(pg->order, PM_ORDER_2M);
+        EXPECT_TRUE(pm_is_reserved(pm_page_to_phys(pg)));
+        EXPECT_FALSE(pm_is_free(pm_page_to_phys(pg)));
+    }
+
+    pm_free_pages(pm_page_to_phys(alloc));
+
+    EXPECT_EQ(pm_getstat(PM_STAT_FREE), initial_free_cnt);
+    EXPECT_FALSE(alloc->flags & PAGE_FLAG_HEAD);
+    EXPECT_EQ(alloc->order, 0);
+    EXPECT_FALSE(pm_is_reserved(pm_page_to_phys(alloc)));
+    EXPECT_TRUE(pm_is_free(pm_page_to_phys(alloc)));
+
+    for (struct page *pg = alloc + 1; pg < (alloc + ((2 * MiB) >> PAGE_SHIFT)); pg++) {
+        EXPECT_FALSE(pg->flags & PAGE_FLAG_TAIL);
+        EXPECT_EQ(pg->order, 0);
+        EXPECT_FALSE(pm_is_reserved(pm_page_to_phys(pg)));
+        EXPECT_TRUE(pm_is_free(pm_page_to_phys(pg)));
+    }
+}
+
+static phys_addr_t allocs[256];
+
+KERNEL_TEST(pmm_many_allocs) {
+    size_t initial_free_cnt = pm_getstat(PM_STAT_FREE);
+
+    for (size_t i = 0; i < ARRAY_SIZE(allocs); ++i) {
+        allocs[i] = pm_get_page(0);
+        EXPECT_NEQ(allocs[i], PM_INVALID_ADDR);
+    }
+
+    EXPECT_EQ(pm_getstat(PM_STAT_FREE), initial_free_cnt - ARRAY_SIZE(allocs));
+
+    for (size_t i = 0; i < ARRAY_SIZE(allocs); ++i) { pm_free_pages(allocs[i]); }
+
+    EXPECT_EQ(pm_getstat(PM_STAT_FREE), initial_free_cnt);
+}
+
+KERNEL_TEST(pmm_many_large_allocs) {
+    size_t initial_free_cnt = pm_getstat(PM_STAT_FREE);
+
+    for (size_t i = 0; i < ARRAY_SIZE(allocs); ++i) {
+        allocs[i] = __pm_get_pages(0, PM_ORDER_2M);
+        EXPECT_NEQ(allocs[i], PM_INVALID_ADDR);
+        EXPECT_EQ(allocs[i] % (2 * MiB), 0);
+    }
+
+    EXPECT_EQ(pm_getstat(PM_STAT_FREE), initial_free_cnt - (ARRAY_SIZE(allocs) * ((2 * MiB) >> PAGE_SHIFT)));
+
+    for (size_t i = 0; i < ARRAY_SIZE(allocs); ++i) { pm_free_pages(allocs[i]); }
+
+    EXPECT_EQ(pm_getstat(PM_STAT_FREE), initial_free_cnt);
+}
+
+KERNEL_TEST(pmm_interleaved_alloc_free) {
+    phys_addr_t a, b, c, d;
+
+    a = pm_get_page(0);
+    b = pm_get_page(0);
+    c = pm_get_page(0);
+    pm_free_pages(b);
+    d = pm_get_page(0);
+
+    EXPECT_EQ(d, b);
+
+    pm_free_pages(a);
+    pm_free_pages(c);
+    pm_free_pages(d);
+}
+
+KERNEL_TEST(pmm_alloc_alignment) {
+    struct page *alloc;
+    phys_addr_t  addr;
+
+    for (size_t order = 0; order <= PM_ORDER_2M; order++) {
+        alloc = __pm_alloc_pages(0, order);
+        EXPECT_TRUE(alloc);
+        addr = pm_page_to_phys(alloc);
+        EXPECT_EQ((addr >> PAGE_SHIFT) % (1 << order), 0);
+        pm_free_pages(pm_page_to_phys(alloc));
+    }
 }

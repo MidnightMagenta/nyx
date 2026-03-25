@@ -31,10 +31,16 @@ void __fail_test(struct test_state *state, const char *fmt, ...);
     do { printk("[TEST: %s] " fmt "\n", state->test_name, ##__VA_ARGS__); } while (0);
 
 #define EXPECT_TRUE(c)                                                                                                 \
-    if (!(c)) { __fail_test(state, "%s:%d: '%s' was false. Expected true.", __FILE__, __LINE__, #c); }
+    if (!(c)) {                                                                                                        \
+        __fail_test(state, "%s:%d: '%s' was false. Expected true.", __FILE__, __LINE__, #c);                           \
+        return;                                                                                                        \
+    }
 
 #define EXPECT_FALSE(c)                                                                                                \
-    if (!!(c)) { __fail_test(state, "%s:%d: '%s' was true. Expected false.", __FILE__, __LINE__, #c); }
+    if (!!(c)) {                                                                                                       \
+        __fail_test(state, "%s:%d: '%s' was true. Expected false.", __FILE__, __LINE__, #c);                           \
+        return;                                                                                                        \
+    }
 
 #define EXPECT_EQ(a, b)                                                                                                \
     if ((a) != (b)) {                                                                                                  \
