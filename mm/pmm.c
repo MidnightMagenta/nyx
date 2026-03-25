@@ -83,8 +83,6 @@ static void __init setup_regions(const struct memmap *memmap) {
                                  ALIGN_UP(bitmap.mem_total * sizeof(struct page), PAGE_SIZE) >> PAGE_SHIFT))) {
         early_panic(pr_fmt("could not reserve page map with %d"), res);
     }
-
-    bm_set(0); // reserve PFN 0 as the NULL page
 }
 
 void __init __do_pm_init(const struct memmap *memmap) {
@@ -200,7 +198,7 @@ struct page *__pm_alloc_pages(u64 flags, u64 order) {
     size_t num_pages = (size_t) 1 << order;
     (void) flags;
 
-    for (size_t i = 0; i < bitmap.page_count; i += num_pages) {
+    for (size_t i = ALIGN_DOWN(bitmap.page_count, num_pages) - num_pages; i < bitmap.page_count; i -= num_pages) {
         bool found = true;
         for (size_t j = i; j < i + num_pages; j++) {
             if (bm_get(j)) {

@@ -7,6 +7,7 @@
 #include <nyx/stddef.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
+#include <nyx/util.h>
 
 #define PMT_NONE    0
 #define PMT_KERNEL  1
@@ -18,7 +19,16 @@
 #define PM_TYPE_MASK 0x0F
 #define PM_ZONE_MASK 0x40
 
-#define PM_INVALID_ADDR PHYS_ADDR_MAX;
+#ifdef CONFIG_32BIT
+#define SIZE_TO_ORDER(size) ((size) <= PAGE_SIZE ? 0 : 32 - __builtin_clz(((size) - 1) >> PAGE_SHIFT))
+#elif defined(CONFIG_64BIT)
+#define SIZE_TO_ORDER(size) ((size) <= PAGE_SIZE ? 0 : 32 - __builtin_clz(((size) - 1) >> PAGE_SHIFT))
+#endif
+
+#define PM_ORDER_2M SIZE_TO_ORDER(2 * MiB)
+#define PM_ORDER_1G SIZE_TO_ORDER(1 * GiB)
+
+#define PM_INVALID_ADDR PHYS_ADDR_MAX
 
 // FIXME: implement __pm_get_pages_ex and __pm_alloc_pages_ex
 // enum {
@@ -54,7 +64,7 @@ struct page              *__pm_alloc_pages(u64 flags, u64 order);
 static inline phys_addr_t __pm_get_pages(u64 flags, u64 order) {
     return pm_page_to_phys(__pm_alloc_pages(flags, order));
 }
-#define pm_get_page(flags) __pm_get_pages((priority), 0);
+#define pm_get_page(flags) __pm_get_pages((flags), 0);
 
 void pm_free_pages(phys_addr_t addr);
 
