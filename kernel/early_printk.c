@@ -86,7 +86,7 @@ static void __init early_internal_print_str(const char *str, size_t len) {
     for (size_t i = 0; i < len; i++) { early_serial_putc(str[i]); }
 }
 
-size_t __init early_vprintk(const char *fmt, va_list args) {
+int __init early_vprintk(const char *fmt, va_list args) {
     size_t written = 0;
     while (*fmt != '\0') {
         size_t maxrem = SIZE_MAX - written;
@@ -107,14 +107,14 @@ size_t __init early_vprintk(const char *fmt, va_list args) {
         if (*fmt == 'c') {
             fmt++;
             char c = (char) va_arg(args, int);
-            if (maxrem < 1) { return (size_t) 0; }
+            if (maxrem < 1) { return 0; }
             early_internal_print_str(&c, 1);
             written++;
         } else if (*fmt == 's') {
             fmt++;
             const char *str    = va_arg(args, const char *);
             size_t      amount = strlen(str);
-            if (maxrem < amount) { return (size_t) 0; }
+            if (maxrem < amount) { return 0; }
             early_internal_print_str(str, amount);
             written += amount;
         } else if (*fmt == 'd' || *fmt == 'i') {
@@ -122,7 +122,7 @@ size_t __init early_vprintk(const char *fmt, va_list args) {
             s32         num    = (s32) va_arg(args, s32);
             const char *str    = s64_to_str((s64) num);
             size_t      amount = strlen(str);
-            if (maxrem < amount) { return (size_t) 0; }
+            if (maxrem < amount) { return 0; }
             early_internal_print_str(str, amount);
             written += amount;
         } else if ((*fmt == 'l' && fmt[1] == 'd') || (*fmt == 'l' && fmt[1] == 'i')) {
@@ -130,7 +130,7 @@ size_t __init early_vprintk(const char *fmt, va_list args) {
             s64         num    = (s64) va_arg(args, s64);
             const char *str    = s64_to_str((s64) num);
             size_t      amount = strlen(str);
-            if (maxrem < amount) { return (size_t) 0; }
+            if (maxrem < amount) { return 0; }
             early_internal_print_str(str, amount);
             written += amount;
         } else if (*fmt == 'u') {
@@ -138,7 +138,7 @@ size_t __init early_vprintk(const char *fmt, va_list args) {
             u32         num    = (u32) va_arg(args, u32);
             const char *str    = u64_to_str((u64) num);
             size_t      amount = strlen(str);
-            if (maxrem < amount) { return (size_t) 0; }
+            if (maxrem < amount) { return 0; }
             early_internal_print_str(str, amount);
             written += amount;
         } else if ((*fmt == 'l' && fmt[1] == 'u')) {
@@ -146,7 +146,7 @@ size_t __init early_vprintk(const char *fmt, va_list args) {
             u64         num    = (u64) va_arg(args, u64);
             const char *str    = u64_to_str((u64) num);
             size_t      amount = strlen(str);
-            if (maxrem < amount) { return (size_t) 0; }
+            if (maxrem < amount) { return 0; }
             early_internal_print_str(str, amount);
             written += amount;
         } else if (*fmt == 'b') {
@@ -154,7 +154,7 @@ size_t __init early_vprintk(const char *fmt, va_list args) {
             u32         num    = (u32) va_arg(args, u32);
             const char *str    = u8_to_hstr(num);
             size_t      amount = strlen(str);
-            if (maxrem < amount) { return (size_t) 0; }
+            if (maxrem < amount) { return 0; }
             early_internal_print_str(str, amount);
             written += amount;
         } else if (*fmt == 'x') {
@@ -162,7 +162,7 @@ size_t __init early_vprintk(const char *fmt, va_list args) {
             u32         num    = (u32) va_arg(args, u32);
             const char *str    = u32_to_hstr(num);
             size_t      amount = strlen(str);
-            if (maxrem < amount) { return (size_t) 0; }
+            if (maxrem < amount) { return 0; }
             early_internal_print_str(str, amount);
             written += amount;
         } else if ((*fmt == 'l' && fmt[1] == 'x')) {
@@ -170,20 +170,20 @@ size_t __init early_vprintk(const char *fmt, va_list args) {
             u64         num    = (u64) va_arg(args, u64);
             const char *str    = u64_to_hstr(num);
             size_t      amount = strlen(str);
-            if (maxrem < amount) { return (size_t) 0; }
+            if (maxrem < amount) { return 0; }
             early_internal_print_str(str, amount);
             written += amount;
         } else {
             fmt           = fmt_begun_at;
             size_t amount = strlen(fmt);
-            if (maxrem < amount) { return (size_t) 0; }
+            if (maxrem < amount) { return 0; }
             early_internal_print_str(fmt, amount);
             written += amount;
             fmt += amount;
         }
     }
 
-    return written;
+    return (int) written;
 }
 
 int __init early_printk(const char *fmt, ...) {

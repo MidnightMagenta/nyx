@@ -1,8 +1,6 @@
 #include <nyx/printk.h>
 #include <nyx/stddef.h>
 
-static int printk_ready = 0;
-
 int vprintk(const char *fmt, va_list args) {
     // TODO: implement printk()
     (void) fmt;
@@ -10,7 +8,9 @@ int vprintk(const char *fmt, va_list args) {
     return 0;
 }
 
-extern size_t early_vprintk(const char *fmt, va_list args);
+extern int early_vprintk(const char *fmt, va_list args);
+
+static int (*vprintk_impl)(const char *, va_list) = early_vprintk;
 
 int printk(const char *fmt, ...) {
     va_list args;
@@ -18,11 +18,8 @@ int printk(const char *fmt, ...) {
 
     va_start(args, fmt);
 
-    if (printk_ready) {
-        written = vprintk(fmt, args);
-    } else {
-        written = early_vprintk(fmt, args);
-    }
+    written = vprintk_impl(fmt, args);
+
     va_end(args);
     return (int) written;
 }
