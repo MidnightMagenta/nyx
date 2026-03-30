@@ -1,6 +1,6 @@
 #include <mm/pmm.h>
+#include <nyx/align.h>
 #include <nyx/testing.h>
-#include <nyx/util.h>
 
 KERNEL_TEST(pmm_sanity) {
     size_t      free, used, total, old_total;

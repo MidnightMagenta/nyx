@@ -7,9 +7,10 @@
 #include <asi/memory.h>
 #include <asi/page.h>
 #include <asi/setupdata.h>
+#include <nyx/align.h>
+#include <nyx/mem_units.h>
 #include <nyx/stddef.h>
 #include <nyx/types.h>
-#include <nyx/util.h>
 
 extern char __kernel_blob_start;
 extern char __kernel_blob_end;

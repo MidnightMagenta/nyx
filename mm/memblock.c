@@ -1,9 +1,9 @@
 #include <mm/memblock.h>
+#include <nyx/align.h>
 #include <nyx/errno.h>
 #include <nyx/linkage.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
-#include <nyx/util.h>
 
 #define MEMBLOCK_INIT_REGIONS 128
 

@@ -1,6 +1,7 @@
 #ifndef _MM_MMZONE_H
 #define _MM_MMZONE_H
 
+#include <asi/page.h>
 #include <mm/mm_types.h>
 #include <nyx/bitmap.h>
 #include <nyx/list.h>
@@ -39,8 +40,8 @@ typedef struct pg_data_s {
 
     struct page *mem_map;
 
-    phys_addr_t start_paddr;
-    phys_addr_t end_paddr;
+    pfn_t start_pfn;
+    pfn_t end_pfn;
 } pg_data_t;
 
 #endif

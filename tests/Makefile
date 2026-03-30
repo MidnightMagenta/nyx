@@ -1,4 +1,4 @@
-O_OBJS := main.o sanity.o pmm.o
+O_OBJS := main.o sanity.o
 O_TARGET := kerneltestsar.o
 
 EXTRA_CFLAGS := -D__TESTING__

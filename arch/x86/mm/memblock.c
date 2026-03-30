@@ -2,14 +2,14 @@
 #include <asi/page.h>
 #include <asi/setupdata.h>
 #include <mm/memblock.h>
+#include <nyx/align.h>
 #include <nyx/panic.h>
 #include <nyx/types.h>
-#include <nyx/util.h>
 
 extern char __image_start;
 extern char __image_end;
 
-void memblock_init() {
+void init_memblock() {
     int                 res;
     struct boot_params *bp = (struct boot_params *) bootparams;
 

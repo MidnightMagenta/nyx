@@ -31,16 +31,15 @@ enum {
     MEMBLOCK_STAT_RES_REGION_CNT,
 };
 
-void memblock_init();
-int  memblock_add_memory(phys_addr_t addr, size_t size);
-int  memblock_delete_memory(phys_addr_t addr, size_t size);
-int  memblock_reserve(phys_addr_t addr, size_t size);
-int  memblock_unreserve(phys_addr_t addr, size_t size);
-int  memblock_is_reserved(phys_addr_t addr, size_t size);
-int  memblock_is_memory(phys_addr_t addr, size_t size);
-int  memblock_alloc(size_t *size, phys_addr_t *out);
-int  memblock_aligned_alloc(size_t *size, size_t alignment, phys_addr_t *out);
-int  memblock_free_all();
-u64  memblock_getstat(int stat);
+int memblock_add_memory(phys_addr_t addr, size_t size);
+int memblock_delete_memory(phys_addr_t addr, size_t size);
+int memblock_reserve(phys_addr_t addr, size_t size);
+int memblock_unreserve(phys_addr_t addr, size_t size);
+int memblock_is_reserved(phys_addr_t addr, size_t size);
+int memblock_is_memory(phys_addr_t addr, size_t size);
+int memblock_alloc(size_t *size, phys_addr_t *out);
+int memblock_aligned_alloc(size_t *size, size_t alignment, phys_addr_t *out);
+int memblock_free_all();
+u64 memblock_getstat(int stat);
 
 #endif

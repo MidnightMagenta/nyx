@@ -64,7 +64,7 @@ static struct kmem_cache_s cache_cache = {
                 0,
                 0,
         },
-        PMF_NOSLEEP,
+        GFP_ATOMIC,
         1,
         sizeof(kmem_cache_t),
         8,

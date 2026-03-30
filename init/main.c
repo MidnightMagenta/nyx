@@ -1,5 +1,3 @@
-#include <mm/memblock.h>
-#include <mm/pmm.h>
 #include <nyx/printk.h>
 
 #ifdef CONFIG_KERNEL_TESTS
@@ -8,11 +6,10 @@ extern void __do_kernel_tests();
 #define __do_kernel_tests() ;
 #endif
 
-extern void pm_init();
+extern void init_memory();
 
 void start_kernel() {
-    memblock_init();
-    pm_init();
+    init_memory();
 
     __do_kernel_tests();
 
