@@ -1,8 +1,5 @@
-#ifndef _NYX_UTIL_H
-#define _NYX_UTIL_H
-
-#define ALIGN_UP(v, a)   (((v) + ((a) - 1)) & (~((a) - 1)))
-#define ALIGN_DOWN(v, a) ((v) & ~((a) - 1))
+#ifndef _NYX_KERNEL_H
+#define _NYX_KERNEL_H
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))

@@ -14,5 +14,6 @@ typedef __s64 s64;
 
 typedef __phys_addr_t phys_addr_t;
 typedef __virt_addr_t virt_addr_t;
+typedef __uintptr_t   uintptr_t;
 
 #endif

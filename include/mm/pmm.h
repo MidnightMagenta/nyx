@@ -7,85 +7,30 @@
 #include <nyx/stddef.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
-#include <nyx/util.h>
 
-#define PMT_NONE    0
-#define PMT_KERNEL  1
-#define PMZ_DMA_ANY 0
-#define PMZ_DMA_ISA 1
-#define PMZ_DMA_32  2
-#define PMF_ZERO    (1 << 7)
+#define __GFP_DMA     (1 << 0)
+#define __GFP_HIGHMEM (1 << 1)
+#define __GFP_HIGH    (1 << 2)
+#define __GFP_WAIT    (1 << 3)
+#define __GFP_NOFAIL  (1 << 4)
+#define __GFP_ZERO    (1 << 5)
 
-#define PM_TYPE_MASK 0x0F
-#define PM_ZONE_MASK 0x40
+#define GFP_ATOMIC   (__GFP_HIGH)
+#define GPF_KERNEL   (__GFP_WAIT)
+#define GFP_USER     (__GFP_WAIT)
+#define GFP_HIGHUSER (__GFP_WAIT | __GFP_HIGHMEM)
 
-#ifdef CONFIG_32BIT
-#define SIZE_TO_ORDER(size) ((size) <= PAGE_SIZE ? 0 : 32 - __builtin_clz(((size) - 1) >> PAGE_SHIFT))
-#elif defined(CONFIG_64BIT)
-#define SIZE_TO_ORDER(size) ((size) <= PAGE_SIZE ? 0 : 64 - __builtin_clzll(((size) - 1) >> PAGE_SHIFT))
-#endif
+struct page *pm_alloc_pages(u32 gfp_mask, u32 order);
+#define pm_alloc_page(gfp_mask) pm_alloc_pages((gfp_mask), 0)
 
-#define PM_ORDER_2M SIZE_TO_ORDER(2 * MiB)
-#define PM_ORDER_1G SIZE_TO_ORDER(1 * GiB)
+phys_addr_t __pm_get_free_pages(u32 gfp_mask, u32 order);
+#define __pm_get_free_page(gfp_mask)        __pm_get_free_pages((gfp_mask), 0)
+#define __pm_get_dma_pages(gfp_mask, order) __pm_get_free_pages((gfp_mask) | __GFP_DMA, (order))
+#define pm_get_zeroed_page(gfp_mask)        __pm_get_free_pages((gfp_mask) | __GFP_ZERO, 0)
 
-#define PM_INVALID_ADDR PHYS_ADDR_MAX
-
-// FIXME: implement __pm_get_pages_ex and __pm_alloc_pages_ex
-// enum {
-//     PM_CONSTRAINT_MAX,
-//     PM_CONSTRAINT_MIN,
-//     PM_CONSTRAINT_RANGE,
-// };
-//
-// struct pm_constraint {
-//     u32 type;
-//     union {
-//         struct {
-//             phys_addr_t min;
-//             phys_addr_t max;
-//         };
-//     };
-// };
-
-extern struct page *page_map;
-
-static inline phys_addr_t pm_page_to_phys(struct page *pg) {
-    return (pg - page_map) << PAGE_SHIFT;
-}
-
-static inline struct page *pm_phys_to_page(phys_addr_t addr) {
-    return &page_map[addr >> PAGE_SHIFT];
-}
-
-int pm_reserve_region(phys_addr_t addr, size_t count);
-int pm_free_region(phys_addr_t addr, size_t count);
-
-struct page              *__pm_alloc_pages(u64 flags, u64 order);
-static inline phys_addr_t __pm_get_pages(u64 flags, u64 order) {
-    return pm_page_to_phys(__pm_alloc_pages(flags, order));
-}
-#define pm_get_page(flags) __pm_get_pages((flags), 0);
-
-void pm_free_pages(phys_addr_t addr);
-
-// FIXME: implement __pm_get_pages_ex and __pm_alloc_pages_ex
-// phys_addr_t __pm_get_pages_ex(u64                               flags,
-//                               u64                               order,
-//                               const struct pm_constraint *const constraint,
-//                               size_t                            constraint_cnt);
-
-int pm_is_free(phys_addr_t addr);
-int pm_is_reserved(phys_addr_t addr);
-
-enum pm_stat {
-    PM_STAT_MIN_ALIGN,
-    PM_STAT_MAX_ALIGN,
-    PM_STAT_TOTAL,
-    PM_STAT_FREE,
-    PM_STAT_USED,
-    PM_STAT_FRAG,
-};
-
-size_t pm_getstat(enum pm_stat stat);
+void __pm_free_pages(struct page *page, u32 order);
+void pm_free_pages(phys_addr_t addr, u32 order);
+#define __free_page(page) __pm_free_pages(page, 0)
+#define free_page(addr)   pm_free_pages(addr, 0)
 
 #endif

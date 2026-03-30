@@ -13,9 +13,11 @@ typedef long int          __s64;
 #ifdef CONFIG_32BIT
 typedef __u32 __phys_addr_t;
 typedef __u32 __virt_addr_t;
+typedef __u32 __uintptr_t;
 #elif defined(CONFIG_64BIT)
 typedef __u64 __phys_addr_t;
 typedef __u64 __virt_addr_t;
+typedef __u64 __uintptr_t;
 #endif
 
 #endif

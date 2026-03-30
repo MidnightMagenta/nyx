@@ -18,4 +18,8 @@ typedef s32 ssize_t;
 #define SIZE_MAX __SIZE_MAX__
 #endif
 
+#ifndef offsetof
+#define offsetof(type, member) ((size_t) (&((type *) -)->member))
+#endif
+
 #endif
