@@ -33,10 +33,24 @@ struct zone_s {
     char *name;
 };
 
-#define MAX_ZONES 4
+enum zone_type {
+#ifdef CONFIG_ZONE_DMA
+    ZONE_DMA,
+#endif
+#ifdef CONFIG_ZONE_DMA32
+    ZONE_DMA32,
+#endif
+    ZONE_NORMAL,
+#ifdef CONFIG_ZONE_HIGHMEM
+    ZONE_HIGHMEM,
+#endif
+    __MAX_NR_ZONES,
+};
+
+#define MAX_NR_ZONES __MAX_NR_ZONES
 
 typedef struct pg_data_s {
-    struct zone_s zones[MAX_ZONES];
+    struct zone_s zones[MAX_NR_ZONES];
 
     struct page *mem_map;
 

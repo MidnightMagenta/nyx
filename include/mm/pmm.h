@@ -9,12 +9,15 @@
 #include <nyx/types.h>
 
 #define __GFP_DMA     (1 << 0)
-#define __GFP_HIGHMEM (1 << 1)
-#define __GFP_HIGH    (1 << 2)
-#define __GFP_WAIT    (1 << 3)
-#define __GFP_NOFAIL  (1 << 4)
-#define __GFP_ZERO    (1 << 5)
+#define __GFP_DMA32   (1 << 1)
+#define __GFP_HIGHMEM (1 << 2)
+#define __GFP_HIGH    (1 << 3)
+#define __GFP_WAIT    (1 << 4)
+#define __GFP_NOFAIL  (1 << 5)
+#define __GFP_ZERO    (1 << 6)
 
+#define GFP_DMA      (__GFP_DMA)
+#define GFP_DMA32    (__GFP_DMA32)
 #define GFP_ATOMIC   (__GFP_HIGH)
 #define GPF_KERNEL   (__GFP_WAIT)
 #define GFP_USER     (__GFP_WAIT)

@@ -14,9 +14,6 @@
 
 #define ClearPageReserved(page) clear_bit(PG_reserved, &(page)->flags)
 
-#define KM_SLEEP   (1 << 0)
-#define KM_NOSLEEP 0
-
 struct page {
     u64              flags;
     struct list_head list;

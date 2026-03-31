@@ -21,3 +21,4 @@ config WARNINGS_AS_ERRORS
 endmenu
 
 source "arch/$(ARCH)/Kconfig"
+source "mm/Kconfig"
