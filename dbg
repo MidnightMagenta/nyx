@@ -6,14 +6,14 @@ mkimage)
     ./scripts/mkimage.sh
     ;;
 run)
-    qemu-system-x86_64 -cdrom nyxos.iso -m 2G -cpu qemu64 -nographic
+    qemu-system-x86_64 -cdrom nyxos.iso -m 4G -cpu qemu64 -nographic
     ;;
 run-info)
-    qemu-system-x86_64 -cdrom nyxos.iso -m 2G -cpu qemu64 -vga std -d int,guest_errors,cpu_reset -no-reboot -no-shutdown
+    qemu-system-x86_64 -cdrom nyxos.iso -m 4G -cpu qemu64 -vga std -d int,guest_errors,cpu_reset -no-reboot -no-shutdown
     ;;
 debug)
     mkdir -p tmp
-    qemu-system-x86_64 -cdrom nyxos.iso -m 2G -cpu qemu64 -vga std -s -S -d int,guest_errors,cpu_reset -no-reboot -no-shutdown -D tmp/qemu.log &
+    qemu-system-x86_64 -cdrom nyxos.iso -m 4G -cpu qemu64 -vga std -s -S -d int,guest_errors,cpu_reset -no-reboot -no-shutdown -D tmp/qemu.log &
     gdb
     ;;
 *)
