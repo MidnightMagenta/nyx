@@ -24,6 +24,10 @@ static inline void bm_clear(bitmap_word_t *bitmap, size_t bit) {
     bitmap[bit >> __BITMAP_WORD_SHIFT] &= ~(__BITMAP_ONE << (bit & __BITMAP_WORD_MASK));
 }
 
+static inline void bm_flip(bitmap_word_t *bitmap, size_t bit) {
+    bitmap[bit >> __BITMAP_WORD_SHIFT] ^= (__BITMAP_ONE << (bit & __BITMAP_WORD_MASK));
+}
+
 static inline int bm_get(bitmap_word_t *bitmap, size_t bit) {
     return ((bitmap[bit >> __BITMAP_WORD_SHIFT] >> (bit & __BITMAP_WORD_MASK)) & __BITMAP_ONE);
 }

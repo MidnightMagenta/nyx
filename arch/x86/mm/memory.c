@@ -10,7 +10,6 @@
 #include <nyx/mem_units.h>
 #include <nyx/minmax.h>
 #include <nyx/panic.h>
-#include <nyx/printk.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
 

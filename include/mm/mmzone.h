@@ -18,7 +18,7 @@ struct free_area_s {
     size_t free_count;
 };
 
-struct zone_s {
+typedef struct zone_s {
     size_t free_pages;
     // size_t pages_min, pages_low, pages_high;
 
@@ -31,7 +31,7 @@ struct zone_s {
     size_t       present_pages;
 
     char *name;
-};
+} zone_t;
 
 enum zone_type {
 #ifdef CONFIG_ZONE_DMA

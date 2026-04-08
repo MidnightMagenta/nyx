@@ -1,4 +1,4 @@
-#include <nyx/printk.h>
+#include <nyx/kernel.h>
 
 #ifdef CONFIG_KERNEL_TESTS
 extern void __do_kernel_tests();
