@@ -6,9 +6,6 @@
 #include <nyx/panic.h>
 #include <nyx/types.h>
 
-extern char __image_start;
-extern char __image_end;
-
 void init_memblock() {
     int                 res;
     struct boot_params *bp = (struct boot_params *) bootparams;
@@ -28,12 +25,5 @@ void init_memblock() {
 
     if ((res = memblock_reserve((phys_addr_t) bootparams, ALIGN_UP(sizeof(struct boot_params), PAGE_SIZE))) != 0) {
         early_panic("memblock: failed to reserve boot_params. ecode: %d", res);
-    }
-
-    u64 kernel_phys_base = bp->kernel_load_base;
-    u64 kernel_phys_end  = ((u64) &__image_end - (u64) &__image_start) + bp->kernel_load_base;
-
-    if ((res = memblock_reserve(kernel_phys_base, kernel_phys_end - kernel_phys_base)) != 0) {
-        early_panic("memblock: failed to reserve kernel. ecode: %d", res);
     }
 }

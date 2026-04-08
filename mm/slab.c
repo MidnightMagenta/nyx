@@ -125,7 +125,7 @@ void *kmem_cache_free(kmem_cache_t *cache, void *obj) {
     //     kmem_bufctl = kmem_slab.first
     //     kmem_slab.first = kmem_bufctl
     //
-    // if CONFIG_DEBUG
+    // if __DEBUG
     //      run destructor
     //      memset to 0xAF
 }

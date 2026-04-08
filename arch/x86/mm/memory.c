@@ -143,7 +143,7 @@ static void __init init_zones() {
         zone->name           = zones[i].name;
     }
 
-#ifdef CONFIG_DEBUG
+#ifdef __DEBUG
     for (size_t i = 0; i < MAX_NR_ZONES; ++i) {
         pr_dbg("zone %s:\n  "
                "mem_map addr:  0x%lx\n  "
@@ -203,15 +203,12 @@ void __init init_memmap() {
         pfn_t        pfn  = i + contigmem_pagedata.start_pfn;
 
         memset(page, 0, sizeof(struct page));
-
-        if (pfn_to_addr(pfn) >= memmap_allocation && pfn_to_addr(pfn) <= (memmap_allocation + memmap_size)) {
-            SetPageReserved(page);
-            continue;
-        }
-
-        if (get_mem_type(pfn) != MMAP_TYPE_AVAILABLE) { SetPageReserved(page); }
-
         page->list = (struct list_head) LIST_HEAD_INIT(page->list);
+        SetPageReserved(page);
+
+        if (memblock_is_reserved(pfn_to_addr(pfn), PAGE_SIZE)) { continue; }
+
+        if (get_mem_type(pfn) == MMAP_TYPE_AVAILABLE) { ClearPageReserved(page); }
     }
 
     init_zones();

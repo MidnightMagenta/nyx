@@ -16,3 +16,6 @@
 #define __unused      __attribute__((unused))
 #define __unused_p(p) (void) p
 #endif
+
+#define __weak          __attribute__((weak))
+#define __weak_alias(a) __attribute__((weak, alias(a)))

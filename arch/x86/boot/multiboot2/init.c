@@ -459,9 +459,10 @@ static void mmap_insert_region(struct mmap_entry *mmap, int *n, u64 base, u64 si
     mmap_sort(mmap, n);
 }
 
-static int create_mmap(const struct mb2_tag_mmap *bi_mmap,
-                       const struct memregion    *page_reserved_range,
-                       struct boot_params        *bootparams) {
+static int create_mmap(const struct mb2_tag_mmap    *bi_mmap,
+                       const struct kernel_loadinfo *loadinfo,
+                       const struct memregion       *page_reserved_range,
+                       struct boot_params           *bootparams) {
     int mmap_entry_count = 0;
     u64 mmap_base, mmap_size;
     u32 mmap_type;
@@ -514,6 +515,12 @@ static int create_mmap(const struct mb2_tag_mmap *bi_mmap,
                        page_reserved_range->size,
                        MMAP_TYPE_BOOT_RECLAIMABLE);
 
+    mmap_insert_region(bootparams->mmap,
+                       &mmap_entry_count,
+                       loadinfo->k_pregion.base,
+                       loadinfo->k_pregion.size,
+                       MMAP_TYPE_RESERVED);
+
     mmap_sort(bootparams->mmap, &mmap_entry_count);
     mmap_merge(bootparams->mmap, &mmap_entry_count);
 
@@ -561,7 +568,7 @@ static int create_boot_params(u64                           bi,
             case MB2_TAG_BOOTDEV:
                 break;
             case MB2_TAG_MMAP:
-                if ((res = create_mmap((struct mb2_tag_mmap *) bi_tag, page_reserved_range, *bootparams))) {
+                if ((res = create_mmap((struct mb2_tag_mmap *) bi_tag, loadinfo, page_reserved_range, *bootparams))) {
                     return res;
                 }
                 break;

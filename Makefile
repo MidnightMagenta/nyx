@@ -56,10 +56,9 @@ LDFLAGS := -static -Bsymbolic -nostdlib
 
 # --------------------------------
 
-ARCHIVES := init/initar.o \
-			kernel/kernelar.o \
-			mm/mmar.o
-LIBS     := lib/libnyx.a
+ARCHIVES := init/initar.o kernel/kernelar.o \
+			mm/mmar.o lib/nyxliba.o
+LIBS     :=
 
 SUBDIRS := init kernel mm lib
 
@@ -78,7 +77,7 @@ endif
 # Configuration
 # --------------------------------
 
-ifeq ($(CONFIG_DEBUG),y)
+ifdef CONFIG_DEBUG
 CFLAGS += -O0 -g -D__DEBUG
 else
 CFLAGS += -O2
@@ -89,16 +88,17 @@ SUBDIRS += tests
 ARCHIVES += tests/kerneltestsar.o
 endif
 
-ifeq ($(CONFIG_EXTRA_WARNINGS),y)
+ifdef CONFIG_EXTRA_WARNINGS
 CFLAGS += -Wconversion -Wsign-conversion -Wundef -Wcast-align \
           -Wshift-overflow -Wdouble-promotion -Wpedantic
 endif
 
-ifeq ($(CONFIG_WARNINGS_AS_ERRORS),y)
+ifdef CONFIG_WARNINGS_AS_ERRORS
 CFLAGS += -Werror
 endif
 
 CFLAGS += -include $(TOPDIR)/include/generated/autoconf.h
+CFLAGS += -include $(TOPDIR)/include/generated/version.h
 
 include arch/$(ARCH)/Makefile
 
@@ -114,7 +114,7 @@ vmnyx: nyxsubdirs $(ARCH_LINK)
 		$(LIBS) \
 		-o $@
 
-nyxsubdirs: include/generated/autoconf.h
+nyxsubdirs: include/generated/autoconf.h include/generated/version.h
 	$(Q)set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i; done
 
 tools:
@@ -137,6 +137,9 @@ distclean: clean
 # --------------------------------
 # Rules for setting up the project
 # --------------------------------
+
+include/generated/version.h:
+	$(Q)./scripts/mkversion.sh
 
 include/generated/autoconf.h: .config
 	$(Q)mkdir -p include/generated

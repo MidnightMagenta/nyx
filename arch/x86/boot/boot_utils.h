@@ -13,7 +13,7 @@
 #define pr_warn(f, ...)  printb("Warning: " f, ##__VA_ARGS__)
 #define pr_info(f, ...)  printb("Info: " f, ##__VA_ARGS__)
 
-#ifdef CONFIG_DEBUG
+#ifdef __DEBUG
 #define pr_dbg(f, ...) printb(f, ##__VA_ARGS__)
 #else
 #define pr_dbg(f, ...)

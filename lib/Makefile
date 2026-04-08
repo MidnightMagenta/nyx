@@ -1,4 +1,4 @@
-L_OBJS := memset.o memcpy.o memmove.o strlen.o strcmp.o strcpy.o
-L_TARGET := libnyx.a
+O_OBJS := memset.o memcpy.o memmove.o strlen.o strcmp.o strcpy.o
+O_TARGET := nyxliba.o
 
 include $(TOPDIR)/Rules.mk
