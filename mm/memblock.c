@@ -165,6 +165,19 @@ int __init memblock_is_reserved(phys_addr_t addr, size_t size) {
     return 0;
 }
 
+static const struct memblock_region *memblock_get_reserved_region(phys_addr_t addr) {
+    for (size_t i = 0; i < memblock.reserved.cnt; ++i) {
+        struct memblock_region *r = &memblock.reserved.regions[i];
+
+        u64 rb = r->base;
+        u64 re = r->base + r->size;
+
+        if (addr < re && addr > rb) { return r; }
+    }
+
+    return NULL;
+}
+
 int __init memblock_is_memory(phys_addr_t addr, size_t size) {
     for (size_t i = 0; i < memblock.memory.cnt; ++i) {
         struct memblock_region *r = &memblock.memory.regions[i];
@@ -194,6 +207,12 @@ static int __init memblock_alloc_bottom_up(size_t *size, size_t alignment, phys_
 
         while (cand + sz <= end) {
             if (memblock_is_memory(cand, sz) && !memblock_is_reserved(cand, sz)) {
+                if (memblock_is_reserved(cand, sz)) {
+                    const struct memblock_region *reserved = memblock_get_reserved_region(cand);
+                    if (!reserved) { continue; }
+                    cand = reserved->base + reserved->size;
+                    continue;
+                }
 
                 memblock_reserve(cand, sz);
 
@@ -223,7 +242,13 @@ static int __init memblock_alloc_top_down(size_t *size, size_t alignment, phys_a
         phys_addr_t cand = ALIGN_DOWN((end - sz), alignment);
 
         while (cand >= start) {
-            if (memblock_is_memory(cand, sz) && !memblock_is_reserved(cand, sz)) {
+            if (memblock_is_memory(cand, sz)) {
+                if (memblock_is_reserved(cand, sz)) {
+                    const struct memblock_region *reserved = memblock_get_reserved_region(cand);
+                    if (!reserved) { continue; }
+                    cand = reserved->base - sz;
+                    continue;
+                }
                 memblock_reserve(cand, sz);
 
                 *out  = cand;
