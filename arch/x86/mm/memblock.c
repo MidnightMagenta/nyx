@@ -1,6 +1,6 @@
 #include <asi/bootparam.h>
+#include <asi/mmap.h>
 #include <asi/page.h>
-#include <asi/setupdata.h>
 #include <mm/memblock.h>
 #include <nyx/align.h>
 #include <nyx/panic.h>
@@ -15,7 +15,7 @@ void init_memblock() {
             (struct mmap_entry *) ((char *) bp->mmap + bp->mmap_entry_count * sizeof(struct mmap_entry));
 
     while (entry < end && entry->type != MMAP_TYPE_NONE) {
-        if (entry->type == MMAP_TYPE_AVAILABLE) {
+        if (entry->type == MMAP_TYPE_RAM) {
             if ((res = memblock_add_memory(entry->addr, entry->size)) != 0) {
                 early_panic("memblock: failed to add memory. ecode: %d", res);
             }

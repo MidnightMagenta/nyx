@@ -1,14 +1,14 @@
 #ifndef _ASI_BOOT_H
 #define _ASI_BOOT_H
 
-#include <asi/setupdata.h>
+#include <asi/mmap.h>
 #include <nyx/compiler.h>
 #include <nyx/types.h>
 
 #define BP_VERSION_NONE 0
 #define BP_VERSION_1    1
 
-#define MMAP_MAX_ENTRIES 128
+#define MMAP_MAX_ENTRIES MMAP_MAX
 
 struct boot_params {
     u32               version;                /* 0x000 */

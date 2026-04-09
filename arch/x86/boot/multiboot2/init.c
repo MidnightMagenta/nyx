@@ -5,8 +5,8 @@
 #include "multiboot2.h"
 #include <asi/bootparam.h>
 #include <asi/memory.h>
+#include <asi/mmap.h>
 #include <asi/page.h>
-#include <asi/setupdata.h>
 #include <nyx/align.h>
 #include <nyx/mem_units.h>
 #include <nyx/stddef.h>
@@ -482,7 +482,7 @@ static int create_mmap(const struct mb2_tag_mmap    *bi_mmap,
 
         switch (mmap_entry->type) {
             case MB2_MMAP_AVAILABLE:
-                mmap_type = MMAP_TYPE_AVAILABLE;
+                mmap_type = MMAP_TYPE_RAM;
                 break;
             case MB2_MMAP_ACPI_RECLAIMABLE:
                 mmap_type = MMAP_TYPE_ACPI_RECLAIMABLE;

@@ -27,7 +27,7 @@ static inline void __init pr_mmap() {
         pr_info("memmap: [0x%lx 0x%lx] - %s\n",
                 bootparams->mmap[i].addr,
                 bootparams->mmap[i].addr + bootparams->mmap[i].size,
-                mmap_type_string(&bootparams->mmap[i]));
+                mmap_type_string(bootparams->mmap[i].type));
     }
 }
 
@@ -207,7 +207,7 @@ void __init init_memmap() {
 
         if (memblock_is_reserved(pfn_to_addr(pfn), PAGE_SIZE)) { continue; }
 
-        if (get_mem_type(pfn) == MMAP_TYPE_AVAILABLE) { ClearPageReserved(page); }
+        if (get_mem_type(pfn) == MMAP_TYPE_RAM) { ClearPageReserved(page); }
     }
 
     init_zones();
