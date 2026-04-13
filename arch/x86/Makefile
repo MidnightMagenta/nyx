@@ -11,7 +11,7 @@ CFLAGS += -m64 -m80387 -mno-sse -mno-sse2 -mno-mmx \
 ASFLAGS += -m64
 ARCH_LINK := $(TOPDIR)/arch/$(ARCH)/X86_64_link.lds
 
-.PHONY: image archclean
+PHONY += image archclean
 
 MAKEBOOT := $(MAKE) -C arch/$(ARCH)/boot
 

@@ -63,7 +63,7 @@ static void __init memblock_merge_regions(struct memblock_region *const r, size_
 
 static int __init memblock_add_region(struct memblock_type *regions, phys_addr_t addr, size_t size) {
     if (regions->cnt >= regions->max) { return -ENOSPC; }
-    regions->regions[regions->cnt++] = (struct memblock_region) {addr, size};
+    regions->regions[regions->cnt++] = (struct memblock_region){addr, size};
     memblock_sort_and_merge(regions->regions, &regions->cnt);
     regions->total_size += size;
     return 0;
@@ -274,19 +274,4 @@ int __init memblock_aligned_alloc(size_t *size, size_t alignment, phys_addr_t *o
 
     if (memblock.bottom_up) { return memblock_alloc_bottom_up(size, alignment, out); }
     return memblock_alloc_top_down(size, alignment, out);
-}
-
-u64 __init memblock_getstat(int stat) {
-    switch (stat) {
-        case MEMBLOCK_STAT_MEMSZ:
-            return memblock.memory.total_size;
-        case MEMBLOCK_STAT_RESSZ:
-            return memblock.reserved.total_size;
-        case MEMBLOCK_STAT_MEM_REGION_CNT:
-            return memblock.memory.cnt;
-        case MEMBLOCK_STAT_RES_REGION_CNT:
-            return memblock.reserved.cnt;
-        default:
-            return 0;
-    }
 }

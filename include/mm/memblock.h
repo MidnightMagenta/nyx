@@ -40,6 +40,5 @@ int memblock_is_memory(phys_addr_t addr, size_t size);
 int memblock_alloc(size_t *size, phys_addr_t *out);
 int memblock_aligned_alloc(size_t *size, size_t alignment, phys_addr_t *out);
 int memblock_free_all();
-u64 memblock_getstat(int stat);
 
 #endif

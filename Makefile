@@ -62,7 +62,7 @@ LIBS     :=
 
 SUBDIRS := init kernel mm lib
 
-.PHONY: all do-all vmnyx nyxsubdirs clean distclean symlinks menuconfig config docs tools
+PHONY := all do-all vmnyx nyxsubdirs clean distclean symlinks menuconfig config docs tools
 
 all: do-all
 
@@ -106,6 +106,8 @@ include arch/$(ARCH)/Makefile
 # General rules for building the kernel
 # --------------------------------
 
+PHONY += vmnyx nyxsubdirs tools
+
 vmnyx: nyxsubdirs $(ARCH_LINK)
 	@echo -e "LD $@"
 	$(Q)$(LD) $(LDFLAGS) \
@@ -124,6 +126,8 @@ tools:
 # Cleanup rules
 # --------------------------------
 
+PHONY += clean distclean
+
 clean: archclean
 	find . -type f ! -path './scripts/*' -name '*.[oasd]' -delete
 	rm -rf isodir tmp
@@ -138,12 +142,18 @@ distclean: clean
 # Rules for setting up the project
 # --------------------------------
 
-include/generated/version.h:
-	$(Q)./scripts/mkversion.sh
+include/generated/version.h: include/generated/version.h.tmp
+	@if ! cmp -s $< $@; then cp $< $@; fi
+
+include/generated/version.h.tmp: FORCE
+	$(Q)rm -f include/generated/version.h.tmp
+	$(Q)./scripts/mkversion.sh include/generated/version.h.tmp
 
 include/generated/autoconf.h: .config
 	$(Q)mkdir -p include/generated
 	$(Q)./scripts/Kconfig/genconfig.py --header-path include/generated/autoconf.h
+
+PHONY += symlinks menuconfig config docs
 
 symlinks:
 	rm -f include/asi include/uapi/asi
@@ -159,3 +169,7 @@ config: symlinks
 docs:
 	$(Q)mkdir -p out/docs
 	$(Q)doxygen
+
+FORCE:
+
+.PHONY: $(PHONY)
