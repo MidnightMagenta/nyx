@@ -1,3 +1,19 @@
 menu "Memory configuration"
 
+menu "Memblock"
+
+config MEMBLOCK_DEV_PRINT
+    bool "Print debug information"
+    default n
+
+endmenu
+
+menu "Physmem allocator"
+
+config PHYSMEM_DEV_PRINT
+    bool "Print debug information"
+    default n
+
+endmenu
+
 endmenu

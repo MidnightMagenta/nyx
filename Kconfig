@@ -18,6 +18,17 @@ config WARNINGS_AS_ERRORS
     bool "Treat warnings as errors"
     default n
 
+config PRINTK_VERBOSITY
+    int "Printk message verbosity levels"
+    range 0 4
+    default 2
+    help
+        0 = none
+        1 = errors only
+        2 = errors and warnings
+        3 = errors, warnings, and info
+        4 = errors, warnings, info, and verbose info
+
 endmenu
 
 source "arch/$(ARCH)/Kconfig"

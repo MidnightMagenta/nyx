@@ -1,7 +1,7 @@
 #include <asi/system.h>
-#include <nyx/early_printk.h>
 #include <nyx/linkage.h>
 #include <nyx/panic.h>
+#include <nyx/printk.h>
 #include <nyx/stdarg.h>
 #include <nyx/stddef.h>
 
@@ -11,8 +11,8 @@ void __init early_panic(const char *fmt, ...) {
     va_list params;
     va_start(params, fmt);
 
-    early_vprintk(fmt, params);
-    early_printk("\n");
+    vprintk(fmt, params);
+    printk("\n");
 
     va_end(params);
 

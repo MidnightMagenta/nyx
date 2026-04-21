@@ -23,16 +23,16 @@
 #define GFP_USER     (__GFP_WAIT)
 #define GFP_HIGHUSER (__GFP_WAIT | __GFP_HIGHMEM)
 
-struct page *pm_alloc_pages(u32 gfp_mask, u32 order);
+struct page *pm_alloc_pages(int gfp_mask, int order);
 #define pm_alloc_page(gfp_mask) pm_alloc_pages((gfp_mask), 0)
 
-phys_addr_t __pm_get_free_pages(u32 gfp_mask, u32 order);
+phys_addr_t __pm_get_free_pages(int gfp_mask, int order);
 #define __pm_get_free_page(gfp_mask)        __pm_get_free_pages((gfp_mask), 0)
 #define __pm_get_dma_pages(gfp_mask, order) __pm_get_free_pages((gfp_mask) | __GFP_DMA, (order))
 #define pm_get_zeroed_page(gfp_mask)        __pm_get_free_pages((gfp_mask) | __GFP_ZERO, 0)
 
-void __pm_free_pages(struct page *page, u32 order);
-void pm_free_pages(phys_addr_t addr, u32 order);
+void __pm_free_pages(struct page *page, int order);
+void pm_free_pages(phys_addr_t addr, int order);
 #define __free_page(page) __pm_free_pages(page, 0)
 #define free_page(addr)   pm_free_pages(addr, 0)
 

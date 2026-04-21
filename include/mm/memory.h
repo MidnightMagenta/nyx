@@ -2,13 +2,32 @@
 #define _MM_MEMORY_H
 
 #include <asi/page.h>
+#include <mm/mm_types.h>
+#include <mm/mmzone.h>
 
 extern struct pg_data_s *pgdata;
 
-#define pfn_to_page(pfn) (&pgdata->mem_map[pfn - pgdata->start_pfn])
-#define page_to_pfn(pg)  ((pg - pgdata->mem_map) + pgdata->start_pfn)
+static inline pfn_t page_to_pfn(struct page *page) {
+    zone_t *zone = &pgdata->zones[page->zone];
+    return (page - zone->zone_mem_map) + zone->zone_start_pfn;
+}
 
-#define phys_to_page(phys) (pfn_to_page(addr_to_pfn(phys)))
-#define page_to_phys(pg)   (pfn_to_addr(page_to_pfn(pg)))
+static inline struct page *pfn_to_page(pfn_t pfn) {
+    for (int i = 0; i < MAX_NR_ZONES; i++) {
+        zone_t *zone = &pgdata->zones[i];
+        if (pfn >= zone->zone_start_pfn && pfn < zone->zone_start_pfn + zone->spanned_pages) {
+            return &zone->zone_mem_map[pfn - zone->zone_start_pfn];
+        }
+    }
+    return NULL;
+}
+
+static inline struct page *phys_to_page(phys_addr_t phys) {
+    return pfn_to_page(phys >> PAGE_SHIFT);
+}
+
+static inline phys_addr_t page_to_phys(struct page *page) {
+    return (phys_addr_t) (page_to_pfn(page) << PAGE_SHIFT);
+}
 
 #endif

@@ -12,6 +12,9 @@ struct list_head {
     struct list_head *next, *prev;
 };
 
+#define list_entry(ptr, type, member)       container_of(ptr, type, member)
+#define list_first_entry(ptr, type, member) list_entry((ptr)->next, type, member)
+
 static inline void __list_add(struct list_head *new, struct list_head *prev, struct list_head *next) {
     next->prev = new;
     prev->next = new;

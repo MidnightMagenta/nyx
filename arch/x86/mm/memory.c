@@ -15,57 +15,9 @@
 
 #include <asi/bootparam.h>
 #include <asi/memory.h>
-#include <asi/setupdata.h>
+#include <asi/mmap.h>
 
 #define pr_fmt(fmt) "memory: " fmt "\n"
-
-extern char __image_start;
-extern char __image_end;
-
-static inline void __init pr_mmap() {
-    for (size_t i = 0; i < bootparams->mmap_entry_count; ++i) {
-        pr_info("memmap: [0x%lx 0x%lx] - %s\n",
-                bootparams->mmap[i].addr,
-                bootparams->mmap[i].addr + bootparams->mmap[i].size,
-                mmap_type_string(bootparams->mmap[i].type));
-    }
-}
-
-static inline phys_addr_t __init get_mem_bottom() {
-    static phys_addr_t lowest = PHYS_ADDR_MAX;
-
-    if (lowest != PHYS_ADDR_MAX) { return lowest; }
-
-    for (size_t i = 0; i < bootparams->mmap_entry_count; ++i) {
-        if (!mmap_is_memory(&bootparams->mmap[i])) { continue; }
-
-        lowest = MIN(lowest, bootparams->mmap[i].addr);
-    }
-
-    return lowest;
-}
-
-static inline pfn_t __init get_lowest_pfn() {
-    return addr_to_pfn(ALIGN_DOWN(get_mem_bottom(), PAGE_SIZE));
-}
-
-static inline phys_addr_t __init get_mem_top() {
-    static phys_addr_t highest = 0;
-
-    if (highest != 0) { return highest; }
-
-    for (size_t i = 0; i < bootparams->mmap_entry_count; ++i) {
-        if (!mmap_is_memory(&bootparams->mmap[i])) { continue; }
-
-        highest = MAX(highest, bootparams->mmap[i].addr + bootparams->mmap[i].size);
-    }
-
-    return highest;
-}
-
-static inline pfn_t __init get_highest_pfn() {
-    return addr_to_pfn(ALIGN_UP(get_mem_top(), PAGE_SIZE));
-}
 
 extern pg_data_t contigmem_pagedata;
 
@@ -74,75 +26,13 @@ struct {
     phys_addr_t top;
     char       *name;
 } zones[MAX_NR_ZONES] __initdata = {
-        [ZONE_DMA]    = {0, 16 * MiB, "ZONE_DMA"},
-        [ZONE_DMA32]  = {16 * MiB, 4 * GiB, "ZONE_DMA32"},
-        [ZONE_NORMAL] = {4 * GiB, PHYS_ADDR_MAX, "ZONE_NORMAL"},
+        [ZONE_DMA]    = {0, 16 * MiB, "DMA"},
+        [ZONE_DMA32]  = {16 * MiB, 4 * GiB, "DMA32"},
+        [ZONE_NORMAL] = {4 * GiB, PHYS_ADDR_MAX, "NORMAL"},
 };
 
-static void __init get_mem_limits_within_range(phys_addr_t *loaddr, phys_addr_t *hiaddr) {
-    phys_addr_t low = PHYS_ADDR_MAX, high = 0;
-
-    for (size_t i = 0; i < bootparams->mmap_entry_count; ++i) {
-        struct mmap_entry *ent = &bootparams->mmap[i];
-        phys_addr_t        start, end;
-
-        if (!mmap_is_memory(ent)) { continue; }
-
-        start = ent->addr;
-        end   = ent->addr + ent->size;
-
-        if (*loaddr > end || *hiaddr < start) { continue; }
-
-        // clang-format off
-        if (start >= *loaddr || start <= *hiaddr) { 
-            low = MIN(low, MAX(start, *loaddr)); 
-        }
-        if (end >= *loaddr || start <= *hiaddr) { 
-            high = MAX(high, MIN(end, *hiaddr)); 
-        }
-        // clang-format on
-    }
-
-    if (low > high) {
-        *loaddr = 0;
-        *hiaddr = 0;
-        return;
-    }
-
-    *loaddr = low;
-    *hiaddr = high;
-}
-
-static void __init fixup_zones() {
-    for (size_t i = 0; i < ARRAY_SIZE(zones); ++i) { get_mem_limits_within_range(&zones[i].base, &zones[i].top); }
-}
-
-static pfn_t __init get_page_count_for_range(pfn_t start_pfn, pfn_t end_pfn) {
-    pfn_t page_cnt = 0;
-
-    for (size_t i = start_pfn; i < end_pfn && i < contigmem_pagedata.end_pfn; ++i) {
-        if (PageReserved(&contigmem_pagedata.mem_map[i])) { continue; }
-        page_cnt++;
-    }
-
-    return page_cnt;
-}
-
-static void __init init_zones() {
-    fixup_zones();
-
-    for (size_t i = 0; i < ARRAY_SIZE(zones); ++i) {
-        struct zone_s *zone = &contigmem_pagedata.zones[i];
-        memset(zone, 0, sizeof(struct zone_s));
-
-        zone->zone_mem_map   = pfn_to_page(addr_to_pfn(zones[i].base));
-        zone->zone_start_pfn = addr_to_pfn(zones[i].base);
-        zone->spanned_pages  = (zones[i].top - zones[i].base) >> PAGE_SHIFT;
-        zone->present_pages  = get_page_count_for_range(addr_to_pfn(zones[i].base), addr_to_pfn(zones[i].top));
-        zone->name           = zones[i].name;
-    }
-
 #ifdef __DEBUG
+static void print_zones() {
     for (size_t i = 0; i < MAX_NR_ZONES; ++i) {
         pr_dbg("zone %s:\n  "
                "mem_map addr:  0x%lx\n  "
@@ -155,60 +45,111 @@ static void __init init_zones() {
                contigmem_pagedata.zones[i].spanned_pages,
                contigmem_pagedata.zones[i].present_pages);
     }
+}
 #endif
+
+static void __init get_hi_lo_pfn(pfn_t *lo, pfn_t *hi) {
+    u64         start, end, idx = 0;
+    mmap_type_t mem_type;
+
+    *lo = PFN_MAX;
+    *hi = 0;
+    while (mmap_get_next(&start, &end, &mem_type, &idx)) {
+        if (!mmap_type_is_memory(mem_type)) { continue; }
+        *lo = MIN(*lo, start >> PAGE_SHIFT);
+        *hi = MAX(*hi, end >> PAGE_SHIFT);
+    }
 }
 
-static u32 __init get_mem_type(pfn_t pfn) {
-    phys_addr_t addr = pfn_to_addr(pfn);
+static void __init init_zone_memmap(zone_t *zone, int zone_type) {
+    u64          start, end, idx;
+    mmap_type_t  mem_type;
+    const pfn_t  zone_start = zone->zone_start_pfn, zone_end = zone_start + zone->spanned_pages;
+    pfn_t        start_pfn, end_pfn;
+    size_t       present_nr = 0;
+    struct page *page;
 
-    if (addr >= bootparams->kernel_load_base &&
-        (addr + PAGE_SIZE) <= (bootparams->kernel_load_base + (phys_addr_t) (&__image_end - &__image_start))) {
-        return MMAP_TYPE_RESERVED;
-    }
+    memset(zone->zone_mem_map, 0, zone->spanned_pages * sizeof(struct page));
 
-    for (size_t i = 0; i < bootparams->mmap_entry_count; ++i) {
-        struct mmap_entry *ent = &bootparams->mmap[i];
-
-        if (addr >= ent->addr && (addr + PAGE_SIZE) <= (ent->addr + ent->size)) { return ent->type; }
-    }
-
-    return MMAP_TYPE_NONE;
-}
-
-void __init init_memmap() {
-    int         res;
-    pfn_t       lopfn, hipfn;
-    phys_addr_t memmap_allocation;
-    size_t      memmap_size;
-
-    pr_mmap();
-
-    lopfn = get_lowest_pfn();
-    hipfn = get_highest_pfn();
-
-    memmap_size = (hipfn - lopfn) * sizeof(struct page);
-
-    if ((res = memblock_alloc(&memmap_size, &memmap_allocation)) ||
-        memmap_size < ((hipfn - lopfn) * sizeof(struct page))) {
-        early_panic("could not allocate mem map: %d", res);
-    }
-
-    contigmem_pagedata.mem_map   = (struct page *) phys_to_virt(memmap_allocation);
-    contigmem_pagedata.start_pfn = lopfn;
-    contigmem_pagedata.end_pfn   = hipfn;
-
-    for (size_t i = 0; i < (hipfn - lopfn); ++i) {
-        struct page *page = &contigmem_pagedata.mem_map[i];
-        pfn_t        pfn  = i + contigmem_pagedata.start_pfn;
-
-        memset(page, 0, sizeof(struct page));
-        page->list = (struct list_head) LIST_HEAD_INIT(page->list);
+    for (idx = 0; idx < zone->spanned_pages; ++idx) {
+        page = &zone->zone_mem_map[idx];
         SetPageReserved(page);
-
-        if (memblock_is_reserved(pfn_to_addr(pfn), PAGE_SIZE)) { continue; }
-
-        if (get_mem_type(pfn) == MMAP_TYPE_RAM) { ClearPageReserved(page); }
+        page->zone = zone_type;
+        page->list = (struct list_head) LIST_HEAD_INIT(page->list);
     }
 
+    idx = 0;
+    while (mmap_get_next(&start, &end, &mem_type, &idx)) {
+        start_pfn = ALIGN_UP(start, PAGE_SIZE) >> PAGE_SHIFT;
+        end_pfn   = ALIGN_DOWN(end, PAGE_SIZE) >> PAGE_SHIFT;
+
+        if (!mmap_type_is_memory(mem_type)) { continue; }
+        if (end_pfn <= zone_start) { continue; }
+        if (start_pfn >= zone_end) { continue; }
+
+        if (start_pfn < zone_start) { start_pfn = zone_start; }
+        if (end_pfn > zone_end) { end_pfn = zone_end; }
+
+        while (start_pfn < end_pfn) {
+            page = (start_pfn - zone->zone_start_pfn) + zone->zone_mem_map;
+            ClearPageReserved(page);
+            present_nr++;
+            start_pfn++;
+        }
+    }
+
+    zone->present_pages = present_nr;
+}
+
+static void __init init_zone(zone_t *zone, int zone_type) {
+    pfn_t lopfn, hipfn;
+
+    memset(zone, 0, sizeof(zone_t));
+
+    get_hi_lo_pfn(&lopfn, &hipfn);
+
+    lopfn = MAX(zones[zone_type].base >> PAGE_SHIFT, lopfn);
+    hipfn = MIN(zones[zone_type].top >> PAGE_SHIFT, hipfn);
+
+    /* don't bother with 0 sized zones */
+    if (hipfn == lopfn) { return; }
+
+    zone->zone_start_pfn = lopfn;
+    zone->spanned_pages  = hipfn - lopfn;
+    zone->name           = zones[zone_type].name;
+
+    zone->zone_mem_map = (struct page *) memblock_aligned_alloc(zone->spanned_pages * sizeof(struct page), PAGE_SIZE);
+
+    for (size_t i = 0; i < MAX_ORDER; ++i) {
+        zone->free_area[i].list[0] = (struct list_head) LIST_HEAD_INIT(zone->free_area[i].list[0]);
+    }
+
+    init_zone_memmap(zone, zone_type);
+}
+
+static void __init init_zonelists() {
+    pgdata->zonelists[ZONE_DMA].zones[0] = &pgdata->zones[ZONE_DMA];
+    pgdata->zonelists[ZONE_DMA].zones[1] = NULL;
+
+    pgdata->zonelists[ZONE_DMA32].zones[0] = &pgdata->zones[ZONE_DMA32];
+    pgdata->zonelists[ZONE_DMA32].zones[1] = &pgdata->zones[ZONE_DMA];
+    pgdata->zonelists[ZONE_DMA32].zones[2] = NULL;
+
+    pgdata->zonelists[ZONE_NORMAL].zones[0] = &pgdata->zones[ZONE_NORMAL];
+    pgdata->zonelists[ZONE_NORMAL].zones[1] = &pgdata->zones[ZONE_DMA32];
+    pgdata->zonelists[ZONE_NORMAL].zones[2] = &pgdata->zones[ZONE_DMA];
+    pgdata->zonelists[ZONE_NORMAL].zones[3] = NULL;
+}
+
+static void __init init_zones() {
+    for (size_t i = 0; i < __MAX_NR_ZONES; ++i) { init_zone(&pgdata->zones[i], i); }
+    init_zonelists();
+}
+
+void __init arch_init_memory() {
     init_zones();
+
+#ifdef __DEBUG
+    print_zones();
+#endif
 }

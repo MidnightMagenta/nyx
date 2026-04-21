@@ -1,7 +1,7 @@
 #include <asi/memory.h>
 #include <asi/page.h>
 #include <mm/mm_types.h>
-#include <mm/pmm.h>
+#include <mm/physmem.h>
 #include <mm/slab.h>
 #include <nyx/align.h>
 #include <nyx/errno.h>

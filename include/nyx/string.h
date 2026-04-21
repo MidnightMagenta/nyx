@@ -2,6 +2,7 @@
 #define _STRING_H
 
 #include <nyx/compiler.h>
+#include <nyx/stdarg.h>
 #include <nyx/stddef.h>
 
 // int    memcmp(const void *a, const void *b, size_t num);
@@ -11,6 +12,8 @@ void  *memmove(void *dest, const void *src, size_t len);
 int    strcmp(const char *a, const char *b);
 char  *strcpy(char *restrict dest, const char *restrict src);
 size_t strlen(const char *s);
-
+size_t strnlen(const char *s, size_t count);
+int    vsprintf(char *buf, const char *fmt, va_list args);
+int    sprintf(char *buf, const char *fmt, ...);
 
 #endif

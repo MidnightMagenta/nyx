@@ -9,9 +9,16 @@
 
 #include <nyx/printk.h>
 
-#define pr_error(f, ...) printk("error [%s:%d]: " f, __FILE__, __LINE__, ##__VA_ARGS__)
-#define pr_warn(f, ...)  printk("warning: " f, ##__VA_ARGS__)
-#define pr_info(f, ...)  printk("info: " f, ##__VA_ARGS__)
+#define __PR(level, f, ...)                                                                                            \
+    do {                                                                                                               \
+        if (CONFIG_PRINTK_VERBOSITY >= (level)) { printk(f, ##__VA_ARGS__); }                                          \
+    } while (0)
+
+#define pr_error(f, ...)   __PR(1, "error [%s:%d]: " f, __FILE__, __LINE__, ##__VA_ARGS__)
+#define pr_warn(f, ...)    __PR(2, "warning: " f, ##__VA_ARGS__)
+#define pr_info(f, ...)    __PR(3, "info: " f, ##__VA_ARGS__)
+#define pr_verbose(f, ...) __PR(4, "verbose: " f, ##__VA_ARGS__);
+
 #ifdef __DEBUG
 #define pr_dbg(f, ...) printk("debug [%s:%d]: " f, __FILE__, __LINE__, ##__VA_ARGS__)
 #else

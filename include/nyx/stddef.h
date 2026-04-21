@@ -19,7 +19,7 @@ typedef s32 ssize_t;
 #endif
 
 #ifndef offsetof
-#define offsetof(type, member) ((size_t) (&((type *) -)->member))
+#define offsetof(type, member) ((size_t) &(((type *) 0)->member))
 #endif
 
 #endif

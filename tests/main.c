@@ -1,5 +1,4 @@
 #include <nyx/printk.h>
-#include <nyx/sprintk.h>
 #include <nyx/stdarg.h>
 #include <nyx/string.h>
 #include <nyx/testing.h>
@@ -11,7 +10,7 @@ void __fail_test(struct test_state *state, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
-    vsprintk(state->emsg, fmt, args);
+    vsprintf(state->emsg, fmt, args);
 
     va_end(args);
 

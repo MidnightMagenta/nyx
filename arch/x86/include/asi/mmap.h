@@ -1,29 +1,23 @@
 #ifndef _ASI_MMAP_H
 #define _ASI_MMAP_H
 
+#include <asi/setupdata.h>
 #include <nyx/compiler.h>
 #include <nyx/types.h>
 
-#define MMAP_MAX 128
+#include <asi/page.h>
 
-#define MMAP_TYPE_NONE             0
-#define MMAP_TYPE_RAM              1
-#define MMAP_TYPE_RESERVED         2
-#define MMAP_TYPE_ACPI_RECLAIMABLE 3
-#define MMAP_TYPE_NVS              4
-#define MMAP_TYPE_UNUSABLE         5
-#define MMAP_TYPE_BOOT_RECLAIMABLE 6
+extern struct mmap_map mmap_map;
 
-typedef u32 mmap_type_t;
+#define mmap_type_is_memory(t) ((t) == MMAP_TYPE_RAM)
+#define mmap_is_memory(entry)  mmap_type_is_memory((entry)->type)
 
-struct mmap_entry {
-    u64         addr;
-    u64         size;
-    mmap_type_t type;
-} __packed;
-
-const char *mmap_type_string(mmap_type_t type);
-
-#define mmap_is_memory(entry) ((entry)->type == MMAP_TYPE_RAM)
+int   mmap_any_mapped(u64 start, u64 end, mmap_type_t type);
+int   mmap_all_mapped(u64 start, u64 end, mmap_type_t type);
+void  mmap_add_region(u64 start, u64 end, mmap_type_t type);
+int   mmap_get_next(u64 *start, u64 *end, mmap_type_t *type, u64 *idx);
+pfn_t mmap_get_highest_pfn();
+pfn_t mmap_get_lowest_pfn();
+void  mmap_setup_map();
 
 #endif
