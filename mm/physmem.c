@@ -1,15 +1,11 @@
-#include <asi/bug.h>
-#include <mm/memblock.h>
 #include <mm/memory.h>
+#include <mm/mm_types.h>
 #include <mm/mmzone.h>
 #include <mm/physmem.h>
-#include <nyx/align.h>
-#include <nyx/kernel.h>
-#include <nyx/limits.h>
 #include <nyx/linkage.h>
 #include <nyx/list.h>
-#include <nyx/minmax.h>
-#include <nyx/panic.h>
+#include <nyx/printk.h>
+#include <nyx/stddef.h>
 #include <nyx/types.h>
 
 #define pr_fmt(fmt) "pmm: " fmt

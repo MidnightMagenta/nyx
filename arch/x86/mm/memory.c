@@ -9,13 +9,12 @@
 #include <nyx/list.h>
 #include <nyx/mem_units.h>
 #include <nyx/minmax.h>
-#include <nyx/panic.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
 
-#include <asi/bootparam.h>
-#include <asi/memory.h>
 #include <asi/mmap.h>
+#include <asi/page.h>
+#include <asi/setupdata.h>
 
 #define pr_fmt(fmt) "memory: " fmt "\n"
 

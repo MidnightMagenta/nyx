@@ -1,11 +1,15 @@
 #include <nyx/kernel.h>
 #include <nyx/linkage.h>
 #include <nyx/minmax.h>
+#include <nyx/printk.h>
 #include <nyx/string.h>
+#include <nyx/types.h>
 
 #include <asi/bootparam.h>
 #include <asi/bug.h>
 #include <asi/mmap.h>
+#include <asi/page.h>
+#include <asi/setupdata.h>
 
 #define pr_fmt(fmt) "mmap: " fmt
 

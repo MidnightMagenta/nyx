@@ -1,6 +1,9 @@
-#include <asi/mmap.h>
 #include <mm/memblock.h>
 #include <nyx/linkage.h>
+#include <nyx/types.h>
+
+#include <asi/mmap.h>
+#include <asi/setupdata.h>
 
 extern void arch_init_memory();
 

@@ -3,15 +3,17 @@
 #include "../printb.h"
 #include "../region_alloc.h"
 #include "multiboot2.h"
-#include <asi/bootparam.h>
-#include <asi/memory.h>
-#include <asi/mmap.h>
-#include <asi/page.h>
+
 #include <nyx/align.h>
 #include <nyx/limits.h>
 #include <nyx/mem_units.h>
 #include <nyx/stddef.h>
 #include <nyx/types.h>
+
+#include <asi/bootparam.h>
+#include <asi/memory.h>
+#include <asi/page.h>
+#include <asi/setupdata.h>
 
 extern char __kernel_blob_start;
 extern char __kernel_blob_end;

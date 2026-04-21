@@ -1,15 +1,10 @@
-#include <asi/memory.h>
 #include <asi/page.h>
-#include <mm/mm_types.h>
 #include <mm/physmem.h>
 #include <mm/slab.h>
-#include <nyx/align.h>
-#include <nyx/errno.h>
 #include <nyx/linkage.h>
 #include <nyx/list.h>
-#include <nyx/panic.h>
-#include <nyx/printk.h>
 #include <nyx/string.h>
+#include <nyx/types.h>
 
 #define pr_fmt(fmt) "slab: " fmt "\n"
 

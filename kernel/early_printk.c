@@ -1,8 +1,6 @@
 #include <nyx/early_printk.h>
 #include <nyx/early_serial.h>
 #include <nyx/linkage.h>
-#include <nyx/stdarg.h>
-#include <nyx/stddef.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
 

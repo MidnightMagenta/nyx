@@ -1,12 +1,9 @@
 #ifndef _MM_PMM_H
 #define _MM_PMM_H
 
-#include <asi/page.h>
-#include <mm/mm_types.h>
-#include <nyx/limits.h>
-#include <nyx/stddef.h>
-#include <nyx/string.h>
 #include <nyx/types.h>
+
+struct page;
 
 #define __GFP_DMA     (1 << 0)
 #define __GFP_DMA32   (1 << 1)

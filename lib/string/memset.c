@@ -1,3 +1,4 @@
+#include <nyx/compiler.h>
 #include <nyx/string.h>
 
 void *__memset_generic(void *ptr, int v, size_t num) {

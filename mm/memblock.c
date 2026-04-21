@@ -5,11 +5,14 @@
 #include <mm/physmem.h>
 #include <nyx/align.h>
 #include <nyx/errno.h>
+#include <nyx/kernel.h>
 #include <nyx/linkage.h>
+#include <nyx/printk.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
 
 #include <asi/bug.h>
+#include <asi/page.h>
 
 #define pr_fmt(fmt) "memblock: " fmt
 
