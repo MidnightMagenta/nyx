@@ -1,15 +1,10 @@
-#include <asi/memory.h>
 #include <asi/page.h>
-#include <mm/mm_types.h>
-#include <mm/pmm.h>
+#include <mm/physmem.h>
 #include <mm/slab.h>
-#include <nyx/align.h>
-#include <nyx/errno.h>
 #include <nyx/linkage.h>
 #include <nyx/list.h>
-#include <nyx/panic.h>
-#include <nyx/printk.h>
 #include <nyx/string.h>
+#include <nyx/types.h>
 
 #define pr_fmt(fmt) "slab: " fmt "\n"
 
@@ -64,7 +59,7 @@ static struct kmem_cache_s cache_cache = {
                 0,
                 0,
         },
-        PMF_NOSLEEP,
+        GFP_ATOMIC,
         1,
         sizeof(kmem_cache_t),
         8,
@@ -125,7 +120,7 @@ void *kmem_cache_free(kmem_cache_t *cache, void *obj) {
     //     kmem_bufctl = kmem_slab.first
     //     kmem_slab.first = kmem_bufctl
     //
-    // if CONFIG_DEBUG
+    // if __DEBUG
     //      run destructor
     //      memset to 0xAF
 }

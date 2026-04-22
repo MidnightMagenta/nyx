@@ -56,14 +56,13 @@ LDFLAGS := -static -Bsymbolic -nostdlib
 
 # --------------------------------
 
-ARCHIVES := init/initar.o \
-			kernel/kernelar.o \
-			mm/mmar.o
-LIBS     := lib/libnyx.a
+ARCHIVES := init/initar.o kernel/kernelar.o \
+			mm/mmar.o lib/nyxliba.o
+LIBS     :=
 
 SUBDIRS := init kernel mm lib
 
-.PHONY: all do-all vmnyx nyxsubdirs clean distclean symlinks menuconfig config docs tools
+PHONY := all do-all vmnyx nyxsubdirs clean distclean symlinks menuconfig config docs tools
 
 all: do-all
 
@@ -78,7 +77,7 @@ endif
 # Configuration
 # --------------------------------
 
-ifeq ($(CONFIG_DEBUG),y)
+ifdef CONFIG_DEBUG
 CFLAGS += -O0 -g -D__DEBUG
 else
 CFLAGS += -O2
@@ -89,22 +88,25 @@ SUBDIRS += tests
 ARCHIVES += tests/kerneltestsar.o
 endif
 
-ifeq ($(CONFIG_EXTRA_WARNINGS),y)
+ifdef CONFIG_EXTRA_WARNINGS
 CFLAGS += -Wconversion -Wsign-conversion -Wundef -Wcast-align \
           -Wshift-overflow -Wdouble-promotion -Wpedantic
 endif
 
-ifeq ($(CONFIG_WARNINGS_AS_ERRORS),y)
+ifdef CONFIG_WARNINGS_AS_ERRORS
 CFLAGS += -Werror
 endif
 
 CFLAGS += -include $(TOPDIR)/include/generated/autoconf.h
+CFLAGS += -include $(TOPDIR)/include/generated/version.h
 
 include arch/$(ARCH)/Makefile
 
 # --------------------------------
 # General rules for building the kernel
 # --------------------------------
+
+PHONY += vmnyx nyxsubdirs tools
 
 vmnyx: nyxsubdirs $(ARCH_LINK)
 	@echo -e "LD $@"
@@ -114,7 +116,7 @@ vmnyx: nyxsubdirs $(ARCH_LINK)
 		$(LIBS) \
 		-o $@
 
-nyxsubdirs: include/generated/autoconf.h
+nyxsubdirs: include/generated/autoconf.h include/generated/version.h
 	$(Q)set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i; done
 
 tools:
@@ -123,6 +125,8 @@ tools:
 # --------------------------------
 # Cleanup rules
 # --------------------------------
+
+PHONY += clean distclean
 
 clean: archclean
 	find . -type f ! -path './scripts/*' -name '*.[oasd]' -delete
@@ -138,9 +142,18 @@ distclean: clean
 # Rules for setting up the project
 # --------------------------------
 
+include/generated/version.h: include/generated/version.h.tmp
+	@if ! cmp -s $< $@; then cp $< $@; fi
+
+include/generated/version.h.tmp: FORCE
+	$(Q)rm -f include/generated/version.h.tmp
+	$(Q)./scripts/mkversion.sh include/generated/version.h.tmp
+
 include/generated/autoconf.h: .config
 	$(Q)mkdir -p include/generated
 	$(Q)./scripts/Kconfig/genconfig.py --header-path include/generated/autoconf.h
+
+PHONY += symlinks menuconfig config docs
 
 symlinks:
 	rm -f include/asi include/uapi/asi
@@ -156,3 +169,7 @@ config: symlinks
 docs:
 	$(Q)mkdir -p out/docs
 	$(Q)doxygen
+
+FORCE:
+
+.PHONY: $(PHONY)

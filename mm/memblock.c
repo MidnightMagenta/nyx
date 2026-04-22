@@ -1,26 +1,49 @@
 #include <mm/memblock.h>
+#include <mm/memory.h>
+#include <mm/mm_types.h>
+#include <mm/mmzone.h>
+#include <mm/physmem.h>
+#include <nyx/align.h>
 #include <nyx/errno.h>
+#include <nyx/kernel.h>
 #include <nyx/linkage.h>
+#include <nyx/printk.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
-#include <nyx/util.h>
 
+#include <asi/bug.h>
+#include <asi/page.h>
+
+#define pr_fmt(fmt) "memblock: " fmt
+
+#ifdef CONFIG_MEMBLOCK_DEV_PRINT
+#define memblock_pr_dev(fmt, ...) printk(pr_fmt(fmt), ##__VA_ARGS__)
+#else
+#define memblock_pr_dev(fmt, ...)
+#endif
+
+/* the maximum number of needed regions is roughly the number of regions in the
+ * sanitised memory map + number of allocations. Since firmware memory maps usually
+ * contain less than 32 regions, and during early boot there aren't many allocations
+ * expected, 128 memblock regions were chosen as a conservative number */
 #define MEMBLOCK_INIT_REGIONS 128
 
 static struct memblock_region memblock_memory_init_regions[MEMBLOCK_INIT_REGIONS] __initdata;
 static struct memblock_region memblock_reserved_init_regions[MEMBLOCK_INIT_REGIONS] __initdata;
 
-struct memblock memblock __initdata = {
-        .memory.regions = memblock_memory_init_regions,
-        .memory.cnt     = 0,
-        .memory.max     = MEMBLOCK_INIT_REGIONS,
+struct memblock memblock __initdata;
 
-        .reserved.regions = memblock_reserved_init_regions,
-        .reserved.cnt     = 0,
-        .reserved.max     = MEMBLOCK_INIT_REGIONS,
+void memblock_init() {
+    memblock.memory.regions = memblock_memory_init_regions;
+    memblock.memory.cnt     = 0;
+    memblock.memory.max     = MEMBLOCK_INIT_REGIONS;
+    memblock.memory.name    = "memory";
 
-        .bottom_up = false,
-};
+    memblock.reserved.regions = memblock_reserved_init_regions;
+    memblock.reserved.cnt     = 0;
+    memblock.reserved.max     = MEMBLOCK_INIT_REGIONS;
+    memblock.reserved.name    = "reserved";
+}
 
 static void __init memblock_sort(struct memblock_region *const r, size_t *n) {
     struct memblock_region temp = {0};
@@ -61,7 +84,8 @@ static void __init memblock_merge_regions(struct memblock_region *const r, size_
     memblock_sort(r, n);                                                                                               \
     memblock_merge_regions(r, n);
 
-static int __init memblock_add_region(struct memblock_type *regions, phys_addr_t addr, size_t size) {
+static int __init __memblock_add(struct memblock_type *regions, phys_addr_t addr, size_t size) {
+    memblock_pr_dev("adding region [%#p - %#p] to %s\n", addr, addr + size, regions->name);
     if (regions->cnt >= regions->max) { return -ENOSPC; }
     regions->regions[regions->cnt++] = (struct memblock_region) {addr, size};
     memblock_sort_and_merge(regions->regions, &regions->cnt);
@@ -69,10 +93,12 @@ static int __init memblock_add_region(struct memblock_type *regions, phys_addr_t
     return 0;
 }
 
-static int __init memblock_subtract_region(struct memblock_type *regions, phys_addr_t addr, size_t size) {
+static int __init __memblock_remove(struct memblock_type *regions, phys_addr_t addr, size_t size) {
     u64    sb = addr;
     u64    se;
     size_t i;
+
+    memblock_pr_dev("removing region [%#p - %#p] from %s\n", addr, addr + size, regions->name);
 
     if (size == 0) return 0;
 
@@ -135,23 +161,42 @@ static int __init memblock_subtract_region(struct memblock_type *regions, phys_a
     return 0;
 }
 
-int __init memblock_add_memory(phys_addr_t addr, size_t size) {
-    return memblock_add_region(&memblock.memory, addr, size);
+int __init memblock_add(phys_addr_t addr, size_t size) {
+    return __memblock_add(&memblock.memory, addr, size);
 }
 
-int __init memblock_delete_memory(phys_addr_t addr, size_t size) {
-    return memblock_subtract_region(&memblock.memory, addr, size);
+int __init memblock_remove(phys_addr_t addr, size_t size) {
+    int res;
+    if ((res = __memblock_remove(&memblock.memory, addr, size))) { return res; }
+    return __memblock_remove(&memblock.reserved, addr, size);
 }
 
-int __init memblock_reserve(phys_addr_t addr, size_t size) {
-    return memblock_add_region(&memblock.reserved, addr, size);
+void __init memblock_trim() {
+    size_t                  i;
+    struct memblock_region *r;
+
+    for (i = 0; i < memblock.memory.cnt; ++i) {
+        r       = &memblock.memory.regions[i];
+        r->base = PG_ALIGN_UP(r->base);
+        r->size = PG_ALIGN_DN(r->size);
+    }
+
+    for (i = 0; i < memblock.reserved.cnt; ++i) {
+        r       = &memblock.reserved.regions[i];
+        r->base = PG_ALIGN_DN(memblock.reserved.regions[i].base);
+        r->size = PG_ALIGN_UP(memblock.reserved.regions[i].size);
+    }
+
+    memblock_sort_and_merge(memblock.memory.regions, &memblock.memory.cnt);
 }
 
-int __init memblock_unreserve(phys_addr_t addr, size_t size) {
-    return memblock_subtract_region(&memblock.reserved, addr, size);
+void __init memblock_reserve(phys_addr_t addr, size_t size) {
+    memblock_pr_dev("reserving region [%#p - %#p]\n", addr, addr + size);
+    __memblock_remove(&memblock.memory, addr, size);
+    __memblock_add(&memblock.reserved, addr, size);
 }
 
-int __init memblock_is_reserved(phys_addr_t addr, size_t size) {
+int __init memblock_is_any_reserved(phys_addr_t addr, size_t size) {
     for (size_t i = 0; i < memblock.reserved.cnt; ++i) {
         struct memblock_region *r = &memblock.reserved.regions[i];
 
@@ -165,6 +210,19 @@ int __init memblock_is_reserved(phys_addr_t addr, size_t size) {
     return 0;
 }
 
+static const struct memblock_region __init *memblock_get_reserved_region(phys_addr_t addr) {
+    for (size_t i = 0; i < memblock.reserved.cnt; ++i) {
+        struct memblock_region *r = &memblock.reserved.regions[i];
+
+        u64 rb = r->base;
+        u64 re = r->base + r->size;
+
+        if (addr >= rb && addr < re) { return r; }
+    }
+
+    return NULL;
+}
+
 int __init memblock_is_memory(phys_addr_t addr, size_t size) {
     for (size_t i = 0; i < memblock.memory.cnt; ++i) {
         struct memblock_region *r = &memblock.memory.regions[i];
@@ -173,45 +231,16 @@ int __init memblock_is_memory(phys_addr_t addr, size_t size) {
         u64 re  = r->base + r->size;
         u64 end = addr + size;
 
-        if (addr >= rb && end <= re) return 1;
+        if (addr >= rb && end < re) { return 1; }
     }
 
     return 0;
 }
 
-static int __init memblock_alloc_bottom_up(size_t *size, size_t alignment, phys_addr_t *out) {
-    size_t sz = ALIGN_UP(*size, alignment);
+static phys_addr_t __init __memblock_alloc(size_t size, size_t alignment) {
+    if (size == 0 || alignment == 0) { return INVALID_PHYS_ADDR; }
 
-    struct memblock_type *mem = &memblock.memory;
-
-    for (size_t i = 0; i < mem->cnt; i++) {
-        struct memblock_region *r = &mem->regions[i];
-
-        phys_addr_t start = r->base;
-        phys_addr_t end   = r->base + r->size;
-
-        phys_addr_t cand = ALIGN_UP(start, alignment);
-
-        while (cand + sz <= end) {
-            if (memblock_is_memory(cand, sz) && !memblock_is_reserved(cand, sz)) {
-
-                memblock_reserve(cand, sz);
-
-                *out  = cand;
-                *size = sz;
-                return 0;
-            }
-
-            cand += alignment;
-        }
-    }
-
-    return -ENOMEM;
-}
-
-static int __init memblock_alloc_top_down(size_t *size, size_t alignment, phys_addr_t *out) {
-    size_t sz = ALIGN_UP(*size, alignment);
-
+    size_t                sz  = ALIGN_UP(size, alignment);
     struct memblock_type *mem = &memblock.memory;
 
     for (ssize_t i = mem->cnt - 1; i >= 0; i--) {
@@ -220,48 +249,106 @@ static int __init memblock_alloc_top_down(size_t *size, size_t alignment, phys_a
         phys_addr_t start = r->base;
         phys_addr_t end   = r->base + r->size;
 
-        phys_addr_t cand = ALIGN_DOWN((end - sz), alignment);
+        if (r->size < sz) continue;
+
+        phys_addr_t cand = ALIGN_DOWN(end - sz, alignment);
 
         while (cand >= start) {
-            if (memblock_is_memory(cand, sz) && !memblock_is_reserved(cand, sz)) {
-                memblock_reserve(cand, sz);
-
-                *out  = cand;
-                *size = sz;
-                return 0;
+            if (!memblock_is_memory(cand, sz)) {
+                if (cand < alignment) break;
+                cand -= alignment;
+                continue;
             }
 
-            if (cand < alignment) break;
-            cand -= alignment;
+            if (memblock_is_any_reserved(cand, sz)) {
+                const struct memblock_region *reserved = memblock_get_reserved_region(cand);
+                if (!reserved || reserved->base < sz) break;
+                cand = ALIGN_DOWN(reserved->base - sz, alignment);
+                continue;
+            }
+
+            memblock_reserve(cand, sz);
+            return cand;
         }
     }
 
-    return -ENOMEM;
+    return INVALID_PHYS_ADDR;
 }
 
-int __init memblock_alloc(size_t *size, phys_addr_t *out) {
-    return memblock_aligned_alloc(size, 1, out);
+phys_addr_t __init memblock_alloc(size_t size) {
+    return __memblock_alloc(size, 1);
 }
 
-int __init memblock_aligned_alloc(size_t *size, size_t alignment, phys_addr_t *out) {
-    if (!size || !out) { return -EINVAL; }
-    if (*size == 0 || alignment == 0) { return -EINVAL; }
-
-    if (memblock.bottom_up) { return memblock_alloc_bottom_up(size, alignment, out); }
-    return memblock_alloc_top_down(size, alignment, out);
+phys_addr_t __init memblock_aligned_alloc(size_t size, size_t alignment) {
+    return __memblock_alloc(size, alignment);
 }
 
-u64 __init memblock_getstat(int stat) {
-    switch (stat) {
-        case MEMBLOCK_STAT_MEMSZ:
-            return memblock.memory.total_size;
-        case MEMBLOCK_STAT_RESSZ:
-            return memblock.reserved.total_size;
-        case MEMBLOCK_STAT_MEM_REGION_CNT:
-            return memblock.memory.cnt;
-        case MEMBLOCK_STAT_RES_REGION_CNT:
-            return memblock.reserved.cnt;
-        default:
-            return 0;
+void __init memblock_free(phys_addr_t addr, u64 size) {
+    __memblock_remove(&memblock.reserved, addr, size);
+    __memblock_add(&memblock.memory, addr, size);
+}
+
+static inline size_t get_max_order(pfn_t pfn, pfn_t max_pfn) {
+    int order = MAX_ORDER - 1;
+    while (order > 0) {
+        if (pfn & ((1ul << order) - 1)) {
+            order--;
+            continue;
+        }
+        if (pfn + (1ul << order) > max_pfn) {
+            order--;
+            continue;
+        }
+        return order;
+    }
+    return 0;
+}
+
+static inline void __init memblock_free_pages_core(pfn_t lo, pfn_t hi) {
+    int order;
+
+    while (lo < hi) {
+        BUG_ON(PageReserved(pfn_to_page(lo)));
+        order = get_max_order(lo, hi);
+        pm_free_pages(lo << PAGE_SHIFT, order);
+        lo += 1ul << order;
     }
 }
+
+static void __init memblock_free_pages(phys_addr_t lo, phys_addr_t hi) {
+    lo = ALIGN_UP(lo, PAGE_SIZE);
+    hi = ALIGN_DOWN(hi, PAGE_SIZE);
+
+    memblock_free_pages_core(lo >> PAGE_SHIFT, hi >> PAGE_SHIFT);
+}
+
+void __init memblock_free_all() {
+    struct memblock_region *region;
+
+    for (size_t i = 0; i < memblock.memory.cnt; ++i) {
+        region = &memblock.memory.regions[i];
+        memblock_free_pages(region->base, region->base + region->size);
+    }
+
+    memblock.memory.cnt        = 0;
+    memblock.memory.total_size = 0;
+}
+
+#ifdef __DEBUG
+void memblock_print_regions() {
+    size_t                        i;
+    const struct memblock_region *r;
+
+    pr_info(pr_fmt("memory regions:\n"));
+    for (i = 0; i < memblock.memory.cnt; ++i) {
+        r = &memblock.memory.regions[i];
+        pr_info(pr_fmt("[%#p - %#p]\n"), r->base, r->base + r->size);
+    }
+
+    pr_info(pr_fmt("reserved regions:\n"));
+    for (i = 0; i < memblock.reserved.cnt; ++i) {
+        r = &memblock.reserved.regions[i];
+        pr_info(pr_fmt("[%#p - %#p]\n"), r->base, r->base + r->size);
+    }
+}
+#endif

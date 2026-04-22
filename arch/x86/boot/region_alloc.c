@@ -1,9 +1,9 @@
 #include "region_alloc.h"
 #include "boot_utils.h"
 #include "printb.h"
+#include <nyx/align.h>
 #include <nyx/stddef.h>
 #include <nyx/types.h>
-#include <nyx/util.h>
 
 #define MAX_REGIONS 256
 

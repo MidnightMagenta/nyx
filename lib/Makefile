@@ -1,4 +1,6 @@
-L_OBJS := memset.o memcpy.o memmove.o strlen.o strcmp.o strcpy.o
-L_TARGET := libnyx.a
+SUB_DIRS := string ctype
+
+O_OBJS := string/nyxlibstringa.o ctype/nyxlibctypea.o
+O_TARGET := nyxliba.o
 
 include $(TOPDIR)/Rules.mk

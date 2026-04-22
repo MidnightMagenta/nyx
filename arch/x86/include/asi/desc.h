@@ -2,8 +2,8 @@
 #define _ASI_DESC_H
 
 #include <asi/descriptors.h>
+#include <nyx/string.h>
 #include <nyx/types.h>
-#include <string.h>
 
 static inline void load_idt(const struct desc_ptr *ptr) {
     __asm__ volatile("lidt %0" ::"m"(*ptr));

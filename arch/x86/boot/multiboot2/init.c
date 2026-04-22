@@ -3,13 +3,17 @@
 #include "../printb.h"
 #include "../region_alloc.h"
 #include "multiboot2.h"
+
+#include <nyx/align.h>
+#include <nyx/limits.h>
+#include <nyx/mem_units.h>
+#include <nyx/stddef.h>
+#include <nyx/types.h>
+
 #include <asi/bootparam.h>
 #include <asi/memory.h>
 #include <asi/page.h>
 #include <asi/setupdata.h>
-#include <nyx/stddef.h>
-#include <nyx/types.h>
-#include <nyx/util.h>
 
 extern char __kernel_blob_start;
 extern char __kernel_blob_end;
@@ -20,8 +24,6 @@ void *kernel_blob_end   = &__kernel_blob_end;
 void __attribute__((noreturn)) die() {
     hcf();
 }
-
-#define U64_MAX (~0ULL)
 
 /* KERNEL LOADING */
 
@@ -132,7 +134,7 @@ static int load_kernel(struct kernel_loadinfo *loadinfo) {
     memsetb(loadinfo, 0, sizeof(struct kernel_loadinfo));
 
     loadinfo->k_pregion = kernel_region;
-    loadinfo->k_vregion = (struct memregion) {laddr, haddr - laddr};
+    loadinfo->k_vregion = (struct memregion){laddr, haddr - laddr};
     loadinfo->k_entry   = (u64) ehdr->e_entry;
 
     return 0;
@@ -385,90 +387,16 @@ static int map_memory(u64 bi, const struct kernel_loadinfo *loadinfo, struct mem
 
 /* BOOT PARAMS */
 
-static void mmap_sort(struct mmap_entry *mmap, int *n) {
-    struct mmap_entry temp = {0};
-    if (*n == 0) { return; }
-
-    for (int i = 1; i < *n; ++i) {
-        temp  = mmap[i];
-        int j = i;
-
-        while (j > 0 && mmap[j - 1].addr > temp.addr) {
-            mmap[j] = mmap[j - 1];
-            j--;
-        }
-        mmap[j] = temp;
-    }
-}
-
-static void mmap_merge(struct mmap_entry *mmap, int *n) {
-    int wr = 0;
-    if (*n == 0) { return; }
-
-    for (int rd = 1; rd < *n; ++rd) {
-        u64 prev_end = mmap[wr].addr + mmap[wr].size;
-        u64 cur_end  = mmap[rd].addr + mmap[rd].size;
-
-        if (mmap[rd].addr <= prev_end && mmap[rd].type == mmap[wr].type) {
-            if (cur_end > prev_end) { mmap[wr].size = cur_end - mmap[wr].addr; }
-        } else {
-            wr++;
-            mmap[wr] = mmap[rd];
-        }
-    }
-
-    *n = wr + 1;
-}
-
-static void mmap_insert_region(struct mmap_entry *mmap, int *n, u64 base, u64 size, u32 type) {
-    u64 end = base + size;
-
-    int orig_n = *n;
-    for (int i = 0; i < orig_n; i++) {
-        u64 e_base = mmap[i].addr;
-        u64 e_end  = mmap[i].addr + mmap[i].size;
-        u32 e_type = mmap[i].type;
-
-        if (e_end <= base || e_base >= end) { continue; }
-
-        if (e_base >= base && e_end <= end) {
-            mmap[i] = mmap[--(*n)];
-            orig_n--;
-            i--;
-        } else if (e_base < base && e_end > end) {
-            mmap[i].size = base - e_base;
-
-            mmap[*n].addr = end;
-            mmap[*n].size = e_end - end;
-            mmap[*n].type = e_type;
-            (*n)++;
-        } else if (e_base < base) {
-            mmap[i].size = base - e_base;
-        } else {
-            mmap[i].addr = end;
-            mmap[i].size = e_end - end;
-        }
-    }
-
-    mmap[*n].addr = base;
-    mmap[*n].size = size;
-    mmap[*n].type = type;
-    (*n)++;
-
-    mmap_sort(mmap, n);
-}
-
-static int create_mmap(const struct mb2_tag_mmap *bi_mmap,
-                       const struct memregion    *page_reserved_range,
-                       struct boot_params        *bootparams) {
+static int create_mmap(const struct mb2_tag_mmap    *bi_mmap,
+                       const struct kernel_loadinfo *loadinfo,
+                       const struct memregion       *page_reserved_range,
+                       struct boot_params           *bootparams) {
     int mmap_entry_count = 0;
     u64 mmap_base, mmap_size;
     u32 mmap_type;
 
     for (u8 *p = (u8 *) bi_mmap->entries; p < (u8 *) bi_mmap + bi_mmap->size; p += bi_mmap->entry_size) {
         if (mmap_entry_count >= MMAP_MAX_ENTRIES) {
-            mmap_sort(bootparams->mmap, &mmap_entry_count);
-            mmap_merge(bootparams->mmap, &mmap_entry_count);
             if (mmap_entry_count >= MMAP_MAX_ENTRIES) {
                 pr_error(pr_fmt("Can't create boot_params memory map. Not enough space"));
             }
@@ -480,43 +408,32 @@ static int create_mmap(const struct mb2_tag_mmap *bi_mmap,
 
         switch (mmap_entry->type) {
             case MB2_MMAP_AVAILABLE:
-                mmap_type = MMAP_TYPE_AVAILABLE;
+                mmap_type = MMAP_TYPE_RAM;
                 break;
             case MB2_MMAP_ACPI_RECLAIMABLE:
-                mmap_type = MMAP_TYPE_ACPI_RECLAIMABLE;
+                mmap_type = MMAP_TYPE_ACPI_RECLAIM;
                 break;
             case MB2_MMAP_NVS:
-                mmap_type = MMAP_TYPE_NVS;
+                mmap_type = MMAP_TYPE_ACPI_NVS;
                 break;
             case MB2_MMAP_BADRAM:
-                mmap_type = MMAP_TYPE_UNUSABLE;
+                mmap_type = MMAP_TYPE_BAD;
                 break;
             default:
                 mmap_type = MMAP_TYPE_RESERVED;
                 break;
         }
 
-        mmap_insert_region(bootparams->mmap, &mmap_entry_count, mmap_base, mmap_size, mmap_type);
+        bootparams->mem_map.map[mmap_entry_count++] = (struct mmap_entry){mmap_base, mmap_size, mmap_type};
     }
 
-    if (mmap_entry_count >= MMAP_MAX_ENTRIES) {
-        mmap_sort(bootparams->mmap, &mmap_entry_count);
-        mmap_merge(bootparams->mmap, &mmap_entry_count);
-        if (mmap_entry_count >= MMAP_MAX_ENTRIES) {
-            pr_error(pr_fmt("Can't create boot_params memory map. Not enough space"));
-        }
-    }
 
-    mmap_insert_region(bootparams->mmap,
-                       &mmap_entry_count,
-                       page_reserved_range->base,
-                       page_reserved_range->size,
-                       MMAP_TYPE_BOOT_RECLAIMABLE);
+    bootparams->mem_map.map[mmap_entry_count++] =
+            (struct mmap_entry){page_reserved_range->base, page_reserved_range->size, MMAP_TYPE_BOOT_RECLAIM};
+    bootparams->mem_map.map[mmap_entry_count++] =
+            (struct mmap_entry){loadinfo->k_pregion.base, loadinfo->k_pregion.size, MMAP_TYPE_RESERVED};
 
-    mmap_sort(bootparams->mmap, &mmap_entry_count);
-    mmap_merge(bootparams->mmap, &mmap_entry_count);
-
-    bootparams->mmap_entry_count = mmap_entry_count;
+    bootparams->mem_map.nr_entries = mmap_entry_count;
 
     return 0;
 }
@@ -560,7 +477,7 @@ static int create_boot_params(u64                           bi,
             case MB2_TAG_BOOTDEV:
                 break;
             case MB2_TAG_MMAP:
-                if ((res = create_mmap((struct mb2_tag_mmap *) bi_tag, page_reserved_range, *bootparams))) {
+                if ((res = create_mmap((struct mb2_tag_mmap *) bi_tag, loadinfo, page_reserved_range, *bootparams))) {
                     return res;
                 }
                 break;

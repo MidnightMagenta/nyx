@@ -1,18 +1,18 @@
-#include <mm/memblock.h>
-#include <mm/pmm.h>
-#include <nyx/printk.h>
+#include <nyx/kernel.h>
 
 #ifdef CONFIG_KERNEL_TESTS
 extern void __do_kernel_tests();
 #else
-#define __do_kernel_tests() ;
+#define __do_kernel_tests()
 #endif
 
-extern void pm_init();
+extern void setup_arch();
+extern void init_memory();
 
 void start_kernel() {
-    memblock_init();
-    pm_init();
+    pr_info("kernel build ID: %s\n", NYX_BUILD_ID);
+    setup_arch();
+    init_memory();
 
     __do_kernel_tests();
 
