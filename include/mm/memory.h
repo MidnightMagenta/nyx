@@ -8,7 +8,7 @@
 extern struct pg_data_s *pgdata;
 
 static inline pfn_t page_to_pfn(struct page *page) {
-    zone_t *zone = &pgdata->zones[page->zone];
+    zone_t *zone = &pgdata->zones[page->zone_id];
     return (page - zone->zone_mem_map) + zone->zone_start_pfn;
 }
 

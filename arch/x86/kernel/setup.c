@@ -5,7 +5,6 @@
 #include <asi/mmap.h>
 #include <asi/setupdata.h>
 
-extern void arch_init_memory();
 
 static void __init add_memblock_regions() {
     u64         rb, re, idx;
@@ -25,5 +24,4 @@ void __init setup_arch() {
     mmap_setup_map();
     memblock_init();
     add_memblock_regions();
-    arch_init_memory();
 }

@@ -3,7 +3,7 @@
 #ifdef CONFIG_KERNEL_TESTS
 extern void __do_kernel_tests();
 #else
-#define __do_kernel_tests() ;
+#define __do_kernel_tests()
 #endif
 
 extern void setup_arch();

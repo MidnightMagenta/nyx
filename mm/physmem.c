@@ -8,6 +8,8 @@
 #include <nyx/stddef.h>
 #include <nyx/types.h>
 
+#include <asi/bug.h>
+
 #define pr_fmt(fmt) "pmm: " fmt
 
 #ifdef CONFIG_PHYSMEM_DEV_PRINT
@@ -92,9 +94,13 @@ static void __add_block(struct page *page, zone_t *zone, int order) {
 }
 
 static inline int gfp_zonelist(int gfp_mask) {
-    if (gfp_mask & __GFP_DMA) { return ZONE_DMA; }
-    if (gfp_mask & __GFP_DMA32) { return ZONE_DMA32; }
 
+#ifdef CONFIG_ZONE_DMA
+    if (gfp_mask & __GFP_DMA) { return ZONE_DMA; }
+#endif
+#ifdef CONFIG_ZONE_DMA32
+    if (gfp_mask & __GFP_DMA32) { return ZONE_DMA32; }
+#endif
 #ifdef CONFIG_ZONE_HIGHMEM
     if (gfp_mask & __GFP_HIMEM) { return ZONE_HIMEM; }
 #endif
@@ -121,6 +127,7 @@ struct page *pm_alloc_pages(int gfp_mask, int order) {
 }
 
 phys_addr_t __pm_get_free_pages(int gfp_mask, int order) {
+    if (order >= MAX_ORDER) { return INVALID_PHYS_ADDR; }
     struct page *page = pm_alloc_pages(gfp_mask, order);
     if (page) { return page_to_phys(page); }
 
@@ -128,8 +135,21 @@ phys_addr_t __pm_get_free_pages(int gfp_mask, int order) {
 }
 
 void __pm_free_pages(struct page *page, int order) {
+    BUG_ON(order >= MAX_ORDER);
+    BUG_ON(!page);
+#ifdef __DEBUG
+    bool page_real = false;
+    for (int i = 0; i < MAX_NR_ZONES; ++i) {
+        if (page >= pgdata->zones[i].zone_mem_map &&
+            page < (pgdata->zones[i].zone_mem_map + pgdata->zones[i].spanned_pages)) {
+            page_real = true;
+        }
+    }
+    BUG_ON(!page_real);
+#endif
+
     physmem_pr_dev("freeing block at %#p at order %d\n", page_to_phys(page), order);
-    zone_t *zone = &pgdata->zones[page->zone];
+    zone_t *zone = &pgdata->zones[page->zone_id];
     __add_block(page, zone, order);
 }
 

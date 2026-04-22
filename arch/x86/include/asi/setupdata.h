@@ -4,16 +4,12 @@
 #include <nyx/compiler.h>
 #include <nyx/types.h>
 
+/* firmware memory maps usually have < 32 entries. 128 max entries
+ * chosen conservatively */
 #define MMAP_MAX_ENTRIES 128
 
-// #define MMAP_TYPE_NONE             0
-// #define MMAP_TYPE_RAM              1
-// #define MMAP_TYPE_RESERVED         2
-// #define MMAP_TYPE_ACPI_RECLAIMABLE 3
-// #define MMAP_TYPE_NVS              4
-// #define MMAP_TYPE_UNUSABLE         5
-// #define MMAP_TYPE_BOOT_RECLAIMABLE 6
-
+/* Ordering of values within this enum wull have impact on the order
+ * of type precedense in mmap_sanitise() when resolving overlaps */
 enum mmap_type {
     MMAP_TYPE_RAM = 0,
     MMAP_TYPE_BOOT_RECLAIM,
@@ -24,6 +20,8 @@ enum mmap_type {
     MMAP_NR_TYPES,
 };
 
+/* mmap_type_t set to u32 to guarantee fixed width across compilers.
+ * Valid values defined by enum mmap_type */
 typedef u32 mmap_type_t;
 
 struct mmap_entry {

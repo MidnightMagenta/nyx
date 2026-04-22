@@ -29,7 +29,7 @@ int         memblock_add(phys_addr_t addr, size_t size);
 int         memblock_remove(phys_addr_t addr, size_t size);
 void        memblock_trim();
 void        memblock_reserve(phys_addr_t addr, size_t size);
-int         memblock_is_reserved(phys_addr_t addr, size_t size);
+int         memblock_is_any_reserved(phys_addr_t addr, size_t size);
 int         memblock_is_memory(phys_addr_t addr, size_t size);
 phys_addr_t memblock_alloc(size_t size);
 phys_addr_t memblock_aligned_alloc(size_t size, size_t alignment);

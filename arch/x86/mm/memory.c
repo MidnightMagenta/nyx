@@ -12,11 +12,12 @@
 #include <nyx/string.h>
 #include <nyx/types.h>
 
+#include <asi/memory.h>
 #include <asi/mmap.h>
 #include <asi/page.h>
 #include <asi/setupdata.h>
 
-#define pr_fmt(fmt) "memory: " fmt "\n"
+#define pr_fmt(fmt) "memory: " fmt
 
 extern pg_data_t contigmem_pagedata;
 
@@ -24,7 +25,7 @@ struct {
     phys_addr_t base;
     phys_addr_t top;
     char       *name;
-} zones[MAX_NR_ZONES] __initdata = {
+} zone_descs[MAX_NR_ZONES] __initdata = {
         [ZONE_DMA]    = {0, 16 * MiB, "DMA"},
         [ZONE_DMA32]  = {16 * MiB, 4 * GiB, "DMA32"},
         [ZONE_NORMAL] = {4 * GiB, PHYS_ADDR_MAX, "NORMAL"},
@@ -73,8 +74,8 @@ static void __init init_zone_memmap(zone_t *zone, int zone_type) {
     for (idx = 0; idx < zone->spanned_pages; ++idx) {
         page = &zone->zone_mem_map[idx];
         SetPageReserved(page);
-        page->zone = zone_type;
-        page->list = (struct list_head) LIST_HEAD_INIT(page->list);
+        page->zone_id = zone_type;
+        page->list    = (struct list_head) LIST_HEAD_INIT(page->list);
     }
 
     idx = 0;
@@ -105,23 +106,24 @@ static void __init init_zone(zone_t *zone, int zone_type) {
 
     memset(zone, 0, sizeof(zone_t));
 
-    get_hi_lo_pfn(&lopfn, &hipfn);
-
-    lopfn = MAX(zones[zone_type].base >> PAGE_SHIFT, lopfn);
-    hipfn = MIN(zones[zone_type].top >> PAGE_SHIFT, hipfn);
-
-    /* don't bother with 0 sized zones */
-    if (hipfn == lopfn) { return; }
-
-    zone->zone_start_pfn = lopfn;
-    zone->spanned_pages  = hipfn - lopfn;
-    zone->name           = zones[zone_type].name;
-
-    zone->zone_mem_map = (struct page *) memblock_aligned_alloc(zone->spanned_pages * sizeof(struct page), PAGE_SIZE);
-
     for (size_t i = 0; i < MAX_ORDER; ++i) {
         zone->free_area[i].list[0] = (struct list_head) LIST_HEAD_INIT(zone->free_area[i].list[0]);
     }
+
+    zone->name = zone_descs[zone_type].name;
+
+    get_hi_lo_pfn(&lopfn, &hipfn);
+
+    lopfn = MAX(zone_descs[zone_type].base >> PAGE_SHIFT, lopfn);
+    hipfn = MIN(zone_descs[zone_type].top >> PAGE_SHIFT, hipfn);
+
+    /* don't bother with 0 sized zones */
+    if (hipfn <= lopfn) { return; }
+
+    zone->zone_start_pfn = lopfn;
+    zone->spanned_pages  = hipfn - lopfn;
+    zone->zone_mem_map =
+            (struct page *) phys_to_virt(memblock_aligned_alloc(zone->spanned_pages * sizeof(struct page), PAGE_SIZE));
 
     init_zone_memmap(zone, zone_type);
 }
@@ -140,13 +142,28 @@ static void __init init_zonelists() {
     pgdata->zonelists[ZONE_NORMAL].zones[3] = NULL;
 }
 
+static void __init init_pgdata() {
+    size_t i;
+
+    pgdata->start_pfn     = PFN_MAX;
+    pgdata->spanned_pages = 0;
+    pgdata->present_pages = 0;
+
+    for (i = 0; i < MAX_NR_ZONES; ++i) {
+        pgdata->start_pfn = MIN(pgdata->start_pfn, pgdata->zones[i].zone_start_pfn);
+        pgdata->spanned_pages += pgdata->zones[i].spanned_pages;
+        pgdata->present_pages += pgdata->zones[i].present_pages;
+    }
+}
+
 static void __init init_zones() {
-    for (size_t i = 0; i < __MAX_NR_ZONES; ++i) { init_zone(&pgdata->zones[i], i); }
+    for (size_t i = 0; i < MAX_NR_ZONES; ++i) { init_zone(&pgdata->zones[i], i); }
     init_zonelists();
 }
 
 void __init arch_init_memory() {
     init_zones();
+    init_pgdata();
 
 #ifdef __DEBUG
     print_zones();

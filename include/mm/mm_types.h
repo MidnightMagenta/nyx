@@ -25,7 +25,7 @@ struct page {
     u64              flags;
     struct list_head list;
 
-    int zone;
+    int zone_id;
 
     union {
         int buddy_order;

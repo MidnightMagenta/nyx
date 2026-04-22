@@ -22,24 +22,28 @@
 #define memblock_pr_dev(fmt, ...)
 #endif
 
+/* the maximum number of needed regions is roughly the number of regions in the
+ * sanitised memory map + number of allocations. Since firmware memory maps usually
+ * contain less than 32 regions, and during early boot there aren't many allocations
+ * expected, 128 memblock regions were chosen as a conservative number */
 #define MEMBLOCK_INIT_REGIONS 128
 
 static struct memblock_region memblock_memory_init_regions[MEMBLOCK_INIT_REGIONS] __initdata;
 static struct memblock_region memblock_reserved_init_regions[MEMBLOCK_INIT_REGIONS] __initdata;
 
-struct memblock memblock __initdata = {
-        .memory.regions = memblock_memory_init_regions,
-        .memory.cnt     = 0,
-        .memory.max     = MEMBLOCK_INIT_REGIONS,
-        .memory.name    = "memory",
+struct memblock memblock __initdata;
 
-        .reserved.regions = memblock_reserved_init_regions,
-        .reserved.cnt     = 0,
-        .reserved.max     = MEMBLOCK_INIT_REGIONS,
-        .reserved.name    = "reserved",
-};
+void memblock_init() {
+    memblock.memory.regions = memblock_memory_init_regions;
+    memblock.memory.cnt     = 0;
+    memblock.memory.max     = MEMBLOCK_INIT_REGIONS;
+    memblock.memory.name    = "memory";
 
-void memblock_init() { /* noop */ }
+    memblock.reserved.regions = memblock_reserved_init_regions;
+    memblock.reserved.cnt     = 0;
+    memblock.reserved.max     = MEMBLOCK_INIT_REGIONS;
+    memblock.reserved.name    = "reserved";
+}
 
 static void __init memblock_sort(struct memblock_region *const r, size_t *n) {
     struct memblock_region temp = {0};
@@ -83,7 +87,7 @@ static void __init memblock_merge_regions(struct memblock_region *const r, size_
 static int __init __memblock_add(struct memblock_type *regions, phys_addr_t addr, size_t size) {
     memblock_pr_dev("adding region [%#p - %#p] to %s\n", addr, addr + size, regions->name);
     if (regions->cnt >= regions->max) { return -ENOSPC; }
-    regions->regions[regions->cnt++] = (struct memblock_region){addr, size};
+    regions->regions[regions->cnt++] = (struct memblock_region) {addr, size};
     memblock_sort_and_merge(regions->regions, &regions->cnt);
     regions->total_size += size;
     return 0;
@@ -192,7 +196,7 @@ void __init memblock_reserve(phys_addr_t addr, size_t size) {
     __memblock_add(&memblock.reserved, addr, size);
 }
 
-int __init memblock_is_reserved(phys_addr_t addr, size_t size) {
+int __init memblock_is_any_reserved(phys_addr_t addr, size_t size) {
     for (size_t i = 0; i < memblock.reserved.cnt; ++i) {
         struct memblock_region *r = &memblock.reserved.regions[i];
 
@@ -227,7 +231,7 @@ int __init memblock_is_memory(phys_addr_t addr, size_t size) {
         u64 re  = r->base + r->size;
         u64 end = addr + size;
 
-        if (addr >= rb && end <= re) { return 1; }
+        if (addr >= rb && end < re) { return 1; }
     }
 
     return 0;
@@ -256,7 +260,7 @@ static phys_addr_t __init __memblock_alloc(size_t size, size_t alignment) {
                 continue;
             }
 
-            if (memblock_is_reserved(cand, sz)) {
+            if (memblock_is_any_reserved(cand, sz)) {
                 const struct memblock_region *reserved = memblock_get_reserved_region(cand);
                 if (!reserved || reserved->base < sz) break;
                 cand = ALIGN_DOWN(reserved->base - sz, alignment);
