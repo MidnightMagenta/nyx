@@ -1,7 +1,9 @@
 #ifndef _MM_MEMORY_H
 #define _MM_MEMORY_H
 
+#include <asi/memory.h>
 #include <asi/page.h>
+
 #include <mm/mm_types.h>
 #include <mm/mmzone.h>
 
@@ -29,5 +31,8 @@ static inline struct page *phys_to_page(phys_addr_t phys) {
 static inline phys_addr_t page_to_phys(struct page *page) {
     return (phys_addr_t) (page_to_pfn(page) << PAGE_SHIFT);
 }
+
+#define page_address(page) phys_to_virt((void *) page_to_phys((page)))
+#define virt_to_page(virt) phys_to_page(virt_to_phys((phys_addr_t) (virt)))
 
 #endif
