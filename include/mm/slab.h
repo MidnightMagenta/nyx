@@ -13,7 +13,7 @@ kmem_cache_t *kmem_create_cache(const char *name,
                                 void        (*dtor)(void *),
                                 int         gfp_flags);
 void         *kmem_cache_alloc(kmem_cache_t *cache, int flags);
-void         *kmem_cache_free(kmem_cache_t *cache, void *obj);
+void          kmem_cache_free(kmem_cache_t *cache, void *obj);
 int           kmem_cache_destroy(kmem_cache_t *cache);
 
 #endif
