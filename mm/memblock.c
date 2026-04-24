@@ -1,5 +1,5 @@
+#include <mm/address.h>
 #include <mm/memblock.h>
-#include <mm/memory.h>
 #include <mm/mm_types.h>
 #include <mm/mmzone.h>
 #include <mm/physmem.h>
@@ -87,7 +87,7 @@ static void __init memblock_merge_regions(struct memblock_region *const r, size_
 static int __init __memblock_add(struct memblock_type *regions, phys_addr_t addr, size_t size) {
     memblock_pr_dev("adding region [%#p - %#p] to %s\n", addr, addr + size, regions->name);
     if (regions->cnt >= regions->max) { return -ENOSPC; }
-    regions->regions[regions->cnt++] = (struct memblock_region) {addr, size};
+    regions->regions[regions->cnt++] = (struct memblock_region){addr, size};
     memblock_sort_and_merge(regions->regions, &regions->cnt);
     regions->total_size += size;
     return 0;
