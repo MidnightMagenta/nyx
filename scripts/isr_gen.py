@@ -3,16 +3,13 @@
 import json
 
 
-def collect_vectors(value):
+def collect_vectors(entry):
     vectors = []
-    if isinstance(value, list):
-        vectors.extend(value)
-    elif isinstance(value, dict):
-        if "vectors" in value:
-            vectors.extend(value["vectors"])
-        if "ranges" in value:
-            for r in value["ranges"]:
-                vectors.extend(range(r[0], r[1] + 1))
+    if "vectors" in entry:
+        vectors.extend(entry["vectors"])
+    if "ranges" in entry:
+        for r in entry["ranges"]:
+            vectors.extend(range(r[0], r[1] + 1))
     return vectors
 
 
@@ -21,9 +18,10 @@ pairs = []
 with open("isr_vectors.json") as f:
     config = json.load(f)
 
-    for macro, value in config.items():
-        for vector in collect_vectors(value):
-            pairs.append((vector, macro))
+    for macro, entries in config.items():
+        for entry in entries:
+            for vector in collect_vectors(entry):
+                pairs.append((vector, macro, entry))
 
 pairs.sort(key=lambda p: p[0])
 
@@ -34,23 +32,29 @@ print(".extern ISR_COMMON_NAME")
 print('.section .text, "ax"')
 print()
 
-for vector, macro in pairs:
+for vector, macro, _ in pairs:
     print(f"{macro}({vector})")
 
 print()
 print(".global ISR_TABLE_NAME")
 print("ISR_TABLE_NAME:")
 
-for vector, macro in pairs:
-    print(f"    .byte {vector}")
-    print("    .short 0x8")  # temporairly fixed
-    print("    .byte 0")
-    print("    .byte GATE_INTERRUPT")
-    print("    .byte 0")
-    print("    .short 0")
-    print(f"    .quad ISR_ENTRY_NAME({vector})")
+for vector, macro, entry in pairs:
+    segment = entry.get("segment", "0x8")
+    ist = entry.get("ist", "0")
+    dpl = entry.get("dpl", "DPL0")
+    gate_type = entry.get("type", "GATE_INTERRUPT")
+    print(f"    // gate {vector}")
+    print(f"    .byte     {vector}")
+    print(f"    .short    {segment}")
+    print(f"    .byte     {ist}")
+    print(f"    .byte     {gate_type}")
+    print(f"    .byte     {dpl}")
+    print("    .short     0")
+    print(f"    .quad     ISR_ENTRY_NAME({vector})")
 
 # null terminate the table
+print("    // null terminator")
 print("    .byte 0")
 print("    .short 0")
 print("    .byte 0")

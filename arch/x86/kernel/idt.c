@@ -8,8 +8,6 @@
 #define IDT_ENTRIES  256
 #define IDT_TAB_SIZE IDT_ENTRIES * sizeof(gate_desc)
 
-#define DPL0 0x0
-#define DPL3 0x3
 
 #define DEFAULT_STACK 0
 

@@ -1,8 +1,53 @@
 {
-    "ISR_ENTRY_NO_ERR" : {
-        "ranges" : [[0, 7], [22, 28], [32, 255]],
-        "vectors" : [9, 10, 11, 12, 15, 16, 18, 19, 20, 31]
-    },
-
-    "ISR_ENTRY_ERR": [8, 13, 14, 17, 21, 29, 30]
+    "ISR_ENTRY_NO_ERR": [
+        {
+            "ranges": [
+                [
+                    0,
+                    7
+                ],
+                [
+                    22,
+                    28
+                ],
+                [
+                    32,
+                    255
+                ]
+            ],
+            "vectors": [
+                9,
+                10,
+                11,
+                12,
+                15,
+                16,
+                18,
+                19,
+                20,
+                31
+            ],
+            "segment": "0x8",
+            "ist": "0",
+            "type": "GATE_INTERRUPT",
+            "dpl": "DPL0"
+        }
+    ],
+    "ISR_ENTRY_ERR": [
+        {
+            "vectors": [
+                8,
+                13,
+                14,
+                17,
+                21,
+                29,
+                30
+            ],
+            "segment": "0x8",
+            "ist": "0",
+            "type": "GATE_INTERRUPT",
+            "dpl": "DPL0"
+        }
+    ]
 }

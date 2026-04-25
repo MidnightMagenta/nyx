@@ -33,4 +33,7 @@ typedef struct gate_struct gate_desc;
 #define GATE_CALL      0xc
 #define GATE_TASK      0x5
 
+#define DPL0 0x0
+#define DPL3 0x3
+
 #endif
