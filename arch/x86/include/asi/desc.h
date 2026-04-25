@@ -2,6 +2,7 @@
 #define _ASI_DESC_H
 
 #include <asi/descriptors.h>
+#include <asi/isr_entry.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
 
@@ -23,12 +24,16 @@ static inline void store_gdt(struct desc_ptr *ptr) {
 static inline void idt_init_desc(gate_desc *gate, const struct idt_data *d) {
     u64 addr = (u64) d->addr;
 
-    gate->offset0  = (u16) addr;
-    gate->offset1  = (u16) (addr >> 16);
-    gate->offset2  = (u32) (addr >> 32);
-    gate->segment  = d->segment;
-    gate->bits     = d->bits;
-    gate->reserved = 0;
+    gate->offset0   = (u16) addr;
+    gate->offset1   = (u16) (addr >> 16);
+    gate->offset2   = (u32) (addr >> 32);
+    gate->segment   = d->segment;
+    gate->bits.dpl  = d->dpl;
+    gate->bits.ist  = d->ist;
+    gate->bits.type = d->type;
+    gate->bits.p    = 1;
+    gate->bits.zero = 0;
+    gate->reserved  = 0;
 }
 
 static inline void write_idt_entry(gate_desc *idt, int vector, const gate_desc *gate) {

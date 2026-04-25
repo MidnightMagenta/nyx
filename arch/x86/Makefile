@@ -21,6 +21,7 @@ image: vmnyx
 
 archclean:
 	rm -f arch/$(ARCH)/X86_64_link.lds
+	rm -rf arch/$(ARCH)/kernel/isr/generated
 	$(MAKEBOOT) clean
 
 %.lds: %.ld

@@ -1,6 +1,8 @@
 #ifndef _ASI_DESCRIPTORS_H
 #define _ASI_DESCRIPTORS_H
 
+#ifndef __ASSEMBLY__
+
 #include <nyx/compiler.h>
 #include <nyx/types.h>
 
@@ -13,13 +15,6 @@ struct idt_bits {
     u16 ist : 3, zero : 5, type : 5, dpl : 2, p : 1;
 } __packed;
 
-struct idt_data {
-    u16             vector;
-    u16             segment;
-    struct idt_bits bits;
-    const void     *addr;
-};
-
 struct gate_struct {
     u16             offset0;
     u16             segment;
@@ -31,11 +26,11 @@ struct gate_struct {
 
 typedef struct gate_struct gate_desc;
 
-enum {
-    GATE_INTERRUPT = 0xE,
-    GATE_TRAP      = 0xF,
-    GATE_CALL      = 0xC,
-    GATE_TASK      = 0x5,
-};
+#endif
+
+#define GATE_INTERRUPT 0xe
+#define GATE_TRAP      0xf
+#define GATE_CALL      0xc
+#define GATE_TASK      0x5
 
 #endif
