@@ -13,6 +13,9 @@ KERNEL_TEST(slab_sanity) {
     test_alloc = kmem_cache_alloc(cache, 0);
     EXPECT_TRUE(test_alloc);
 
+    // try to dereference the pointer to see if we crash
+    *((char *) test_alloc) = 0;
+
     kmem_cache_free(cache, test_alloc);
     EXPECT_FALSE(kmem_cache_destroy(cache));
 }
@@ -26,6 +29,9 @@ KERNEL_TEST(slab_large_sanity) {
 
     test_alloc = kmem_cache_alloc(cache, 0);
     EXPECT_TRUE(test_alloc);
+
+    // try to dereference the pointer to see if we crash
+    *((char *) test_alloc) = 0;
 
     kmem_cache_free(cache, test_alloc);
     EXPECT_FALSE(kmem_cache_destroy(cache));
