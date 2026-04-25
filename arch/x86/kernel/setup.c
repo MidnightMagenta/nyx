@@ -17,7 +17,6 @@ static void __init add_memblock_regions() {
     }
 
     memblock_trim();
-    memblock_print_regions();
 }
 
 void __init setup_arch() {
