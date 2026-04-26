@@ -29,6 +29,8 @@ AS  := $(CROSS_COMPILE)as
 AR  := $(CROSS_COMPILE)ar
 LD  := $(CROSS_COMPILE)ld
 OBJCOPY := $(CROSS_COMPILE)objcopy
+PYTHON := python3
+SH := bash
 
 # --------------------------------
 # flags
@@ -130,13 +132,15 @@ PHONY += clean distclean
 
 clean: archclean
 	find . -type f ! -path './scripts/*' -name '*.[oasd]' -delete
-	rm -rf isodir tmp
+	find . -type d -name "generated" -prune -exec rm -rf {} +
+	rm -rf isodir
 	rm -f vmnyx image nyxos.iso
 
 distclean: clean
 	$(Q)$(MAKE) -C tools clean
+	find . -type d -name "tmp" -prune -exec rm -rf {} +
 	rm -f .config .config.old include/asi
-	rm -rf .cache out include/generated scripts/Kconfig/__pycache__
+	rm -rf .cache out scripts/Kconfig/__pycache__
 
 # --------------------------------
 # Rules for setting up the project
@@ -147,11 +151,11 @@ include/generated/version.h: include/generated/version.h.tmp
 
 include/generated/version.h.tmp: FORCE
 	$(Q)rm -f include/generated/version.h.tmp
-	$(Q)./scripts/mkversion.sh include/generated/version.h.tmp
+	$(Q)$(SH) ./scripts/mkversion.sh include/generated/version.h.tmp
 
 include/generated/autoconf.h: .config
 	$(Q)mkdir -p include/generated
-	$(Q)./scripts/Kconfig/genconfig.py --header-path include/generated/autoconf.h
+	$(Q)$(PYTHON) ./scripts/Kconfig/genconfig.py --header-path include/generated/autoconf.h
 
 PHONY += symlinks menuconfig config docs
 
@@ -161,10 +165,10 @@ symlinks:
 		cd uapi ; ln -s ../../arch/$(ARCH)/include/uapi/asi asi )
 
 menuconfig: symlinks
-	$(Q)./scripts/Kconfig/menuconfig.py
+	$(Q)$(PYTHON) ./scripts/Kconfig/menuconfig.py
 
 config: symlinks
-	$(Q)./scripts/Kconfig/oldconfig.py
+	$(Q)$(PYTHON) ./scripts/Kconfig/oldconfig.py
 
 docs:
 	$(Q)mkdir -p out/docs
