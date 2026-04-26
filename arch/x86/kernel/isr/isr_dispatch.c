@@ -39,7 +39,7 @@ void __isr_dispatch(struct isr_context *context) {
            context->regs.rdx);
     printk("rsp: 0x%016lx, rbp: 0x%016lx, rdi: 0x%016lx, rsi: 0x%016lx\n",
            context->rsp,
-           context->regs.rbx,
+           context->regs.rbp,
            context->regs.rdi,
            context->regs.rsi);
     printk("r8:  0x%016lx, r9:  0x%016lx, r10: 0x%016lx, r11: 0x%016lx\n",

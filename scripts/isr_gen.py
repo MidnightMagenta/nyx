@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 
 import json
+import sys
+
+
+def usage():
+    print(sys.argv[0], "[input_file]")
 
 
 def collect_vectors(entry):
@@ -13,9 +18,34 @@ def collect_vectors(entry):
     return vectors
 
 
+def print_isr_table_entry(vector, segment, ist, gate_type, dpl):
+    print(f"    // gate {vector}")
+    print(f"    .byte     {vector}")
+    print(f"    .short    {segment}")
+    print(f"    .byte     {ist}")
+    print(f"    .byte     {gate_type}")
+    print(f"    .byte     {dpl}")
+    print("    .short     0")
+    print(f"    .quad     ISR_ENTRY_NAME({vector})")
+
+
+def print_isr_table_null():
+    print("    // null terminator")
+    print("    .byte 0")
+    print("    .short 0")
+    print("    .byte 0")
+    print("    .byte 0")
+    print("    .byte 0")
+    print("    .short 0")
+    print("    .quad 0")
+
+
 pairs = []
 
-with open("isr_vectors.json") as f:
+if len(sys.argv) != 2:
+    usage()
+
+with open(sys.argv[1]) as f:
     config = json.load(f)
 
     for macro, entries in config.items():
@@ -45,21 +75,6 @@ for vector, macro, entry in pairs:
     ist = entry.get("ist", "0")
     dpl = entry.get("dpl", "DPL0")
     gate_type = entry.get("type", "GATE_INTERRUPT")
-    print(f"    // gate {vector}")
-    print(f"    .byte     {vector}")
-    print(f"    .short    {segment}")
-    print(f"    .byte     {ist}")
-    print(f"    .byte     {gate_type}")
-    print(f"    .byte     {dpl}")
-    print("    .short     0")
-    print(f"    .quad     ISR_ENTRY_NAME({vector})")
+    print_isr_table_entry(vector, segment, ist, gate_type, dpl)
 
-# null terminate the table
-print("    // null terminator")
-print("    .byte 0")
-print("    .short 0")
-print("    .byte 0")
-print("    .byte 0")
-print("    .byte 0")
-print("    .short 0")
-print("    .quad 0")
+print_isr_table_null()

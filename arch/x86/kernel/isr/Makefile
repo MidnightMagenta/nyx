@@ -9,4 +9,4 @@ include $(TOPDIR)/Rules.mk
 generated/isr_entry.S: isr_vectors.json
 	@echo -e "PY $@"
 	$(Q)mkdir -p generated
-	$(Q)$(PYTHON) $(TOPDIR)/scripts/isr_gen.py > $@
+	$(Q)$(PYTHON) $(TOPDIR)/scripts/isr_gen.py $^ > $@
