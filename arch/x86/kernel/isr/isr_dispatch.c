@@ -14,7 +14,13 @@ static void print_cr() {
                      :
                      : "memory");
 
-    printk("cr0: 0x%016lx, cr2: 0x%016lx, cr3: 0x%016lx, cr4: 0x%016lx, cr8: 0x%016lx\n", cr0, cr2, cr3, cr4, cr8);
+    printk("cr0: 0x%016lx, cr2: 0x%016lx, cr3: 0x%016lx, cr4: 0x%016lx, cr8: "
+           "0x%016lx\n",
+           cr0,
+           cr2,
+           cr3,
+           cr4,
+           cr8);
 }
 
 void __isr_dispatch(struct isr_context *context) {

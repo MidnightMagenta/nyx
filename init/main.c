@@ -1,3 +1,4 @@
+#include <asi/system.h>
 #include <nyx/kernel.h>
 
 #ifdef CONFIG_KERNEL_TESTS
@@ -17,5 +18,5 @@ void start_kernel() {
     __do_kernel_tests();
 
     pr_dbg("finish\n");
-    while (1) { __asm__ volatile("hlt"); }
+    hcf();
 }
