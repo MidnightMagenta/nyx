@@ -36,6 +36,7 @@ for vector, macro, _ in pairs:
     print(f"{macro}({vector})")
 
 print()
+print('.section .data, "aw"')
 print(".global ISR_TABLE_NAME")
 print("ISR_TABLE_NAME:")
 
