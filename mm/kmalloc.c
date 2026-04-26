@@ -18,7 +18,7 @@ void __init kmalloc_init() {
     for (int i = 0; i < KMALLOC_NUM_SIZES; i++) {
         sprintf(cache_name, "kmalloc_%d", KMALLOC_SMALLEST << i);
         kmalloc_caches[i] =
-                kmem_create_cache(cache_name, KMALLOC_SMALLEST << i, KMALLOC_SMALLEST << i, NULL, NULL, GPF_KERNEL);
+                kmem_create_cache(cache_name, KMALLOC_SMALLEST << i, KMALLOC_SMALLEST << i, NULL, NULL, GFP_KERNEL);
     }
 }
 

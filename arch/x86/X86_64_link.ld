@@ -40,6 +40,7 @@ SECTIONS {
  
     __kernel_end = .;
 
+    . = ALIGN(0x1000);
     __init_start = .;
 
     .init.text BLOCK(0x1000) : {

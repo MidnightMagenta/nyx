@@ -7,6 +7,7 @@
 #include <nyx/list.h>
 #include <nyx/printk.h>
 #include <nyx/stddef.h>
+#include <nyx/string.h>
 #include <nyx/types.h>
 
 #include <asi/bug.h>
@@ -24,14 +25,14 @@ void __init init_page_alloc() { /* void */ }
 
 #define buddy_of(addr, order) ((addr) ^ (1ul << (order)))
 
-static inline int page_is_buddy(struct page *page, int order) {
+static inline int page_is_buddy(struct page *page, unsigned long order) {
     if (!PageBuddy(page)) { return 0; }
-    return page->buddy_order == order;
+    return page->private == order;
 }
 
-static struct page *__rm_block(zone_t *zone, int order) {
+static struct page *__rm_block(zone_t *zone, unsigned long order) {
     struct free_area_s *area;
-    int                 cur_order;
+    unsigned long       cur_order;
     struct page        *page, *buddy;
     size_t              size;
 
@@ -45,7 +46,7 @@ block_found:
     page = list_first_entry(&area->list[0], struct page, list);
     list_del(&page->list);
     ClearPageBuddy(page);
-    page->buddy_order = 0;
+    page->private = 0;
     area->free_count--;
 
     size = 1ul << cur_order;
@@ -57,14 +58,14 @@ block_found:
         list_add(&buddy->list, &area->list[0]);
         area->free_count++;
         SetPageBuddy(buddy);
-        buddy->buddy_order = cur_order;
+        buddy->private = cur_order;
     }
 
     zone->free_pages -= 1ul << order;
     return page;
 }
 
-static void __add_block(struct page *page, zone_t *zone, int order) {
+static void __add_block(struct page *page, zone_t *zone, unsigned long order) {
     struct page *base     = zone->zone_mem_map;
     size_t       page_idx = page - base;
     size_t       buddy_idx;
@@ -90,7 +91,7 @@ static void __add_block(struct page *page, zone_t *zone, int order) {
 
     list_add(&page->list, &zone->free_area[order].list[0]);
     SetPageBuddy(page);
-    page->buddy_order = order;
+    page->private = order;
     zone->free_area[order].free_count++;
 }
 
@@ -109,7 +110,7 @@ static inline int gfp_zonelist(int gfp_mask) {
     return ZONE_NORMAL;
 }
 
-struct page *pm_alloc_pages(int gfp_mask, int order) {
+struct page *pm_alloc_pages(int gfp_mask, unsigned long order) {
     const struct zonelist *zlist;
     struct page           *page;
     zone_t                *zone;
@@ -119,15 +120,36 @@ struct page *pm_alloc_pages(int gfp_mask, int order) {
         zone = zlist->zones[i];
         page = __rm_block(zone, order);
         if (page) {
-            physmem_pr_dev("allocating block of order %d at %#p\n", order, page_to_phys(page));
-            return page;
+            physmem_pr_dev("allocating block of order %d from zone %s at %#p\n",
+                           order,
+                           zlist->zones[i]->name,
+                           page_to_phys(page));
+            goto found_page;
         }
     }
 
-    return NULL;
+    // TODO: implement OOM strategies
+    if (gfp_mask & __GFP_HIGH) {
+        // can use reserved pool
+        return NULL;
+    }
+    if (gfp_mask & __GFP_WAIT) {
+        // can sleep
+        return NULL;
+    }
+    return NULL; // oom
+
+found_page:
+    if (gfp_mask & __GFP_ZERO) {
+        void  *addr = page_address(page);
+        size_t len  = (1ul << order);
+        memset(addr, 0, len);
+    }
+
+    return page;
 }
 
-phys_addr_t __pm_get_free_pages(int gfp_mask, int order) {
+phys_addr_t __pm_get_free_pages(int gfp_mask, unsigned long order) {
     if (order >= MAX_ORDER) { return INVALID_PHYS_ADDR; }
     struct page *page = pm_alloc_pages(gfp_mask, order);
     if (page) { return page_to_phys(page); }
@@ -135,7 +157,7 @@ phys_addr_t __pm_get_free_pages(int gfp_mask, int order) {
     return INVALID_PHYS_ADDR;
 }
 
-void __pm_free_pages(struct page *page, int order) {
+void __pm_free_pages(struct page *page, unsigned long order) {
     BUG_ON(order >= MAX_ORDER);
     BUG_ON(!page);
 #ifdef __DEBUG
@@ -154,7 +176,7 @@ void __pm_free_pages(struct page *page, int order) {
     __add_block(page, zone, order);
 }
 
-void pm_free_pages(phys_addr_t addr, int order) {
+void pm_free_pages(phys_addr_t addr, unsigned long order) {
     struct page *page = phys_to_page(addr);
     __pm_free_pages(page, order);
 }

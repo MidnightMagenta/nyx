@@ -1,10 +1,15 @@
 #include "printb.h"
 
-#define outb(port, value) __asm__ volatile("outb %b0, %w1" ::"a"(value), "Nd"(port) : "memory");
+#define outb(port, value)                                                                                              \
+    __asm__ volatile("outb %b0, %w1" ::"a"(value), "Nd"(port)                                                          \
+                     : "memory");
 #define inb(port)                                                                                                      \
     ({                                                                                                                 \
         unsigned char _v;                                                                                              \
-        __asm__ volatile("inb %w1, %b0" : "=a"(_v) : "Nd"(port) : "memory");                                           \
+        __asm__ volatile("inb %w1, %b0"                                                                                \
+                         : "=a"(_v)                                                                                    \
+                         : "Nd"(port)                                                                                  \
+                         : "memory");                                                                                  \
         _v;                                                                                                            \
     })
 
@@ -194,10 +199,7 @@ int vprintb(const char *fmt, va_list params) {
             signed long long num    = (long long) va_arg(params, long long);
             const char      *str    = s64_to_str((signed long long) num);
             int              amount = bstrlen(str);
-            if (maxrem < amount) {
-                // TODO: error
-                return (int) 0;
-            }
+            if (maxrem < amount) { return (int) 0; }
             bputs(str, amount);
             written += amount;
         } else if (*fmt == 'u') {

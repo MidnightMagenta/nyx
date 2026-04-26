@@ -8,6 +8,7 @@
 #include <mm/memory.h>
 #include <mm/mm_types.h>
 #include <mm/mmzone.h>
+#include <nyx/types.h>
 
 static inline pfn_t page_to_pfn(struct page *page) {
     zone_t *zone = &pgdata->zones[page->zone_id];
@@ -32,7 +33,7 @@ static inline phys_addr_t page_to_phys(struct page *page) {
     return (phys_addr_t) (page_to_pfn(page) << PAGE_SHIFT);
 }
 
-#define page_address(page) phys_to_virt((void *) page_to_phys((page)))
-#define virt_to_page(virt) phys_to_page(virt_to_phys((phys_addr_t) (virt)))
+#define page_address(page) __va((void *) page_to_phys((page)))
+#define virt_to_page(virt) phys_to_page((phys_addr_t) __pa((phys_addr_t) (virt)))
 
 #endif

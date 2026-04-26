@@ -5,4 +5,10 @@ config 64BIT
     def_bool y
 
 rsource "boot/Kconfig"
+rsource "mm/Kconfig.zones"
+
+menu "Architecture options"
+
 rsource "mm/Kconfig"
+
+endmenu

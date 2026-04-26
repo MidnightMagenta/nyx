@@ -1,13 +1,13 @@
-config ZONE_DMA
-    def_bool y
-    depends on X86_64
+menu "Virtual memory"
 
-config ZONE_DMA32
-    def_bool y
-    depends on X86_64
+config VIRTMEM_DEV_PRINT
+    bool "Print debug information"
+    default n
 
-config ZONE_HIGHMEM
-    def_bool n
-    depends on X86_64
+config USE_GIGANTIC_PAGES
+    bool "Use gigantic pages"
+    default n
+    help
+        Should the kernel use 1 gigabyte pages when mapping memory. Set to no if unsure.
 
-
+endmenu
