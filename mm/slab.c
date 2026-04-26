@@ -245,6 +245,7 @@ int __init kmem_cache_init() {
 
 static void calculate_slab_size(struct kmem_cache_s *cache) {
     size_t order, nr_objs;
+    size_t lowest_waste = SIZE_MAX, lowest_order = 0;
 
     if (cache->obj_size > SLAB_MAX_SMALL_OBJECT) { cache->flags |= CFLAG_OFF_SLAB; }
 
@@ -259,12 +260,18 @@ static void calculate_slab_size(struct kmem_cache_s *cache) {
             used    = sizeof(struct kmem_slab_s) + nr_objs * sizeof(kmem_bufctl_t) + nr_objs * slab_buffer_size(cache);
         }
         size_t waste = slab_size - used;
+        if (waste < lowest_waste) {
+            lowest_waste = waste;
+            lowest_order = order;
+        }
+
         if (waste * 100 / slab_size < SLAB_WASTE_THRESHOLD) { break; }
     }
 
     if (order >= MAX_ORDER) {
-        size_t slab_size = (1 << order) << PAGE_SHIFT;
-        order            = MAX_ORDER - 1;
+        order = lowest_order >= MAX_ORDER ? MAX_ORDER - 1 : lowest_order;
+
+        size_t slab_size = (1 << order << PAGE_SHIFT);
         if (OFF_SLAB(cache)) {
             nr_objs = slab_size / slab_buffer_size(cache);
         } else {
