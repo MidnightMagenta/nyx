@@ -5,7 +5,6 @@
 #include <asi/idt.h>
 #include <asi/isr_entry.h>
 
-#define IDT_ENTRIES  256
 #define IDT_TAB_SIZE IDT_ENTRIES * sizeof(gate_desc)
 
 extern struct idt_data ISR_TABLE_NAME[256];

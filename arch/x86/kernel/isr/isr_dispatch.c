@@ -1,7 +1,11 @@
+#include <asi/idt.h>
+#include <asi/isr.h>
 #include <asi/isr_context.h>
+#include <asi/system.h>
+
 #include <nyx/printk.h>
 
-#define hcf() __asm__("cli; hlt");
+extern isr_func_t isr_fn_arr[IDT_ENTRIES];
 
 static void print_cr() {
     u64 cr0 = 0, cr2 = 0, cr3 = 0, cr4 = 0, cr8 = 0;
@@ -23,8 +27,7 @@ static void print_cr() {
            cr8);
 }
 
-void __isr_dispatch(struct isr_context *context) {
-    // no dispatch for now. Just print what we have and freeze
+static void __noreturn isr_log_and_die(struct isr_context *context) {
     printk("interrupt %d at address 0x%016lx\n", context->vector, context->rip);
     printk("cs: 0x%016lx, ss: 0x%016lx, rflags: 0x%016lx, ecode: 0x%016lx\n",
            context->cs,
@@ -55,4 +58,10 @@ void __isr_dispatch(struct isr_context *context) {
     print_cr();
 
     hcf();
+}
+
+void __isr_dispatch(struct isr_context *context) {
+    isr_func_t handler = isr_fn_arr[context->vector];
+    if (!handler) { isr_log_and_die(context); }
+    handler(context);
 }
