@@ -1,0 +1,6 @@
+#ifndef _ASI_IRQ_VECTORS_H
+#define _ASI_IRQ_VECTORS_H
+
+#define FIRST_EXTERNAL_VECTOR 0x20
+
+#endif

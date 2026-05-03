@@ -1,11 +1,14 @@
+#include <asi/i8259.h>
 #include <asi/idt.h>
-#include <asi/isr.h>
+#include <asi/io.h>
+#include <asi/irq.h>
+#include <asi/irq_vectors.h>
 #include <asi/isr_context.h>
 #include <asi/system.h>
 
 #include <nyx/printk.h>
 
-extern isr_func_t isr_fn_arr[IDT_ENTRIES];
+extern struct __irq_table_ent isr_fn_arr[IDT_ENTRIES];
 
 static void print_cr() {
     u64 cr0 = 0, cr2 = 0, cr3 = 0, cr4 = 0, cr8 = 0;
@@ -60,8 +63,21 @@ static void __noreturn isr_log_and_die(struct isr_context *context) {
     hcf();
 }
 
+extern int i8259_is_spurious(unsigned int irq);
+
 void __isr_dispatch(struct isr_context *context) {
-    isr_func_t handler = isr_fn_arr[context->vector];
-    if (!handler) { isr_log_and_die(context); }
-    handler(context);
+    // HACK: temporary hack for handling PIC's spurious interrupts. Leaked abstraction. Yuck.
+    do {
+        if (isr_fn_arr[context->vector].chip) {
+            unsigned int pic_irq = context->vector - FIRST_EXTERNAL_VECTOR;
+            if ((pic_irq == 7 || pic_irq == 15) && i8259_is_spurious(context->vector)) {
+                if (pic_irq == 15) { outb_p(PIC_MASTER_CMD, 0x20); }
+                return;
+            }
+        }
+    } while (0);
+    // END HACK
+
+    isr_fn_arr[context->vector].fn(context);
+    if (isr_fn_arr[context->vector].chip) { isr_fn_arr[context->vector].chip->eoi(context->vector); }
 }

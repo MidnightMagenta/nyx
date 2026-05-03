@@ -1,6 +1,8 @@
 #ifndef _ASI_I8259_H
 #define _ASI_I8259_H
 
+#include <nyx/irq.h>
+
 #define PIC_MASTER_CMD  0x20
 #define PIC_MASTER_IMR  0x21
 #define PIC_MASTER_ISR  PIC_MASTER_CMD
@@ -14,5 +16,7 @@ void i8259_mask_all();
 void i8259_mask(unsigned int irq);
 void i8259_unmask(unsigned int irq);
 void i8259_eoi(unsigned int irq);
+
+extern struct irq_chip i8259_chip;
 
 #endif

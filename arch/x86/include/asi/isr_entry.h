@@ -8,7 +8,7 @@
 #ifdef __ASSEMBLY__
 // clang-format off
 
-.macro __isr_entry_no_error name vector common_name
+.macro __exception_entry_no_error name vector common_name
 .global \name
 \name:
     push $0
@@ -16,15 +16,22 @@
     jmp \common_name
 .endm
 
-.macro __isr_entry_error name vector common_name
+.macro __exception_entry_error name vector common_name
 .global \name
 \name:
     push $\vector
     jmp \common_name
 .endm
 
-#define ISR_ENTRY_NO_ERR(n) __isr_entry_no_error ISR_ENTRY_NAME(n) n ISR_COMMON_NAME
-#define ISR_ENTRY_ERR(n) __isr_entry_error ISR_ENTRY_NAME(n) n ISR_COMMON_NAME
+.macro __irq_entry name vector common_name
+.global \name
+\name:
+    push $\vector
+    jmp \common_name
+.endm
+
+#define ISR_ENTRY_NO_ERR(n) __exception_entry_no_error ISR_ENTRY_NAME(n) n ISR_COMMON_NAME
+#define ISR_ENTRY_ERR(n) __exception_entry_error ISR_ENTRY_NAME(n) n ISR_COMMON_NAME
 
 // clang-format on
 #else

@@ -1,5 +1,5 @@
 O_OBJS := head.o setup.o early_serial.o early_panic.o \
-		  idt.o i8259.o isr/kernelisrar.o
+		  idt.o i8259.o isr/kernelisrar.o irq.o
 
 O_TARGET := kernelar.o
 SUB_DIRS := isr
