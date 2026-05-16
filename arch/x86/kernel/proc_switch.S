@@ -1,3 +1,5 @@
+#include <asi/generated/asm-offsets.h>
+
 .section .text
 .global switch_to
 switch_to:
@@ -8,8 +10,8 @@ switch_to:
     push    %r14
     push    %r15
 
-    mov     %rsp, 0(%rdi)
-    mov     0(%rsi), %rsp
+    mov     %rsp, TASK_CONTEXT_RSP(%rdi)
+    mov     TASK_CONTEXT_RSP(%rsi), %rsp
 
     pop     %r15
     pop     %r14

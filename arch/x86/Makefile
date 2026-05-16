@@ -20,6 +20,8 @@ image: vmnyx
 	$(Q)$(MAKEBOOT) image
 	$(Q)cp arch/$(ARCH)/boot/image image
 
+archtargets: $(TOPDIR)/arch/$(ARCH)/include/asi/generated/asm-offsets.h
+
 archclean:
 	rm -f arch/$(ARCH)/X86_64_link.lds
 	$(MAKEBOOT) clean
@@ -27,3 +29,12 @@ archclean:
 %.lds: %.ld
 	@echo -e "CPP $@"
 	$(Q)$(CPP) -P -x assembler-with-cpp -include include/generated/autoconf.h $^ -o $@
+
+$(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.s: $(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.c
+	@echo "CC $@"
+	$(Q)$(CC) $(CFLAGS) -S $< -o $@
+
+$(TOPDIR)/arch/$(ARCH)/include/asi/generated/asm-offsets.h: $(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.s
+	@echo "SED $@"
+	@mkdir -p $(@D)
+	$(Q)grep "^->" $< | sed 's/^->\([^ ]*\) \$$\?\(.*\)/#define \1 \2/' > $@

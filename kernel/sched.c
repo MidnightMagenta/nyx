@@ -94,7 +94,7 @@ struct task_struct *get_current_task() {
     return current;
 }
 
-extern void switch_to(struct proc_context *prev, struct proc_context *next);
+extern void switch_to(struct task_struct *prev, struct task_struct *next);
 
 void schedule() {
     struct task_struct *cur  = get_current_task();
@@ -107,7 +107,7 @@ void schedule() {
 
     current = next;
 
-    switch_to(&cur->context, &next->context);
+    switch_to(cur, next);
 }
 
 void scheduler_tick() {

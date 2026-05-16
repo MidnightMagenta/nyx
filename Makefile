@@ -118,7 +118,7 @@ vmnyx: nyxsubdirs $(ARCH_LINK)
 		$(LIBS) \
 		-o $@
 
-nyxsubdirs: include/generated/autoconf.h include/generated/version.h
+nyxsubdirs: include/generated/autoconf.h include/generated/version.h archtargets
 	$(Q)set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i; done
 
 tools:
