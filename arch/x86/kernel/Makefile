@@ -1,7 +1,6 @@
 O_OBJS := head.o setup.o early_serial.o early_panic.o \
-		  idt.o i8259.o isr/kernelisrar.o irq.o
+		  idt.o i8253.o i8259.o irq.o traps.o timer.o
 
 O_TARGET := kernelar.o
-SUB_DIRS := isr
 
 include $(TOPDIR)/Rules.mk

@@ -26,6 +26,16 @@ struct gate_struct {
 
 typedef struct gate_struct gate_desc;
 
+struct idt_data {
+    u8  vector;
+    u16 segment;
+    u8  ist;
+    u8  type;
+    u8  dpl;
+    u16 _pad;
+    u64 addr;
+} __packed;
+
 #endif
 
 #define GATE_INTERRUPT 0xe

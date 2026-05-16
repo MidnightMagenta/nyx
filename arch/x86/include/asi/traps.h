@@ -6,7 +6,7 @@
 
 #include <asi/cpu.h>
 
-struct isr_context {
+struct trap_frame {
     struct gp_regs regs;
     u64            vector;
     u64            ecode;

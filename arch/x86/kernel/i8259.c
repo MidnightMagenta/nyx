@@ -24,7 +24,7 @@ static unsigned int cached_irq_mask = 0xffff;
 #define cached_slave_mask  (__byte(0, cached_irq_mask))
 
 void i8259_mask(unsigned int irq) {
-    unsigned int mask = 1 << (irq - FIRST_EXTERNAL_VECTOR);
+    unsigned int mask = 1 << (irq);
     cached_irq_mask |= mask;
 
     if (irq & 8) {
@@ -35,7 +35,7 @@ void i8259_mask(unsigned int irq) {
 }
 
 void i8259_unmask(unsigned int irq) {
-    unsigned int mask = ~(1 << (irq - FIRST_EXTERNAL_VECTOR));
+    unsigned int mask = ~(1 << (irq));
     cached_irq_mask &= mask;
 
     if (irq & 8) {
@@ -52,8 +52,8 @@ void i8259_mask_all() {
 }
 
 int i8259_is_spurious(unsigned int irq) {
-    u16 port     = ((irq - FIRST_EXTERNAL_VECTOR) < 8) ? PIC_MASTER_CMD : PIC_SLAVE_CMD;
-    u8  irq_mask = 1 << ((irq - FIRST_EXTERNAL_VECTOR) & 7);
+    u16 port     = ((irq) < 8) ? PIC_MASTER_CMD : PIC_SLAVE_CMD;
+    u8  irq_mask = 1 << ((irq) & 7);
     u8  isr;
 
     outb_p(port, OCW3 | OCW3_RR | OCW3_ISR);
@@ -63,11 +63,12 @@ int i8259_is_spurious(unsigned int irq) {
 }
 
 void i8259_eoi(unsigned int irq) {
-    unsigned int pic_irq = irq - FIRST_EXTERNAL_VECTOR;
+    unsigned int pic_irq = irq;
     if (i8259_is_spurious(pic_irq)) { goto handle_spurious; }
 
-    if (pic_irq < 8) { outb_p(PIC_SLAVE_CMD, 0x20); }
+    if (pic_irq > 7) { outb_p(PIC_SLAVE_CMD, 0x20); }
     outb_p(PIC_MASTER_CMD, 0x20);
+    return;
 
 handle_spurious:
     if (pic_irq > 7) { outb_p(PIC_MASTER_CMD, 0x20); }

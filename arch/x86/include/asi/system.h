@@ -2,6 +2,7 @@
 #define _ASI_SYSTEM_H
 
 #define cli() __asm__ volatile("cli");
+#define sti() __asm__ volatile("sti");
 #define hlt() __asm__ volatile("hlt");
 #define invlpg(a)                                                                                                      \
     __asm__ volatile("invlpg (%0)"                                                                                     \

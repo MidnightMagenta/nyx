@@ -2,7 +2,6 @@
 #define _ASI_DESC_H
 
 #include <asi/descriptors.h>
-#include <asi/isr_entry.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
 
@@ -14,10 +13,12 @@ static inline void load_gdt(const struct desc_ptr *ptr) {
 }
 
 static inline void store_idt(struct desc_ptr *ptr) {
-    __asm__ volatile("lidt %0" : "=m"(*ptr)::"memory");
+    __asm__ volatile("lidt %0"
+                     : "=m"(*ptr)::"memory");
 }
 static inline void store_gdt(struct desc_ptr *ptr) {
-    __asm__ volatile("lgdt %0" : "=m"(*ptr)::"memory");
+    __asm__ volatile("lgdt %0"
+                     : "=m"(*ptr)::"memory");
 }
 
 

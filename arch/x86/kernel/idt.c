@@ -3,11 +3,10 @@
 #include <asi/desc.h>
 #include <asi/descriptors.h>
 #include <asi/idt.h>
-#include <asi/isr_entry.h>
 
 #define IDT_TAB_SIZE IDT_ENTRIES * sizeof(gate_desc)
 
-extern struct idt_data ISR_TABLE_NAME[256];
+extern struct idt_data idt_data[257]; // table + null terminator
 
 gate_desc __page_aligned_bss idt[IDT_ENTRIES];
 
@@ -28,5 +27,5 @@ static int idt_data_table_size(const struct idt_data *table) {
 }
 
 void idt_setup_interrupts() {
-    idt_setup_from_table(idt, ISR_TABLE_NAME, idt_data_table_size(ISR_TABLE_NAME));
+    idt_setup_from_table(idt, idt_data, idt_data_table_size(idt_data));
 }

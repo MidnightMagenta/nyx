@@ -1,28 +1,27 @@
-#include <nyx/errno.h>
-#include <nyx/stddef.h>
+#include <nyx/linkage.h>
 
 #include <asi/i8259.h>
-#include <asi/idt.h>
 #include <asi/irq.h>
+#include <asi/irq_vectors.h>
 
-struct __irq_table_ent isr_fn_arr[IDT_ENTRIES] = {0};
-
-void irq_chip_reserve_range(struct irq_chip *chip, unsigned int from, unsigned int to) {
-    for (size_t i = from; i < to; i++) { isr_fn_arr[to].chip = chip; }
+void __init arch_init_irq() {
+    i8259_init();
 }
 
-int irq_register(int vector, isr_func_t fn) {
-    if ((unsigned int) vector > IDT_ENTRIES) { return -EINVAL; }
-    if (!isr_fn_arr[vector].chip) { return -ENODEV; }
-    if (isr_fn_arr[vector].fn) { return -EBUSY; }
-    isr_fn_arr[vector].fn = fn;
-    return 0;
+unsigned int vector_to_irq(unsigned int vector) {
+    return vector - FIRST_EXTERNAL_VECTOR;
 }
 
-int irq_deregister(int vector) {
-    if ((unsigned int) vector > IDT_ENTRIES) { return -EINVAL; }
-    isr_fn_arr[vector].fn = NULL;
-    return 0;
-}
+void handle_irq(struct irq_desc *desc) {
+    // HACK: we're just doing PIC for now. Obv wrong
 
-void irq_register_interrupts() {}
+    if (i8259_is_spurious(desc->irq)) { goto exit; }
+
+    for (struct list_head *cur = desc->actions.next; cur != &desc->actions; cur = cur->next) {
+        struct irq_action *action = list_entry(cur, struct irq_action, list);
+        action->fn(action->ctx);
+    }
+
+exit:
+    i8259_eoi(desc->irq);
+}

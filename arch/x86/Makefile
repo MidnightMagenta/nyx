@@ -1,8 +1,9 @@
 ARCHIVES += arch/$(ARCH)/kernel/kernelar.o arch/$(ARCH)/mm/mmar.o \
-			arch/$(ARCH)/lib/archliba.o
+			arch/$(ARCH)/lib/archliba.o arch/$(ARCH)/entry/entryar.o
 LIBS += 
 
-SUBDIRS += arch/$(ARCH)/kernel arch/$(ARCH)/mm arch/$(ARCH)/lib
+SUBDIRS += arch/$(ARCH)/kernel arch/$(ARCH)/mm arch/$(ARCH)/lib \
+		   arch/$(ARCH)/entry
 
 CFLAGS += -m64 -m80387 -mno-sse -mno-sse2 -mno-mmx \
           -mno-sse3 -mno-sse4 -mno-avx -mno-avx2 \

@@ -17,6 +17,8 @@ void i8259_mask(unsigned int irq);
 void i8259_unmask(unsigned int irq);
 void i8259_eoi(unsigned int irq);
 
+int i8259_is_spurious(unsigned int irq);
+
 extern struct irq_chip i8259_chip;
 
 #endif
