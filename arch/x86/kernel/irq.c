@@ -1,4 +1,5 @@
 #include <nyx/linkage.h>
+#include <nyx/sched.h>
 
 #include <asi/i8259.h>
 #include <asi/irq.h>
@@ -24,4 +25,6 @@ void handle_irq(struct irq_desc *desc) {
 
 exit:
     i8259_eoi(desc->irq);
+
+    if (need_resched()) { schedule(); }
 }

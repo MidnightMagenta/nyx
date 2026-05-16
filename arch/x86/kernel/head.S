@@ -66,8 +66,9 @@ setup_idt:
 ignore_int:
     iretq
 
-.section    .init.bss, "aw", @nobits
+.section    .bss, "aw", @nobits
 .skip       0x1000
+.global init_stack_top
 init_stack_top:
 
 .section    .data, "aw"

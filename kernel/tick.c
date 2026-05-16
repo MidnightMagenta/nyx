@@ -8,6 +8,9 @@ void init_timer() {
     arch_init_timer();
 }
 
+extern void scheduler_tick();
+
 void tick_handle() {
     jiffies++;
+    scheduler_tick();
 }

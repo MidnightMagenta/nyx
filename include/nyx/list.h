@@ -45,6 +45,25 @@ static inline int list_is_empty(struct list_head *head) {
     return head->next == head;
 }
 
+static inline void list_replace(struct list_head *old, struct list_head *new) {
+    new->next       = old->next;
+    new->next->prev = new;
+    new->prev       = old->prev;
+    new->prev->next = new;
+}
+
+static inline void list_move(struct list_head *list, struct list_head *head) {
+    __list_del(list->prev, list->next);
+    list_add(list, head);
+}
+
+static inline void list_move_tail(struct list_head *list, struct list_head *head) {
+    __list_del(list->prev, list->next);
+    list_add_tail(list, head);
+}
+
+#define list_for_each(pos, head) for (pos = (head)->next; pos != (head); pos = pos->next)
+
 #define list_entry(ptr, type, member)       container_of(ptr, type, member)
 #define list_first_entry(ptr, type, member) list_entry((ptr)->next, type, member)
 

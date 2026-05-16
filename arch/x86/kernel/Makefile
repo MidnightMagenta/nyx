@@ -1,5 +1,6 @@
 O_OBJS := head.o setup.o early_serial.o early_panic.o \
-		  idt.o i8253.o i8259.o irq.o traps.o timer.o
+		  idt.o i8253.o i8259.o irq.o traps.o timer.o \
+		  proc.o proc_switch.o
 
 O_TARGET := kernelar.o
 
