@@ -11,6 +11,7 @@ void  *memset(void *ptr, int v, size_t num);
 void  *memmove(void *dest, const void *src, size_t len);
 int    strcmp(const char *a, const char *b);
 char  *strcpy(char *restrict dest, const char *restrict src);
+char  *strncpy(char *restrict dest, const char *restrict src, size_t len);
 size_t strlen(const char *s);
 size_t strnlen(const char *s, size_t count);
 int    vsprintf(char *buf, const char *fmt, va_list args);

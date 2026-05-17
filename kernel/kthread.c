@@ -5,9 +5,13 @@
 
 extern void kthread_trampoline(void *);
 
-int kthread_create(void (*entry)(void)) {
-    struct task_struct *kthread = task_create(kthread_trampoline, (virt_addr_t) entry);
+int kthread_create(void (*entry)(void), const char *name) {
+    struct task_struct *kthread = task_alloc(name);
     if (!kthread) { return -ENOSPC; }
+
+    arch_init_task(kthread, kthread->stack, kthread_trampoline, (virt_addr_t) entry);
+    task_make_runnable(kthread);
+
     return 0;
 }
 

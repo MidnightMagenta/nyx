@@ -1,6 +1,7 @@
 #include <mm/physmem.h>
 #include <mm/slab.h>
 #include <nyx/bitmap.h>
+#include <nyx/compiler.h>
 #include <nyx/kernel.h>
 #include <nyx/linkage.h>
 #include <nyx/list.h>
@@ -57,38 +58,40 @@ pid_t get_pid() {
     return pid;
 }
 
-extern void arch_init_task(struct task_struct *task, void *stack, void (*entry)(void *), virt_addr_t context);
 
-static struct task_struct *alloc_task_struct(void (*entry)(void *), virt_addr_t context) {
+struct task_struct *task_alloc(const char *name) {
     struct task_struct *task = kmem_cache_alloc(task_struct_cache, 0);
+    if (!task) { return NULL; }
 
     memset(task, 0, sizeof(struct task_struct));
     task->stack = __va(pm_get_zeroed_page(GFP_ATOMIC));
     task->pid   = get_pid();
 
-    arch_init_task(task, task->stack, entry, context);
+    if (name) {
+        strncpy(task->name, name, TASK_NAME_LEN - 1);
+        task->name[TASK_NAME_LEN - 1] = '\0';
+    }
 
-    list_add_tail(&task->list, &task_list);
+    task->state = TASK_NEW;
+    list_add_tail(&task->task_list, &task_list);
 
     return task;
 }
 
-struct task_struct *task_create(void (*entry)(void *), virt_addr_t context) {
-    struct task_struct *task = alloc_task_struct(entry, context);
-
-    task->state = RUNNABLE;
+void task_make_runnable(struct task_struct *task) {
     list_add_tail(&task->list, &runqueue);
-
-    return task;
+    task->state = RUNNABLE;
 }
 
 // TODO: need a reaper thread that cleans up zombie tasks
-void task_exit() {
+void __noreturn task_exit() {
     struct task_struct *task = get_current_task();
-    task->state              = ZOMBIE;
     list_del(&task->list);
     list_add(&task->list, &deadqueue);
+    task->state = ZOMBIE;
     schedule();
+
+    while (1);
 }
 
 static struct task_struct *pick_next() {

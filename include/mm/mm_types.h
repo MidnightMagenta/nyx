@@ -1,10 +1,12 @@
 #ifndef _MM_MM_TYPES_H
 #define _MM_MM_TYPES_H
 
+#include <nyx/atomic.h>
 #include <nyx/list.h>
 #include <nyx/types.h>
 
 #include <asi/bitops.h>
+#include <asi/page_data.h>
 
 #define PG_reserved (1 << 0)
 #define PG_buddy    (1 << 1)
@@ -39,6 +41,23 @@ struct page {
             struct kmem_slab_s  *kmem_slab;
         };
     };
+};
+
+struct vma_region_struct {
+    struct list_head list;
+
+    virt_addr_t start, end;
+    u32         prot;
+    u32         flags;
+
+    void *private;
+};
+
+struct mm_struct {
+    pgd_t           *pgd;
+    struct list_head vma_regions;
+
+    atomic_t refcount;
 };
 
 #endif

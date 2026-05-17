@@ -52,8 +52,8 @@ void start_kernel() {
 
     pr_dbg("finish\n");
 
-    kthread_create(test_kthread_a);
-    kthread_create(test_kthread_b);
+    kthread_create(test_kthread_a, "test_a");
+    kthread_create(test_kthread_b, "test_b");
 
     sti();
 
