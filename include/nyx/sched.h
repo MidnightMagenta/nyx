@@ -17,19 +17,20 @@ enum task_state {
 struct task_struct {
     struct list_head list;
 
-    enum task_state state;
-    int             killed; // killed if not 0
-
+    enum task_state     state;
     struct proc_context context;
     pid_t               pid;
+    void               *stack;
 
-    void *stack;
+    struct list_head task_list;
 };
 
 struct task_struct *get_current_task();
 void                schedule();
 
-struct task_struct *task_create(void (*entry)(void));
+#define yield() schedule()
+
+struct task_struct *task_create(void (*entry)(void *), virt_addr_t context);
 void                task_exit();
 
 int need_resched();

@@ -20,7 +20,9 @@ switch_to:
     pop     %rbp
     pop     %rbx
 
-    // HACK: bad hack. We need to re-enable interrupts manually.
-    sti
-
     ret
+
+.global start_task
+start_task:
+    mov     %r12, %rdi
+    iretq

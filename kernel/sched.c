@@ -3,8 +3,11 @@
 #include <nyx/bitmap.h>
 #include <nyx/kernel.h>
 #include <nyx/linkage.h>
+#include <nyx/list.h>
 #include <nyx/sched.h>
 #include <nyx/string.h>
+#include <nyx/types.h>
+#include <uapi/posix_types.h>
 
 #include <asi/address.h>
 
@@ -19,9 +22,15 @@ struct {
 } pid_map;
 
 kmem_cache_t *task_struct_cache;
+
+static LIST_HEAD(task_list);
 static LIST_HEAD(runqueue);
+static LIST_HEAD(deadqueue);
+
 static struct task_struct *current = &idle_task_struct;
-int                        need_reschedule;
+
+// HACK: this should be per CPU
+volatile int need_reschedule;
 
 extern char init_stack_top[];
 
@@ -36,10 +45,9 @@ void __init init_sched() {
                                           NULL,
                                           GFP_ATOMIC);
 
-    idle_task_struct.stack  = init_stack_top;
-    idle_task_struct.state  = RUNNABLE;
-    idle_task_struct.killed = 0;
-    idle_task_struct.pid    = 0;
+    idle_task_struct.stack = init_stack_top;
+    idle_task_struct.state = RUNNABLE;
+    idle_task_struct.pid   = 0;
 }
 
 pid_t get_pid() {
@@ -49,21 +57,28 @@ pid_t get_pid() {
     return pid;
 }
 
-extern void arch_init_task(struct task_struct *task, void *stack, void (*entry)(void));
+extern void arch_init_task(struct task_struct *task, void *stack, void (*entry)(void *), virt_addr_t context);
 
-static struct task_struct *alloc_task_struct(void (*entry)(void)) {
+static struct task_struct *alloc_task_struct(void (*entry)(void *), virt_addr_t context) {
     struct task_struct *task = kmem_cache_alloc(task_struct_cache, 0);
+
     memset(task, 0, sizeof(struct task_struct));
     task->stack = __va(pm_get_zeroed_page(GFP_ATOMIC));
     task->pid   = get_pid();
-    arch_init_task(task, task->stack, entry);
+
+    arch_init_task(task, task->stack, entry, context);
+
+    list_add_tail(&task->list, &task_list);
+
     return task;
 }
 
-struct task_struct *task_create(void (*entry)(void)) {
-    struct task_struct *task = alloc_task_struct(entry);
-    list_add_tail(&task->list, &runqueue);
+struct task_struct *task_create(void (*entry)(void *), virt_addr_t context) {
+    struct task_struct *task = alloc_task_struct(entry, context);
+
     task->state = RUNNABLE;
+    list_add_tail(&task->list, &runqueue);
+
     return task;
 }
 
@@ -71,7 +86,8 @@ struct task_struct *task_create(void (*entry)(void)) {
 void task_exit() {
     struct task_struct *task = get_current_task();
     task->state              = ZOMBIE;
-    task->killed             = 1;
+    list_del(&task->list);
+    list_add(&task->list, &deadqueue);
     schedule();
 }
 
