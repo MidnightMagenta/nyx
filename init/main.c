@@ -2,9 +2,6 @@
 #include <nyx/kernel.h>
 #include <nyx/kthread.h>
 
-#include <mm/physmem.h>
-#include <mm/virtmem.h>
-
 #ifdef CONFIG_KERNEL_TESTS
 extern void __do_kernel_tests();
 #else

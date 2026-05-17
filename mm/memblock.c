@@ -7,7 +7,6 @@
 #include <nyx/errno.h>
 #include <nyx/kernel.h>
 #include <nyx/linkage.h>
-#include <nyx/printk.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
 

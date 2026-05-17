@@ -29,5 +29,7 @@
   { include: ["<uchar.h>",    "public", "<nyx/uchar.h>",    "public"] },
   { include: ["<wchar.h>",    "public", "<nyx/wchar.h>",    "public"] },
   { include: ["<wctype.h>",   "public", "<nyx/wctype.h>",   "public"] },
+  { include: ["<sys/types.h>", "public", "<uapi/posix_types.h>", "public"] },
+  { include: ["<uapi/asi-generic/errno-base.h>", "public", "<nyx/errno.h>", "public"] },
 ]
 

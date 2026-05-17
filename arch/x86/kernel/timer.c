@@ -1,6 +1,6 @@
 #include <nyx/irq.h>
 #include <nyx/linkage.h>
-#include <nyx/printk.h>
+#include <nyx/stddef.h>
 #include <nyx/tick.h>
 
 #include <asi/i8253.h>

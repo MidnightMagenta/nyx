@@ -12,7 +12,7 @@ CFLAGS += -m64 -m80387 -mno-sse -mno-sse2 -mno-mmx \
 ASFLAGS += -m64
 ARCH_LINK := $(TOPDIR)/arch/$(ARCH)/X86_64_link.lds
 
-PHONY += image archclean
+PHONY += image archclean archtargets
 
 MAKEBOOT := $(MAKE) -C arch/$(ARCH)/boot
 
@@ -20,6 +20,7 @@ image: vmnyx
 	$(Q)$(MAKEBOOT) image
 	$(Q)cp arch/$(ARCH)/boot/image image
 
+# special targets that arch needs to be built before the kernel
 archtargets: $(TOPDIR)/arch/$(ARCH)/include/asi/generated/asm-offsets.h
 
 archclean:
@@ -32,9 +33,11 @@ archclean:
 
 $(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.s: $(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.c
 	@echo "CC $@"
-	$(Q)$(CC) $(CFLAGS) -S $< -o $@
+	$(Q)$(CC) $(CFLAGS) -MMD -MP -S $< -o $@
 
 $(TOPDIR)/arch/$(ARCH)/include/asi/generated/asm-offsets.h: $(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.s
 	@echo "SED $@"
 	@mkdir -p $(@D)
 	$(Q)grep "^->" $< | sed 's/^->\([^ ]*\) \$$\?\(.*\)/#define \1 \2/' > $@
+
+-include $(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.d

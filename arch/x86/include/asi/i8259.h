@@ -1,8 +1,6 @@
 #ifndef _ASI_I8259_H
 #define _ASI_I8259_H
 
-#include <nyx/irq.h>
-
 #define PIC_MASTER_CMD  0x20
 #define PIC_MASTER_IMR  0x21
 #define PIC_MASTER_ISR  PIC_MASTER_CMD

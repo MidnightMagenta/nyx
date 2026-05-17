@@ -2,6 +2,7 @@
 #include <nyx/printk.h>
 #include <nyx/types.h>
 
+#include <asi/cpu.h>
 #include <asi/irq.h>
 #include <asi/traps.h>
 
@@ -26,11 +27,11 @@ static void print_cr() {
 }
 
 static void __noreturn isr_log_and_die(struct trap_frame *frame) {
-    printk("interrupt %d at address 0x%016lx\n", frame->vector, frame->rip);
+    printk("interrupt %d at address 0x%016lx\n", frame->vector, frame->frame.rip);
     printk("cs: 0x%016lx, ss: 0x%016lx, rflags: 0x%016lx, ecode: 0x%016lx\n",
-           frame->cs,
-           frame->ss,
-           frame->rflags,
+           frame->frame.cs,
+           frame->frame.ss,
+           frame->frame.rflags,
            frame->ecode);
     printk("registers:\n");
     printk("rax: 0x%016lx, rbx: 0x%016lx, rcx: 0x%016lx, rdx: 0x%016lx\n",
@@ -39,7 +40,7 @@ static void __noreturn isr_log_and_die(struct trap_frame *frame) {
            frame->regs.rcx,
            frame->regs.rdx);
     printk("rsp: 0x%016lx, rbp: 0x%016lx, rdi: 0x%016lx, rsi: 0x%016lx\n",
-           frame->rsp,
+           frame->frame.rsp,
            frame->regs.rbp,
            frame->regs.rdi,
            frame->regs.rsi);

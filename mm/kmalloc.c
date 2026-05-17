@@ -1,5 +1,6 @@
 #include <mm/address.h>
 #include <mm/kmalloc.h>
+#include <mm/mm_types.h>
 #include <mm/physmem.h>
 #include <mm/slab.h>
 #include <nyx/linkage.h>

@@ -3,7 +3,6 @@
 #include <mm/physmem.h>
 #include <mm/virtmem.h>
 #include <nyx/errno.h>
-#include <nyx/printk.h>
 #include <nyx/stddef.h>
 #include <nyx/types.h>
 

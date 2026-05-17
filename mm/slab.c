@@ -1,11 +1,14 @@
 #include <mm/address.h>
 #include <mm/mm_types.h>
+#include <mm/mmzone.h>
 #include <mm/physmem.h>
 #include <mm/slab.h>
+#include <nyx/align.h>
 #include <nyx/errno.h>
 #include <nyx/linkage.h>
 #include <nyx/list.h>
 #include <nyx/minmax.h>
+#include <nyx/stddef.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
 

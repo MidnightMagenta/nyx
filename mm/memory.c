@@ -1,9 +1,7 @@
 #include <mm/memblock.h>
 #include <mm/mmzone.h>
-#include <mm/slab.h>
 #include <mm/virtmem.h>
 #include <nyx/linkage.h>
-#include <nyx/panic.h>
 
 struct pg_data_s  contigmem_pagedata;
 struct pg_data_s *pgdata = &contigmem_pagedata;

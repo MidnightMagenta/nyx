@@ -1,6 +1,8 @@
 #include <asi/i8259.h>
 #include <asi/io.h>
 #include <asi/irq_vectors.h>
+#include <nyx/irq.h>
+#include <nyx/types.h>
 
 #define ICW1_NEED_ICW4 (1 << 0)
 #define ICW1_SINGLE    (1 << 1)

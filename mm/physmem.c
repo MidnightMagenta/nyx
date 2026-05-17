@@ -5,8 +5,6 @@
 #include <mm/physmem.h>
 #include <nyx/linkage.h>
 #include <nyx/list.h>
-#include <nyx/printk.h>
-#include <nyx/stddef.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
 

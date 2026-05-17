@@ -1,4 +1,6 @@
+#include <nyx/irq.h>
 #include <nyx/linkage.h>
+#include <nyx/list.h>
 #include <nyx/sched.h>
 
 #include <asi/i8259.h>
