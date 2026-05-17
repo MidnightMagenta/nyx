@@ -38,10 +38,10 @@ void __init setup_arch() {
     add_memblock_regions();
 }
 
-extern pgd_t *kernel_pgtable;
+extern struct mm_struct init_mm;
 
 #define map_symbol(sym_start, sym_end, flags)                                                                          \
-    vm_map(kernel_pgtable,                                                                                             \
+    vm_map(init_mm.pgd,                                                                                                \
            ALIGN_DOWN(load_base + SYMBOL_OFFSET((sym_start)), PAGE_SIZE),                                              \
            (virt_addr_t) (sym_start),                                                                                  \
            ALIGN_UP(((char *) (sym_end) - (char *) (sym_start)), PAGE_SIZE),                                           \
@@ -54,8 +54,8 @@ extern pgd_t *kernel_pgtable;
 void __init map_kernel() {
     u64 load_base = bootparams->kernel_load_base;
 
-    kernel_pgtable = vm_get_page_table(GFP_KERNEL);
-    if (!kernel_pgtable) { early_panic("could not allocate kernel page table"); }
+    init_mm.pgd = vm_get_page_table(GFP_KERNEL);
+    if (!init_mm.pgd) { early_panic("could not allocate kernel page table"); }
 
     map_symbol(__text_start, __text_end, VM_READ | VM_EXEC);
     map_symbol(__rodata_start, __rodata_end, VM_READ);
@@ -65,11 +65,11 @@ void __init map_kernel() {
     map_symbol(__kernel_tests_start, __kernel_tests_end, VM_READ | VM_WRITE | VM_EXEC);
 #endif
 
-    vm_map(kernel_pgtable,
+    vm_map(init_mm.pgd,
            get_start_of_mem(),
            ARCH_DIRECT_MAP_BASE,
            get_page_count() << PAGE_SHIFT,
            VM_READ | VM_WRITE,
            GFP_KERNEL);
-    vm_activate(kernel_pgtable);
+    vm_activate(init_mm.pgd);
 }

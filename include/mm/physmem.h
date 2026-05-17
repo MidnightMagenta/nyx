@@ -1,6 +1,7 @@
 #ifndef _MM_PMM_H
 #define _MM_PMM_H
 
+#include <mm/mm_types.h>
 #include <nyx/limits.h>
 #include <nyx/types.h>
 
@@ -8,19 +9,6 @@ struct page;
 
 #define INVALID_PHYS_ADDR PHYS_ADDR_MAX
 
-#define __GFP_DMA     (1 << 0)
-#define __GFP_DMA32   (1 << 1)
-#define __GFP_HIGHMEM (1 << 2)
-#define __GFP_HIGH    (1 << 3)
-#define __GFP_WAIT    (1 << 4)
-#define __GFP_ZERO    (1 << 5)
-
-#define GFP_DMA      (__GFP_DMA)
-#define GFP_DMA32    (__GFP_DMA32)
-#define GFP_ATOMIC   (__GFP_HIGH)
-#define GFP_KERNEL   (__GFP_WAIT)
-#define GFP_USER     (__GFP_WAIT)
-#define GFP_HIGHUSER (__GFP_WAIT | __GFP_HIGHMEM)
 
 struct page *pm_alloc_pages(int gfp_mask, unsigned long order);
 #define pm_alloc_page(gfp_mask) pm_alloc_pages((gfp_mask), 0)

@@ -28,6 +28,20 @@
 #define ClearPageSlab(page)     clear_bit(PG_slab, &(page)->flags)
 #define ClearPagePgtable(page)  clear_bit(PG_pgtable, &(page)->flags)
 
+#define __GFP_DMA     (1 << 0)
+#define __GFP_DMA32   (1 << 1)
+#define __GFP_HIGHMEM (1 << 2)
+#define __GFP_HIGH    (1 << 3)
+#define __GFP_WAIT    (1 << 4)
+#define __GFP_ZERO    (1 << 5)
+
+#define GFP_DMA      (__GFP_DMA)
+#define GFP_DMA32    (__GFP_DMA32)
+#define GFP_ATOMIC   (__GFP_HIGH)
+#define GFP_KERNEL   (__GFP_WAIT)
+#define GFP_USER     (__GFP_WAIT)
+#define GFP_HIGHUSER (__GFP_WAIT | __GFP_HIGHMEM)
+
 struct page {
     u64              flags;
     struct list_head list;
@@ -42,6 +56,12 @@ struct page {
         };
     };
 };
+
+#define VM_READ          (1 << 0)
+#define VM_WRITE         (1 << 1)
+#define VM_EXEC          (1 << 2)
+#define VM_USER          (1 << 3)
+#define VM_CACHE_DISABLE (1 << 4)
 
 struct vma_region_struct {
     struct list_head list;
@@ -58,6 +78,7 @@ struct mm_struct {
     struct list_head vma_regions;
 
     atomic_t refcount;
+    atomic_t user_count;
 };
 
 #endif

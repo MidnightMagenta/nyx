@@ -1,4 +1,5 @@
 #include <mm/memblock.h>
+#include <mm/mm_types.h>
 #include <mm/mmzone.h>
 #include <mm/virtmem.h>
 #include <nyx/linkage.h>
@@ -11,7 +12,12 @@ extern void arch_init_memory();
 extern void kmem_cache_init();
 extern void kmalloc_init();
 
-pgd_t *kernel_pgtable;
+struct mm_struct init_mm = {
+        .pgd          = NULL,
+        .refcount.d   = 0,
+        .user_count.d = 0,
+        .vma_regions  = (struct list_head) LIST_HEAD_INIT(init_mm.vma_regions),
+};
 
 extern void map_kernel();
 

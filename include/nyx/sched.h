@@ -1,6 +1,7 @@
 #ifndef _NYX_SCHED_H
 #define _NYX_SCHED_H
 
+#include <mm/mm_types.h>
 #include <nyx/compiler.h>
 #include <nyx/list.h>
 #include <nyx/types.h>
@@ -23,6 +24,8 @@ struct task_struct {
 
     enum task_state     state;
     struct proc_context context;
+    struct mm_struct   *mm;
+    struct mm_struct   *active_mm;
     pid_t               pid;
     void               *stack;
 
