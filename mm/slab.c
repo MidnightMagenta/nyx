@@ -219,6 +219,8 @@ static void cache_shrink(struct kmem_cache_s *cache) {
 }
 
 int __init kmem_cache_init() {
+    memset(&cache_cache, 0, sizeof(kmem_cache_t));
+
     cache_cache.list  = (struct list_head) LIST_HEAD_INIT(cache_cache.list);
     cache_cache.flags = 0;
 
@@ -298,6 +300,9 @@ kmem_cache_t *kmem_create_cache(const char *name,
     if (align == 0) { align = 1; }
 
     cache = kmem_cache_alloc(&cache_cache, 0);
+    if (!cache) { return NULL; }
+
+    memset(cache, 0, sizeof(kmem_cache_t));
 
     cache->flags = 0;
     cache->list  = (struct list_head) LIST_HEAD_INIT(cache->list);
