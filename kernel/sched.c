@@ -5,6 +5,7 @@
 #include <nyx/kernel.h>
 #include <nyx/linkage.h>
 #include <nyx/list.h>
+#include <nyx/proc.h>
 #include <nyx/sched.h>
 #include <nyx/string.h>
 #include <nyx/types.h>

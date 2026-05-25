@@ -1,11 +1,38 @@
 #ifndef _NYX_ATOMIC_H
 #define _NYX_ATOMIC_H
 
-typedef struct {
-    int d;
-} atomic_t;
+#define ATOMIC_RELAXED __ATOMIC_RELAXED
+#define ATOMIC_CONSUME __ATOMIC_CONSUME
+#define ATOMIC_ACQUIRE __ATOMIC_ACQUIRE
+#define ATOMIC_RELEASE __ATOMIC_RELEASE
+#define ATOMIC_ACQ_REL __ATOMIC_ACQ_REL
+#define ATOMIC_SEQ_CST __ATOMIC_SEQ_CST
 
-#define atomic_set(a, v)                                                                                               \
-    do { (a)->d = (v); } while (0)
+#define __ATOMIC(T)                                                                                                    \
+    struct {                                                                                                           \
+        T __val;                                                                                                       \
+    }
+
+typedef __ATOMIC(bool) atomic_bool_t;
+typedef __ATOMIC(char) atomic_char_t;
+typedef __ATOMIC(int) atomic_int_t;
+typedef __ATOMIC(unsigned int) atomic_uint_t;
+typedef __ATOMIC(long) atomic_long_t;
+typedef __ATOMIC(unsigned long) atomic_ulong_t;
+typedef __ATOMIC(long long) atomic_llong_t;
+typedef __ATOMIC(unsigned long long) atomic_ullong_t;
+
+typedef atomic_int_t atomic_t;
+
+#define atomic_load_explicit(aptr, memorder)        __atomic_load_n(&(aptr)->__val, (memorder))
+#define atomic_load(aptr)                           atomic_load_explicit(aptr, ATOMIC_ACQUIRE)
+#define atomic_store_explicit(aptr, vptr, memorder) __atomic_store(&(aptr)->__val, (vptr), (memorder))
+#define atomic_store(aptr, vptr)                    atomic_store_explicit(aptr, vptr, ATOMIC_RELEASE)
+
+#define atomic_fetch_add(aptr, diff, memorder) __atomic_fetch_add(&(aptr)->__val, (diff), (memorder))
+#define atomic_fetch_sub(aptr, diff, memorder) __atomic_fetch_sub(&(aptr)->__val, (diff), (memorder))
+
+#define atomic_inc(aptr) atomic_fetch_add(aptr, 1, ATOMIC_RELEASE)
+#define atomic_dec(aptr) atomic_fetch_sub(aptr, 1, ATOMIC_ACQ_REL)
 
 #endif
