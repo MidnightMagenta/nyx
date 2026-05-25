@@ -11,15 +11,7 @@ extern void init_page_alloc();
 extern void arch_init_memory();
 extern void kmem_cache_init();
 extern void kmalloc_init();
-
-struct vas_struct init_mm = {
-        .pgd              = NULL,
-        .refcount.__val   = 1,
-        .user_count.__val = 0,
-        .vma_regions      = (struct list_head) LIST_HEAD_INIT(init_mm.vma_regions),
-};
-
-extern void map_kernel();
+extern void vas_init();
 
 void __init init_memory() {
     arch_init_memory();
@@ -28,5 +20,5 @@ void __init init_memory() {
     memblock_free_all();
     kmem_cache_init();
     kmalloc_init();
-    map_kernel();
+    vas_init();
 }

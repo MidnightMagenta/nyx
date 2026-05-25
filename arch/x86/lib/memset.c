@@ -1,7 +1,7 @@
 #include <nyx/stddef.h>
 #include <nyx/types.h>
 
-// TODO: rep stosq would likely be better later on
+// TODO: minor, performance - rep stosq would likely be better later on
 void *memset(void *ptr, int v, size_t num) {
     unsigned char *p = ptr;
 

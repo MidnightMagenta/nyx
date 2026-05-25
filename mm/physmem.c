@@ -126,7 +126,7 @@ struct page *pm_alloc_pages(int gfp_mask, unsigned long order) {
         }
     }
 
-    // TODO: implement OOM strategies
+    // TODO: major, PMM - implement OOM strategies
     if (gfp_mask & __GFP_HIGH) {
         // can use reserved pool
         return NULL;

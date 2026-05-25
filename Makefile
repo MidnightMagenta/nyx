@@ -9,7 +9,7 @@ endif
 MAKEFLAGS += --no-print-directory --no-builtin-rules
 
 ARCH := x86
-# HACK: CROSS_COMPILE should be empty (set as enviromental variable). Left filled for convenience right now
+# HACK: minor, build - CROSS_COMPILE should be empty (set as enviromental variable). Left filled for convenience right now
 CROSS_COMPILE := x86_64-elf-
 TOPDIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 

@@ -11,16 +11,17 @@
 
 #include <nyx/printk.h>
 
-kmem_cache_t            *vas_struct_cache;
-extern struct vas_struct init_vas;
+kmem_cache_t *vas_struct_cache;
 
-void mm_init() {
+extern void map_kernel();
+void        vas_init() {
     vas_struct_cache = kmem_create_cache("mm_struct",
                                          sizeof(struct vas_struct),
                                          _Alignof(struct vas_struct),
                                          NULL,
                                          NULL,
                                          GFP_ATOMIC);
+    map_kernel();
 }
 
 void vas_put(struct vas_struct *vas) {
@@ -29,7 +30,7 @@ void vas_put(struct vas_struct *vas) {
 
     if (old == 1) {
         atomic_thread_fence(ATOMIC_ACQUIRE);
-        // TODO: free userspace
+        // TODO: global, VAS - free userspace
         printk("vas_struct %#p user refcount hit 0\n");
         vas_drop(vas);
     }
@@ -41,7 +42,7 @@ void vas_drop(struct vas_struct *vas) {
 
     if (old == 1) {
         atomic_thread_fence(ATOMIC_ACQUIRE);
-        // TODO: free everything
+        // TODO: global, VAS - free everything
         printk("vas_struct %#p total refcount hit 0\n");
     }
 }

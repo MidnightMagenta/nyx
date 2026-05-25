@@ -11,7 +11,7 @@ void context_switch(struct task_struct *prev, struct task_struct *next) {
         vas_grab(next->active_vas);
     } else {
         next->active_vas = next->vas;
-        vas_activate(next->vas);
+        if (prev->active_vas != next->active_vas) { vas_activate(next->vas); }
     }
 
     switch_to(prev, next);

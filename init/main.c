@@ -8,7 +8,7 @@ extern void __do_kernel_tests();
 #define __do_kernel_tests()
 #endif
 
-static void idle_task() {
+static void __idle_task_fn() {
     for (;;) { asm volatile("hlt"); }
 }
 
@@ -33,10 +33,25 @@ void test_kthread_a() {
 
 void test_kthread_b() {
     int i = 0;
+    int j = 0;
     while (1) {
         if (i == 500000) {
             printk("b\n");
             i = 0;
+            if (j++ == 10) { kthread_exit(); }
+        }
+        i++;
+    }
+}
+
+void test_kthread_c() {
+    int i = 0;
+    int j = 0;
+    while (1) {
+        if (i == 500000) {
+            printk("c\n");
+            i = 0;
+            if (j++ == 15) { kthread_exit(); }
         }
         i++;
     }
@@ -56,11 +71,12 @@ void start_kernel() {
 
     kthread_create(test_kthread_a, "test_a");
     kthread_create(test_kthread_b, "test_b");
+    kthread_create(test_kthread_c, "test_c");
 
     sti();
 
 
-    idle_task();
+    __idle_task_fn();
 
     hcf();
 }

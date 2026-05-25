@@ -19,13 +19,13 @@
 
 static inline void outb_p(int port, u8 data) {
     outb(port, data);
-    // HACK: outb 0x80 for IO delay.
+    // HACK: minor, IO - outb 0x80 for IO delay.
     outb(0x80, 0);
 }
 
 static inline u8 inb_p(int port) {
     u8 data = inb(port);
-    // HACK: outb 0x80 for IO delay
+    // HACK: minor, IO - outb 0x80 for IO delay
     outb(0x80, 0);
     return data;
 }

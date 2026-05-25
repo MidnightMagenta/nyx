@@ -13,11 +13,7 @@
 
 #include <asi/address.h>
 
-extern void idle_task();
-
-static struct task_struct idle_task_struct = {
-        .list = (struct list_head) LIST_HEAD_INIT(idle_task_struct.list),
-};
+extern struct task_struct idle_task;
 
 struct {
     DECLARE_STATIC_BITMAP(bitmap, PID_MAX);
@@ -27,16 +23,11 @@ kmem_cache_t *task_struct_cache;
 
 static LIST_HEAD(task_list);
 static LIST_HEAD(runqueue);
-static LIST_HEAD(deadqueue);
 
-static struct task_struct *current = &idle_task_struct;
 
-// HACK: this should be per CPU
-volatile int need_reschedule;
-
-extern char init_stack_top[];
-
-extern struct vas_struct init_mm;
+// HACK: global, SMP - these should be per-CPU
+static struct task_struct *current = &idle_task;
+volatile int               need_reschedule;
 
 void __init init_sched() {
     memset(&pid_map, 0, ARRAY_SIZE(pid_map.bitmap));
@@ -48,14 +39,9 @@ void __init init_sched() {
                                           NULL,
                                           NULL,
                                           GFP_ATOMIC);
-
-    idle_task_struct.stack      = init_stack_top;
-    idle_task_struct.vas        = &init_mm;
-    idle_task_struct.active_vas = &init_mm;
-    idle_task_struct.state      = RUNNABLE;
-    idle_task_struct.pid        = 0;
 }
 
+// TODO: PID managment should be it's own subsystem
 pid_t get_pid() {
     size_t pid = 1;
     while (bm_get(pid_map.bitmap, pid)) { pid++; }
@@ -89,6 +75,7 @@ struct task_struct *task_alloc(const char *name) {
 void task_free(struct task_struct *task) {
     pm_free_page((phys_addr_t) __pa(task->stack));
     free_pid(task->pid);
+    list_del(&task->task_list);
     kmem_cache_free(task_struct_cache, task);
 }
 
@@ -97,11 +84,9 @@ void task_make_runnable(struct task_struct *task) {
     task->state = RUNNABLE;
 }
 
-// TODO: need a reaper thread that cleans up zombie tasks
 void __noreturn task_exit() {
     struct task_struct *task = get_current_task();
     list_del(&task->list);
-    list_add(&task->list, &deadqueue);
     task->state = DEAD;
     schedule();
 
@@ -120,7 +105,7 @@ static struct task_struct *pick_next() {
         }
     }
 
-    return &idle_task_struct;
+    return &idle_task;
 }
 
 struct task_struct *get_current_task() {
@@ -132,6 +117,8 @@ extern void context_switch(struct task_struct *prev, struct task_struct *next);
 void schedule() {
     struct task_struct *cur  = get_current_task();
     struct task_struct *next = pick_next();
+
+    if (next == cur) { return; }
 
     need_reschedule = 0;
 

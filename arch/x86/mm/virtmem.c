@@ -174,7 +174,7 @@ static inline u64 get_pte_flags(int flags) {
     set_bit(__PG_PRESENT_BIT, &pte_flags);
     if (flags & VM_WRITE) { set_bit(__PG_WRITE_BIT, &pte_flags); }
     if (flags & VM_USER) { set_bit(__PG_USER_BIT, &pte_flags); }
-    // TODO: check if CPU supports NX, and if EFER.NXE == 1
+    // TODO: minor, VMM/EXEC_PROT - check if CPU supports NX, and if EFER.NXE == 1
     // if (!(flags & VM_EXEC)) { set_bit(__PG_NX_BIT, &pte_flags); }
     if (flags & VM_CACHE_DISABLE) { set_bit(__PG_CACHE_DISABLE_BIT, &pte_flags); }
 
@@ -202,7 +202,7 @@ static inline int can_map_2m(phys_addr_t phys, virt_addr_t virt, size_t len) {
 
 #ifdef CONFIG_USE_GIGANTIC_PAGES
 static inline int can_map_1g(phys_addr_t phys, virt_addr_t virt, size_t len) {
-    // TODO: check CPU supports gigantic pages
+    // TODO: minor, VMM - check CPU supports gigantic pages
     if (phys & __PAGE_1G_MASK || virt & __PAGE_1G_MASK) { return 0; }
     if (len < (__PAGE_1G_SIZE >> PAGE_SHIFT)) { return 0; }
     return 1;

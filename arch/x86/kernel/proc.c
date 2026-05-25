@@ -13,10 +13,10 @@ void arch_init_task(struct task_struct *task, void *stack, void (*entry)(void *)
 
     sp -= sizeof(*intr_frame) / sizeof(u64);
     intr_frame         = (struct interrupt_frame *) sp;
-    intr_frame->ss     = 0x10;                               // HACK: hard coded kernel stack segment
-    intr_frame->rsp    = (u64) ((char *) stack + PAGE_SIZE); // clean top
-    intr_frame->rflags = 0x202;                              // HACK: hard coded flags
-    intr_frame->cs     = 0x08;                               // HACK: hard coded kernel code segment
+    intr_frame->ss     = 0x10;                               // HACK: major, usermode - hard coded kernel stack segment
+    intr_frame->rsp    = (u64) ((char *) stack + PAGE_SIZE); //
+    intr_frame->rflags = 0x202;                              // HACK: major, usermode - hard coded flags
+    intr_frame->cs     = 0x08;                               // HACK: major, usermode - hard coded kernel code segment
     intr_frame->rip    = (u64) entry;
 
     *--sp = (u64) start_task;
