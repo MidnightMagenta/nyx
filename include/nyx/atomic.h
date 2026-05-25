@@ -24,15 +24,20 @@ typedef __ATOMIC(unsigned long long) atomic_ullong_t;
 
 typedef atomic_int_t atomic_t;
 
-#define atomic_load_explicit(aptr, memorder)        __atomic_load_n(&(aptr)->__val, (memorder))
-#define atomic_load(aptr)                           atomic_load_explicit(aptr, ATOMIC_ACQUIRE)
-#define atomic_store_explicit(aptr, vptr, memorder) __atomic_store(&(aptr)->__val, (vptr), (memorder))
-#define atomic_store(aptr, vptr)                    atomic_store_explicit(aptr, vptr, ATOMIC_RELEASE)
+#define atomic_load_explicit(aptr, memorder)     __atomic_load_n(&(aptr)->__val, (memorder))
+#define atomic_load(aptr)                        atomic_load_explicit(aptr, ATOMIC_ACQUIRE)
+#define atomic_store_explicit(aptr, v, memorder) __atomic_store_n(&(aptr)->__val, (v), (memorder))
+#define atomic_store(aptr, v)                    atomic_store_explicit(aptr, v, ATOMIC_RELEASE)
 
 #define atomic_fetch_add(aptr, diff, memorder) __atomic_fetch_add(&(aptr)->__val, (diff), (memorder))
 #define atomic_fetch_sub(aptr, diff, memorder) __atomic_fetch_sub(&(aptr)->__val, (diff), (memorder))
 
-#define atomic_inc(aptr) atomic_fetch_add(aptr, 1, ATOMIC_RELEASE)
-#define atomic_dec(aptr) atomic_fetch_sub(aptr, 1, ATOMIC_ACQ_REL)
+#define atomic_inc_e(aptr, memorder) atomic_fetch_add(aptr, 1, memorder)
+#define atomic_dec_e(aptr, memorder) atomic_fetch_sub(aptr, 1, memorder)
+
+#define atomic_thread_fence(memorder) __atomic_thread_fence(memorder)
+
+#define refcnt_inc(aptr) atomic_inc_e(aptr, ATOMIC_RELAXED)
+#define refcnt_dec(aptr) atomic_dec_e(aptr, ATOMIC_ACQ_REL)
 
 #endif

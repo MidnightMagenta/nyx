@@ -21,8 +21,8 @@ struct task_struct {
 
     enum task_state     state;
     struct proc_context context;
-    struct vas_struct  *mm;
-    struct vas_struct  *active_mm;
+    struct vas_struct  *vas;
+    struct vas_struct  *active_vas;
     pid_t               pid;
     void               *stack;
 

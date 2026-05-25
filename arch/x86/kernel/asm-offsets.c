@@ -1,4 +1,4 @@
-#include <nyx/sched.h>
+#include <nyx/proc.h>
 #include <nyx/stddef.h>
 
 #include <asi/proc.h>

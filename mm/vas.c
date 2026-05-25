@@ -1,58 +1,51 @@
 #include <mm/address.h>
-#include <mm/mm.h>
 #include <mm/physmem.h>
 #include <mm/slab.h>
+#include <mm/vas.h>
 #include <mm/virtmem.h>
 #include <nyx/minmax.h>
 #include <nyx/string.h>
 
+#include <asi/bug.h>
 #include <asi/page.h>
 
-kmem_cache_t           *mm_struct_cache;
-extern struct mm_struct init_mm;
+#include <nyx/printk.h>
+
+kmem_cache_t            *vas_struct_cache;
+extern struct vas_struct init_vas;
 
 void mm_init() {
-    mm_struct_cache = kmem_create_cache("mm_struct",
-                                        sizeof(struct mm_struct),
-                                        _Alignof(struct mm_struct),
-                                        NULL,
-                                        NULL,
-                                        GFP_ATOMIC);
+    vas_struct_cache = kmem_create_cache("mm_struct",
+                                         sizeof(struct vas_struct),
+                                         _Alignof(struct vas_struct),
+                                         NULL,
+                                         NULL,
+                                         GFP_ATOMIC);
 }
 
-extern void __mm_copy_higher_half(struct mm_struct *dest, struct mm_struct *src);
+void vas_put(struct vas_struct *vas) {
+    int old = refcnt_dec(&vas->user_count);
+    BUG_ON(old == 0);
 
-struct mm_struct *mm_alloc() {
-    struct mm_struct *mm = kmem_cache_alloc(mm_struct_cache, 0);
-
-    mm->pgd = vm_get_page_table(GFP_ATOMIC);
-
-    __mm_copy_higher_half(mm, &init_mm);
-
-    atomic_set(&mm->refcount, 1);
-    return mm;
-}
-
-void mm_map(struct mm_struct *mm, virt_addr_t vaddr, size_t size, u32 flags, int gfp_flags) {
-    for (size_t off = 0; off < size; off += PAGE_SIZE) {
-        phys_addr_t pa = pm_get_zeroed_page(gfp_flags);
-        vm_map(mm->pgd, pa, vaddr + off, PAGE_SIZE, flags, gfp_flags);
+    if (old == 1) {
+        atomic_thread_fence(ATOMIC_ACQUIRE);
+        // TODO: free userspace
+        printk("vas_struct %#p user refcount hit 0\n");
+        vas_drop(vas);
     }
 }
 
-void mm_map_copy(struct mm_struct *mm, virt_addr_t vaddr, const void *data, size_t size, u32 flags, int gfp_flags) {
-    for (size_t off = 0; off < size; off += PAGE_SIZE) {
-        phys_addr_t pa    = pm_get_zeroed_page(gfp_flags);
-        size_t      chunk = MIN(PAGE_SIZE, size - off);
+void vas_drop(struct vas_struct *vas) {
+    int old = refcnt_dec(&vas->refcount);
+    BUG_ON(old == 0);
 
-        memcpy(__va(pa), (char *) data + off, chunk);
-        if (chunk < PAGE_SIZE) { memset(((char *) __va(pa)) + chunk, 0, PAGE_SIZE - chunk); }
-
-        vm_map(mm->pgd, pa, vaddr + off, PAGE_SIZE, flags | VM_USER, gfp_flags);
+    if (old == 1) {
+        atomic_thread_fence(ATOMIC_ACQUIRE);
+        // TODO: free everything
+        printk("vas_struct %#p total refcount hit 0\n");
     }
 }
 
-void mm_free(struct mm_struct *mm) {
-    vm_free_page_table(mm->pgd);
-    kmem_cache_free(mm_struct_cache, mm);
+void vas_activate(struct vas_struct *vas) {
+    vm_activate(vas->pgd);
 }
