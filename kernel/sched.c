@@ -36,6 +36,8 @@ volatile int need_reschedule;
 
 extern char init_stack_top[];
 
+extern struct vas_struct init_mm;
+
 void __init init_sched() {
     memset(&pid_map, 0, ARRAY_SIZE(pid_map.bitmap));
     bm_set(pid_map.bitmap, 0);
@@ -47,9 +49,11 @@ void __init init_sched() {
                                           NULL,
                                           GFP_ATOMIC);
 
-    idle_task_struct.stack = init_stack_top;
-    idle_task_struct.state = RUNNABLE;
-    idle_task_struct.pid   = 0;
+    idle_task_struct.stack      = init_stack_top;
+    idle_task_struct.vas        = &init_mm;
+    idle_task_struct.active_vas = &init_mm;
+    idle_task_struct.state      = RUNNABLE;
+    idle_task_struct.pid        = 0;
 }
 
 pid_t get_pid() {
@@ -59,6 +63,9 @@ pid_t get_pid() {
     return pid;
 }
 
+void free_pid(pid_t pid) {
+    bm_clear(pid_map.bitmap, pid);
+}
 
 struct task_struct *task_alloc(const char *name) {
     struct task_struct *task = kmem_cache_alloc(task_struct_cache, 0);
@@ -79,6 +86,12 @@ struct task_struct *task_alloc(const char *name) {
     return task;
 }
 
+void task_free(struct task_struct *task) {
+    pm_free_page((phys_addr_t) __pa(task->stack));
+    free_pid(task->pid);
+    kmem_cache_free(task_struct_cache, task);
+}
+
 void task_make_runnable(struct task_struct *task) {
     list_add_tail(&task->list, &runqueue);
     task->state = RUNNABLE;
@@ -89,7 +102,7 @@ void __noreturn task_exit() {
     struct task_struct *task = get_current_task();
     list_del(&task->list);
     list_add(&task->list, &deadqueue);
-    task->state = ZOMBIE;
+    task->state = DEAD;
     schedule();
 
     while (1);
@@ -114,7 +127,7 @@ struct task_struct *get_current_task() {
     return current;
 }
 
-extern void switch_to(struct task_struct *prev, struct task_struct *next);
+extern void context_switch(struct task_struct *prev, struct task_struct *next);
 
 void schedule() {
     struct task_struct *cur  = get_current_task();
@@ -127,7 +140,7 @@ void schedule() {
 
     current = next;
 
-    switch_to(cur, next);
+    context_switch(cur, next);
 }
 
 void scheduler_tick() {

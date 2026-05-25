@@ -13,6 +13,7 @@ void                schedule();
 
 extern void         arch_init_task(struct task_struct *task, void *stack, void (*entry)(void *), virt_addr_t context);
 struct task_struct *task_alloc(const char *name);
+void                task_free(struct task_struct *task);
 void                task_make_runnable(struct task_struct *task);
 void __noreturn     task_exit();
 

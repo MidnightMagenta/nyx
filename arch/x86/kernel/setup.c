@@ -38,7 +38,7 @@ void __init setup_arch() {
     add_memblock_regions();
 }
 
-extern struct mm_struct init_mm;
+extern struct vas_struct init_mm;
 
 #define map_symbol(sym_start, sym_end, flags)                                                                          \
     vm_map(init_mm.pgd,                                                                                                \

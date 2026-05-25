@@ -1,5 +1,7 @@
 #include <asi/generated/asm-offsets.h>
 
+.extern finish_context_switch
+
 .section .text
 .global switch_to
 switch_to:
@@ -19,6 +21,8 @@ switch_to:
     pop     %r12
     pop     %rbp
     pop     %rbx
+ 
+    call    finish_context_switch
 
     ret
 

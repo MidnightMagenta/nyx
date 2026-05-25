@@ -12,11 +12,11 @@ extern void arch_init_memory();
 extern void kmem_cache_init();
 extern void kmalloc_init();
 
-struct mm_struct init_mm = {
-        .pgd          = NULL,
-        .refcount.d   = 0,
-        .user_count.d = 0,
-        .vma_regions  = (struct list_head) LIST_HEAD_INIT(init_mm.vma_regions),
+struct vas_struct init_mm = {
+        .pgd              = NULL,
+        .refcount.__val   = 1,
+        .user_count.__val = 0,
+        .vma_regions      = (struct list_head) LIST_HEAD_INIT(init_mm.vma_regions),
 };
 
 extern void map_kernel();

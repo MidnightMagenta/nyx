@@ -9,17 +9,18 @@
 #define TASK_NAME_LEN 32
 
 enum task_state {
-    TASK_NEW,
+    ZOMBIE   = -2,
+    DEAD     = -1,
+    TASK_NEW = 0,
     SLEEPING,
     RUNNABLE,
     RUNNING,
-    ZOMBIE,
 };
 
 struct task_struct {
     struct list_head list;
 
-    enum task_state     state;
+    enum task_state     state; // task is alive is state > 0
     struct proc_context context;
     struct vas_struct  *vas;
     struct vas_struct  *active_vas;

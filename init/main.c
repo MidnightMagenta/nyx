@@ -20,10 +20,12 @@ extern void init_sched();
 
 void test_kthread_a() {
     int i = 0;
+    int j = 0;
     while (1) {
         if (i == 500000) {
             printk("a\n");
             i = 0;
+            if (j++ == 5) { kthread_exit(); }
         }
         i++;
     }
