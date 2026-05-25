@@ -73,7 +73,7 @@ struct vma_region_struct {
     void *private;
 };
 
-struct mm_struct {
+struct vas_struct {
     pgd_t           *pgd;
     struct list_head vma_regions;
 
