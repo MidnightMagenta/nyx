@@ -6,6 +6,8 @@
 #include <nyx/compiler.h>
 #include <nyx/types.h>
 
+#define MAX_CPUS 1
+
 struct gp_regs {
     u64 rax, rbx, rcx, rdx;
     u64 rsi, rdi, rsp, rbp;
