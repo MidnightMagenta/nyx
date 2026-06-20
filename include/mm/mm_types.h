@@ -28,19 +28,19 @@
 #define ClearPageSlab(page)     clear_bit(PG_slab, &(page)->flags)
 #define ClearPagePgtable(page)  clear_bit(PG_pgtable, &(page)->flags)
 
-#define __GFP_DMA     (1 << 0)
-#define __GFP_DMA32   (1 << 1)
-#define __GFP_HIGHMEM (1 << 2)
-#define __GFP_HIGH    (1 << 3)
-#define __GFP_WAIT    (1 << 4)
-#define __GFP_ZERO    (1 << 5)
+#define __M_DMA     (1 << 0)
+#define __M_DMA32   (1 << 1)
+#define __M_HIGHMEM (1 << 2)
+#define __M_NOSLEEP (1 << 3)
+#define __M_SLEEPOK (1 << 4)
+#define __M_ZERO    (1 << 5)
 
-#define GFP_DMA      (__GFP_DMA)
-#define GFP_DMA32    (__GFP_DMA32)
-#define GFP_ATOMIC   (__GFP_HIGH)
-#define GFP_KERNEL   (__GFP_WAIT)
-#define GFP_USER     (__GFP_WAIT)
-#define GFP_HIGHUSER (__GFP_WAIT | __GFP_HIGHMEM)
+#define M_DMA      (__M_DMA)
+#define M_DMA32    (__M_DMA32)
+#define M_NOSLEEP  (__M_NOSLEEP)
+#define M_SLEEPOK  (__M_SLEEPOK)
+#define M_USER     (__M_SLEEPOK)
+#define M_HIGHUSER (__M_SLEEPOK | __M_HIGHMEM)
 
 struct page {
     u64              flags;
@@ -73,12 +73,11 @@ struct vma_region_struct {
     void *private;
 };
 
-struct vas_struct {
+struct vmspace {
     pgd_t           *pgd;
     struct list_head vma_regions;
 
     atomic_t refcount;
-    atomic_t user_count;
 };
 
 #endif
