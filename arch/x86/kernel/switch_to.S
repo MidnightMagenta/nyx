@@ -22,11 +22,13 @@ switch_to:
     pop     %rbp
     pop     %rbx
  
-    call    finish_context_switch
-
     ret
 
-.global start_task
-start_task:
-    mov     %r12, %rdi
-    iretq
+.global proc_trampoline
+proc_trampoline:
+    sti                 // TODO: this could be temporary. Don't know yet
+    mov     %r13, %rdi
+    call    *%r12
+    // TODO: userret
+1:  hlt
+    jmp     1b

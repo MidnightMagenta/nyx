@@ -3,20 +3,24 @@
 
 #include <nyx/compiler.h>
 #include <nyx/list.h>
+#include <nyx/percpu.h>
 #include <nyx/proc.h>
+#include <nyx/sched_percpu.h>
 #include <nyx/types.h>
 
-struct task_struct *get_current_task();
-void                schedule();
+void schedule();
+void thread_make_runnable(struct thread *t);
 
 #define yield() schedule()
 
-extern void         arch_init_task(struct task_struct *task, void *stack, void (*entry)(void *), virt_addr_t context);
-struct task_struct *task_alloc(const char *name);
-void                task_free(struct task_struct *task);
-void                task_make_runnable(struct task_struct *task);
-void __noreturn     task_exit();
+// extern void         arch_init_task(struct task_struct *task, void *stack,
+//                     void (*entry)(void *), virt_addr_t context);
+// struct task_struct *task_alloc(const char *name);
+// void                task_free(struct task_struct *task);
+// void __noreturn     task_exit();
 
-int need_resched();
+static inline int need_resched() {
+    return get_pcpu()->scheds.flags & SCHED_NEED_RESCHED;
+}
 
 #endif
