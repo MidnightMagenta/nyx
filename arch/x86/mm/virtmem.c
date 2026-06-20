@@ -3,7 +3,9 @@
 #include <mm/physmem.h>
 #include <mm/virtmem.h>
 #include <nyx/errno.h>
+#include <nyx/panic.h>
 #include <nyx/stddef.h>
+#include <nyx/string.h>
 #include <nyx/types.h>
 
 #include <asi/bitops.h>
@@ -161,7 +163,7 @@ static void __free_page_table(pgd_t *pgd, int level) {
 
     page = virt_to_page(pgd);
     ClearPagePgtable(page);
-    pm_free_page((phys_addr_t) __pa(pgd));
+    __pm_free_page(page);
 }
 
 void vm_free_page_table(pgd_t *pgd) {
@@ -347,11 +349,73 @@ int vm_umap(pgd_t *pgd, virt_addr_t virt, size_t len) {
     return 0;
 }
 
+static int vm_copy_user(pgd_t *dst, pgd_t *src, int flags) {
+    pgd_t      *dpml4t = dst;
+    pgd_t      *spml4t = src;
+    pgd_t      *dpdpt, *dpdt, *dptt;
+    pgd_t      *spdpt, *spdt, *sptt;
+    phys_addr_t cpybuffer;
+
+    for (size_t i = 0; i < 256; i++) {
+        if (!(spml4t[i] & __PG_PRESENT)) { continue; }
+        dpdpt     = vm_get_page_table(flags);
+        dpml4t[i] = ((phys_addr_t) dpdpt & __PAGE_ADDR_MASK) | (spml4t[i] & ~__PAGE_ADDR_MASK);
+        spdpt     = (pgd_t *) __PAGE_ADDR(spml4t[i]);
+
+        for (size_t j = 0; j < __PAGE_TABLE_ENTRY_COUNT; j++) {
+            if (!(spdpt[j] & __PG_PRESENT)) { continue; }
+            if (spdpt[j] & __PG_PDE_PAGE_SIZE) { panic("gigantic page in fork"); }
+            dpdt     = vm_get_page_table(flags);
+            dpdpt[j] = ((phys_addr_t) dpdt & __PAGE_ADDR_MASK) | (spdpt[j] & ~__PAGE_ADDR_MASK);
+            spdt     = (pgd_t *) __PAGE_ADDR(spdpt[j]);
+
+            for (size_t k = 0; k < __PAGE_TABLE_ENTRY_COUNT; k++) {
+                if (!(spdt[k] & __PG_PRESENT)) { continue; }
+                if (spdt[k] & __PG_PDE_PAGE_SIZE) {
+                    cpybuffer = __pm_get_free_pages(flags | __M_ZERO, 9);
+                    if (cpybuffer == INVALID_PHYS_ADDR) {
+                        vm_free_page_table(dst);
+                        return -ENOSPC;
+                    }
+                    memcpy(__va(cpybuffer), __va(spdt[k] & __PAGE_ADDR_MASK), __PAGE_2M_SIZE);
+                    dpdt[k] = (cpybuffer & __PAGE_ADDR_MASK) | (spdt[k] & ~__PAGE_ADDR_MASK);
+                    continue;
+                }
+
+                dptt    = vm_get_page_table(flags);
+                dpdt[k] = ((phys_addr_t) dptt & __PAGE_ADDR_MASK) | (spdt[k] & ~__PAGE_ADDR_MASK);
+                sptt    = (pgd_t *) __PAGE_ADDR(spdt[k]);
+
+                for (size_t l = 0; l < __PAGE_TABLE_ENTRY_COUNT; l++) {
+                    if (!(sptt[l] & __PG_PRESENT)) { continue; }
+                    cpybuffer = __pm_get_free_page(flags | __M_ZERO);
+                    if (cpybuffer == INVALID_PHYS_ADDR) {
+                        vm_free_page_table(dst);
+                        return -ENOSPC;
+                    }
+                    memcpy(__va(cpybuffer), __va(sptt[l] & __PAGE_ADDR_MASK), __PAGE_4K_SIZE);
+                    dptt[l] = (cpybuffer & __PAGE_ADDR_MASK) | (sptt[l] & ~__PAGE_ADDR_MASK);
+                }
+            }
+        }
+    }
+
+    return 0;
+}
+
+// TODO: performance, VM - this is naive copy. Implement COW
+int vm_copy(pgd_t *dst, pgd_t *src, int flags) {
+    // copy the higher half wholesale
+    memcpy(&dst[256], &src[256], 256 * 8);
+
+    return vm_copy_user(dst, src, flags);
+}
+
 void vm_activate(pgd_t *pgd) {
     phys_addr_t pgd_addr = (phys_addr_t) __pa(pgd);
 
     __asm__ volatile("mov %0, %%cr3"
-                     : "=r"(pgd_addr)
                      :
+                     : "r"(pgd_addr)
                      : "memory");
 }
