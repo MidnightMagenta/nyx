@@ -15,8 +15,8 @@ struct page *pm_alloc_pages(int gfp_mask, unsigned long order);
 
 phys_addr_t __pm_get_free_pages(int gfp_mask, unsigned long order);
 #define __pm_get_free_page(gfp_mask)        __pm_get_free_pages((gfp_mask), 0)
-#define __pm_get_dma_pages(gfp_mask, order) __pm_get_free_pages((gfp_mask) | __GFP_DMA, (order))
-#define pm_get_zeroed_page(gfp_mask)        __pm_get_free_pages((gfp_mask) | __GFP_ZERO, 0)
+#define __pm_get_dma_pages(gfp_mask, order) __pm_get_free_pages((gfp_mask) | __M_DMA, (order))
+#define pm_get_zeroed_page(gfp_mask)        __pm_get_free_pages((gfp_mask) | __M_ZERO, 0)
 
 void __pm_free_pages(struct page *page, unsigned long order);
 void pm_free_pages(phys_addr_t addr, unsigned long order);

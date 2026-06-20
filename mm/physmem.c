@@ -96,13 +96,13 @@ static void __add_block(struct page *page, zone_t *zone, unsigned long order) {
 static inline int gfp_zonelist(int gfp_mask) {
 
 #ifdef CONFIG_ZONE_DMA
-    if (gfp_mask & __GFP_DMA) { return ZONE_DMA; }
+    if (gfp_mask & __M_DMA) { return ZONE_DMA; }
 #endif
 #ifdef CONFIG_ZONE_DMA32
-    if (gfp_mask & __GFP_DMA32) { return ZONE_DMA32; }
+    if (gfp_mask & __M_DMA32) { return ZONE_DMA32; }
 #endif
 #ifdef CONFIG_ZONE_HIGHMEM
-    if (gfp_mask & __GFP_HIMEM) { return ZONE_HIMEM; }
+    if (gfp_mask & __M_HIMEM) { return ZONE_HIMEM; }
 #endif
 
     return ZONE_NORMAL;
@@ -127,18 +127,18 @@ struct page *pm_alloc_pages(int gfp_mask, unsigned long order) {
     }
 
     // TODO: major, PMM - implement OOM strategies
-    if (gfp_mask & __GFP_HIGH) {
+    if (gfp_mask & __M_NOSLEEP) {
         // can use reserved pool
         return NULL;
     }
-    if (gfp_mask & __GFP_WAIT) {
+    if (gfp_mask & __M_SLEEPOK) {
         // can sleep
         return NULL;
     }
     return NULL; // oom
 
 found_page:
-    if (gfp_mask & __GFP_ZERO) {
+    if (gfp_mask & __M_ZERO) {
         void  *addr = page_address(page);
         size_t len  = (1ul << order);
         memset(addr, 0, len);

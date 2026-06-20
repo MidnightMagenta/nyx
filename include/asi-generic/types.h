@@ -14,10 +14,14 @@ typedef long int          __s64;
 typedef __u32 __phys_addr_t;
 typedef __u32 __virt_addr_t;
 typedef __u32 __uintptr_t;
+typedef __u32 register_t;
+typedef __u32 flags_t;
 #elif defined(CONFIG_64BIT)
 typedef __u64 __phys_addr_t;
 typedef __u64 __virt_addr_t;
 typedef __u64 __uintptr_t;
+typedef __u64 register_t;
+typedef __u64 flags_t;
 #endif
 
 #endif

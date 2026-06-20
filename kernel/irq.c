@@ -22,7 +22,7 @@ void __init init_irq() {
                                          _Alignof(struct irq_action),
                                          NULL,
                                          NULL,
-                                         GFP_KERNEL);
+                                         M_SLEEPOK);
 
     for (size_t i = 0; i < NR_IRQS; i++) {
         irq_descs[i].irq     = i;

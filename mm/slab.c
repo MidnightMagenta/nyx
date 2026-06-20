@@ -230,7 +230,7 @@ int __init kmem_cache_init() {
     cache_cache.slab_lists.free_objects  = 0;
 
     cache_cache.gfp_order = 0;
-    cache_cache.gfp_flags = GFP_ATOMIC;
+    cache_cache.gfp_flags = M_NOSLEEP;
 
     cache_cache.obj_size  = sizeof(struct kmem_cache_s);
     cache_cache.obj_align = _Alignof(struct kmem_cache_s);
