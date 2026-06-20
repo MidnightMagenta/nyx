@@ -10,7 +10,7 @@
 
 #define __ATOMIC(T)                                                                                                    \
     struct {                                                                                                           \
-        T __val;                                                                                                       \
+        volatile T __val;                                                                                              \
     }
 
 typedef __ATOMIC(bool) atomic_bool_t;
