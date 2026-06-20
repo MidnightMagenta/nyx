@@ -70,6 +70,10 @@ static struct thread *new_thread(struct process *parent) {
     return newt;
 }
 
+static inline void fork_start_thread(struct thread *t) {
+    setrunqueue(NULL, t);
+}
+
 int fork1(struct thread  *curp,
           int             flags,
           void            (*func)(void *),
@@ -97,7 +101,8 @@ int fork1(struct thread  *curp,
     if (retval) { *retval = newpr->pid; }
 
     newpr->state = PS_NORMAL;
-    thread_make_runnable(newthrd);
+
+    fork_start_thread(newthrd);
 
     return 0;
 }

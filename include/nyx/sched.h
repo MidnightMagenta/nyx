@@ -8,16 +8,14 @@
 #include <nyx/sched_percpu.h>
 #include <nyx/types.h>
 
-void schedule();
-void thread_make_runnable(struct thread *t);
+#include <asi/cpu.h>
+
+void             schedule();
+struct cpu_info *sched_pickcpu(struct thread *t);
+void             setrunqueue(struct cpu_info *cpu, struct thread *t);
+void             rmrunqueue(struct thread *t);
 
 #define yield() schedule()
-
-// extern void         arch_init_task(struct task_struct *task, void *stack,
-//                     void (*entry)(void *), virt_addr_t context);
-// struct task_struct *task_alloc(const char *name);
-// void                task_free(struct task_struct *task);
-// void __noreturn     task_exit();
 
 static inline int need_resched() {
     return get_pcpu()->scheds.flags & SCHED_NEED_RESCHED;

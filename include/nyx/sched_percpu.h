@@ -10,6 +10,7 @@
 struct sched_percpu {
     u64              flags;
     struct list_head runq;
+    int              nr_run;
     struct thread   *cpu_idle_proc;
 };
 

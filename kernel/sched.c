@@ -76,16 +76,42 @@ void schedule() {
     arch_irq_restore(flags);
 }
 
-void thread_make_runnable(struct thread *t) {
-    struct sched_percpu *schedc = &get_pcpu()->scheds;
+struct cpu_info *sched_pickcpu(struct thread *t) {
+    // TODO: fudged function
+
+    (void) t;
+    return &__cpus[0];
+}
+
+void setrunqueue(struct cpu_info *cpu, struct thread *t) {
+    struct sched_percpu *schedc;
     flags_t              flags;
 
     BUG_ON(!list_is_empty(&t->qnode));
 
+    if (cpu == NULL) { cpu = sched_pickcpu(t); }
+
     flags = arch_irq_save();
 
+    t->cpu   = cpu;
     t->state = TS_RUNNABLE;
+
+    schedc = &t->cpu->percpu->scheds;
+    schedc->nr_run++;
     list_add_tail(&t->qnode, &schedc->runq);
+
+    arch_irq_restore(flags);
+}
+
+void rmrunqueue(struct thread *t) {
+    struct sched_percpu *schedc;
+    flags_t              flags;
+
+    flags = arch_irq_save();
+
+    schedc = &t->cpu->percpu->scheds;
+    schedc->nr_run--;
+    list_del(&t->qnode);
 
     arch_irq_restore(flags);
 }
