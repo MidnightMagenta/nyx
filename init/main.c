@@ -1,6 +1,7 @@
 #include <asi/system.h>
 #include <nyx/kernel.h>
 #include <nyx/kthread.h>
+#include <nyx/stddef.h>
 
 #ifdef CONFIG_KERNEL_TESTS
 extern void __do_kernel_tests();
@@ -18,42 +19,40 @@ extern void init_irq();
 extern void init_timer();
 extern void init_sched();
 
-void test_kthread_a() {
-    int i = 0;
-    int j = 0;
+int kt_a;
+int kt_b;
+int kt_c;
+
+void test_kthread_a(void *) {
+    kt_a = 0;
     while (1) {
-        if (i == 500000) {
+        if (kt_a == 500000) {
             printk("a\n");
-            i = 0;
-            if (j++ == 5) { kthread_exit(); }
+            kt_a = 0;
         }
-        i++;
+        kt_a++;
     }
 }
 
-void test_kthread_b() {
-    int i = 0;
-    int j = 0;
+void test_kthread_b(void *) {
+    int kt_b = 0;
     while (1) {
-        if (i == 500000) {
+        if (kt_b == 500000) {
             printk("b\n");
-            i = 0;
-            if (j++ == 10) { kthread_exit(); }
+            kt_b = 0;
         }
-        i++;
+        kt_b++;
     }
 }
 
-void test_kthread_c() {
-    int i = 0;
-    int j = 0;
+void test_kthread_c(void *) {
+    int kt_c = 0;
     while (1) {
-        if (i == 500000) {
+        if (kt_c == 500000) {
             printk("c\n");
-            i = 0;
-            if (j++ == 15) { kthread_exit(); }
+            kt_c = 0;
         }
-        i++;
+        kt_c++;
     }
 }
 
@@ -69,9 +68,9 @@ void start_kernel() {
 
     pr_dbg("finish\n");
 
-    kthread_create(test_kthread_a, "test_a");
-    kthread_create(test_kthread_b, "test_b");
-    kthread_create(test_kthread_c, "test_c");
+    kthread_create(test_kthread_a, NULL, "test_a");
+    kthread_create(test_kthread_b, NULL, "test_b");
+    kthread_create(test_kthread_c, NULL, "test_c");
 
     sti();
 

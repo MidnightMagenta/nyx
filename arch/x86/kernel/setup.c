@@ -6,6 +6,7 @@
 #include <nyx/align.h>
 #include <nyx/linkage.h>
 #include <nyx/panic.h>
+#include <nyx/percpu.h>
 #include <nyx/proc.h>
 #include <nyx/types.h>
 
@@ -13,11 +14,13 @@
 #include <asi/link_symbols.h>
 #include <asi/memory.h>
 #include <asi/mmap.h>
+#include <asi/msr.h>
 #include <asi/page.h>
 #include <asi/page_data.h>
 #include <asi/setupdata.h>
 
 extern void idt_setup_interrupts();
+extern void init_percpu();
 
 static void __init add_memblock_regions() {
     u64         rb, re, idx;
@@ -32,22 +35,29 @@ static void __init add_memblock_regions() {
     memblock_trim();
 }
 
+static void bsp_init() {
+    wrmsr(MSR_KERNEL_GS_BASE, (u64) &__pcpu[0]);
+    asm volatile("swapgs");
+}
+
 void __init setup_arch() {
     idt_setup_interrupts();
     mmap_setup_map();
     memblock_init();
     add_memblock_regions();
+    init_percpu();
+    bsp_init();
 }
 
-extern struct task_struct idle_task;
+extern struct process proc0_proc;
 
 #define map_symbol(sym_start, sym_end, flags)                                                                          \
-    vm_map(idle_task.vas->pgd,                                                                                         \
+    vm_map(proc0_proc.mm->pgd,                                                                                         \
            ALIGN_DOWN(load_base + SYMBOL_OFFSET((sym_start)), PAGE_SIZE),                                              \
            (virt_addr_t) (sym_start),                                                                                  \
            ALIGN_UP(((char *) (sym_end) - (char *) (sym_start)), PAGE_SIZE),                                           \
            flags,                                                                                                      \
-           GFP_KERNEL)
+           M_SLEEPOK)
 
 #define get_page_count()   (pgdata->spanned_pages)
 #define get_start_of_mem() (pgdata->start_pfn << PAGE_SHIFT)
@@ -55,8 +65,8 @@ extern struct task_struct idle_task;
 void __init map_kernel() {
     u64 load_base = bootparams->kernel_load_base;
 
-    idle_task.vas->pgd = vm_get_page_table(GFP_KERNEL);
-    if (!idle_task.vas->pgd) { early_panic("could not allocate kernel page table"); }
+    proc0_proc.mm->pgd = vm_get_page_table(M_SLEEPOK);
+    if (!proc0_proc.mm->pgd) { early_panic("could not allocate kernel page table"); }
 
     map_symbol(__text_start, __text_end, VM_READ | VM_EXEC);
     map_symbol(__rodata_start, __rodata_end, VM_READ);
@@ -66,11 +76,11 @@ void __init map_kernel() {
     map_symbol(__kernel_tests_start, __kernel_tests_end, VM_READ | VM_WRITE | VM_EXEC);
 #endif
 
-    vm_map(idle_task.vas->pgd,
+    vm_map(proc0_proc.mm->pgd,
            get_start_of_mem(),
            ARCH_DIRECT_MAP_BASE,
            get_page_count() << PAGE_SHIFT,
            VM_READ | VM_WRITE,
-           GFP_KERNEL);
-    vm_activate(idle_task.vas->pgd);
+           M_SLEEPOK);
+    vm_activate(proc0_proc.mm->pgd);
 }
