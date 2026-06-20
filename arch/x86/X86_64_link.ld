@@ -33,8 +33,10 @@ SECTIONS {
     } :data
  
     .bss BLOCK(0x1000) (NOLOAD) : {
+        __bss_start = .;
         *(COMMON)
         *(.bss*)
+        __bss_end = .;
         __data_end = .;
     } :data
  
