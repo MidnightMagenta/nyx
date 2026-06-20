@@ -10,6 +10,7 @@ struct percpu {
     struct percpu      *self;
     register_t          rsp0;
     register_t          ursp;
+    struct cpu_info    *cpu;
     struct thread      *current_task;
     struct sched_percpu scheds;
     int                 preempt_count;

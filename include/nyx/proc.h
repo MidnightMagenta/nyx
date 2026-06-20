@@ -6,6 +6,7 @@
 #include <nyx/wait.h>
 #include <uapi/posix_types.h>
 
+#include <asi/cpu.h>
 #include <asi/proc.h>
 
 #define PROC_NAME_LEN 32
@@ -31,6 +32,7 @@ struct thread {
     pid_t                 tid;
     struct process       *proc;
     void                 *wchan;
+    struct cpu_info      *cpu;
 
     struct list_head thrd_node;
     struct list_head gthrd_node;
