@@ -1,7 +1,10 @@
-#include <asi/system.h>
 #include <nyx/kernel.h>
 #include <nyx/kthread.h>
 #include <nyx/stddef.h>
+#include <nyx/wait.h>
+
+#include <asi/bug.h>
+#include <asi/irq.h>
 
 #ifdef CONFIG_KERNEL_TESTS
 extern void __do_kernel_tests();
@@ -19,15 +22,13 @@ extern void init_irq();
 extern void init_timer();
 extern void init_sched();
 
-int kt_a;
-int kt_b;
-int kt_c;
+int testthrdslp;
 
 void test_kthread_a(void *) {
-    kt_a = 0;
+    volatile int kt_a = 0;
     while (1) {
-        if (kt_a == 500000) {
-            printk("a\n");
+        if (kt_a == 10000000) {
+            wakeup_one(&testthrdslp);
             kt_a = 0;
         }
         kt_a++;
@@ -35,25 +36,16 @@ void test_kthread_a(void *) {
 }
 
 void test_kthread_b(void *) {
-    int kt_b = 0;
     while (1) {
-        if (kt_b == 500000) {
-            printk("b\n");
-            kt_b = 0;
-        }
-        kt_b++;
+        sleep_setup(&testthrdslp, "test");
+        sleep_finish(1);
+        printk("b woke up\n");
     }
 }
 
-void test_kthread_c(void *) {
-    int kt_c = 0;
-    while (1) {
-        if (kt_c == 500000) {
-            printk("c\n");
-            kt_c = 0;
-        }
-        kt_c++;
-    }
+void setup_test_kthreads() {
+    kthread_create(test_kthread_a, NULL, "test_a");
+    kthread_create(test_kthread_b, NULL, "test_b");
 }
 
 void start_kernel() {
@@ -68,14 +60,11 @@ void start_kernel() {
 
     pr_dbg("finish\n");
 
-    kthread_create(test_kthread_a, NULL, "test_a");
-    kthread_create(test_kthread_b, NULL, "test_b");
-    kthread_create(test_kthread_c, NULL, "test_c");
+    setup_test_kthreads();
 
-    sti();
-
+    arch_irq_enable();
 
     __idle_task_fn();
 
-    hcf();
+    BUG();
 }

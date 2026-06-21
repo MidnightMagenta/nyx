@@ -15,7 +15,7 @@ void proc0_init() {
     atomic_store_explicit(&__proc0_vmspace.refcount, 1, ATOMIC_RELAXED);
     list_init(&__proc0_vmspace.vma_regions);
 
-    proc0.flags  = 0;
+    atomic_store_explicit(&proc0.flags, 0, ATOMIC_RELAXED);
     proc0.state  = TS_RUNNING;
     proc0.kstack = init_stack_top;
     proc0.tid    = 0;
@@ -27,7 +27,7 @@ void proc0_init() {
     list_init(&proc0.gthrd_node);
     list_add_tail(&proc0.gthrd_node, &thread_list);
 
-    proc0_proc.flags = 0;
+    atomic_store_explicit(&proc0_proc.flags, 0, ATOMIC_RELAXED);
     proc0_proc.state = PS_NORMAL;
     proc0_proc.mm    = &__proc0_vmspace;
     proc0_proc.pid   = 0;

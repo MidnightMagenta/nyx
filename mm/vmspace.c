@@ -38,3 +38,8 @@ fail0:
     kmem_cache_free(vmspace_cache, newvm);
     return NULL;
 }
+
+struct vmspace *vmspace_share(struct process *parent) {
+    atomic_fetch_add(&parent->mm->refcount, 1, ATOMIC_RELEASE);
+    return parent->mm;
+}

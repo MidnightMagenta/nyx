@@ -3,7 +3,6 @@
 
 #include <mm/mm_types.h>
 #include <nyx/atomic.h>
-#include <nyx/wait.h>
 #include <uapi/posix_types.h>
 
 #include <asi/cpu.h>
@@ -15,7 +14,7 @@ struct process;
 struct thread;
 
 struct thread {
-    unsigned long flags;
+    atomic_ulong_t flags;
 
     struct list_head qnode;
 
@@ -31,7 +30,8 @@ struct thread {
     void                 *kstack;
     pid_t                 tid;
     struct process       *proc;
-    void                 *wchan;
+    const volatile void  *wchan;
+    const char           *wmesg;
     struct cpu_info      *cpu;
 
     struct list_head thrd_node;
@@ -39,7 +39,7 @@ struct thread {
 };
 
 struct process {
-    unsigned long flags;
+    atomic_ulong_t flags;
 
     enum proc_state {
         PS_NEW,
@@ -59,6 +59,9 @@ struct process {
     struct list_head gproc_node;
     char             name[PROC_NAME_LEN];
 };
+
+#define PF_NOZOMBIE (1 << 0)
+#define PF_EMBRYO   (1 << 1)
 
 extern struct list_head proc_list;
 extern struct list_head thread_list;
@@ -80,6 +83,9 @@ pid_t get_pid();
 void  put_pid(pid_t pid);
 pid_t get_tid();
 void  put_tid(pid_t tid);
+
+#define FORK_NOZOMBIE (1 << 0)
+#define FORK_SHAREVM  (1 << 1)
 
 int fork1(struct thread *curp, int flags, void (*func)(void *), void *arg, register_t *retval, struct thread **newproc);
 

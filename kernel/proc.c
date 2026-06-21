@@ -11,6 +11,9 @@ struct list_head proc_list;
 struct list_head thread_list;
 
 void __init proc_init() {
+    list_init(&proc_list);
+    list_init(&thread_list);
+
     proc_struct_cache =
             kmem_create_cache("proc_struct", sizeof(struct process), _Alignof(struct process), NULL, NULL, M_SLEEPOK);
     thread_struct_cache =

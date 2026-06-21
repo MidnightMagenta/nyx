@@ -21,9 +21,10 @@ extern void          context_switch(struct thread *prev, struct thread *next);
 
 extern void proc_init();
 extern void proc0_init();
-void __init map_kernel();
+extern void map_kernel();
+extern void wait_init();
 
-void init_sched() {
+void __init init_sched() {
     proc0_init();
     map_kernel();
     get_pcpu()->current_task         = &proc0;
@@ -31,6 +32,7 @@ void init_sched() {
     get_pcpu()->scheds.flags         = 0;
     list_init(&get_pcpu()->scheds.runq);
     proc_init();
+    wait_init();
 }
 
 static struct thread *pick_next(struct sched_percpu *schedc) {
@@ -38,7 +40,7 @@ static struct thread *pick_next(struct sched_percpu *schedc) {
 
     if (!list_is_empty(&schedc->runq)) {
         next = list_first_entry(&schedc->runq, struct thread, qnode);
-        if (next->qnode.next != &schedc->runq) { list_del(&next->qnode); }
+        rmrunqueue(next);
     }
 
     return next ? next : schedc->cpu_idle_proc;
@@ -58,14 +60,14 @@ void schedule() {
 
     schedc->flags &= ~SCHED_NEED_RESCHED;
 
-    if (prev == next) {
+    if (next == schedc->cpu_idle_proc && prev->state == TS_RUNNING) {
         arch_irq_restore(flags);
         return;
     }
 
     if (prev->state == TS_RUNNING) {
         prev->state = TS_RUNNABLE;
-        if (prev != schedc->cpu_idle_proc) { list_add_tail(&prev->qnode, &schedc->runq); }
+        if (prev != schedc->cpu_idle_proc) { setrunqueue(prev->cpu, prev); }
     }
 
     get_pcpu()->current_task = next;
