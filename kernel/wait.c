@@ -4,6 +4,7 @@
 #include <nyx/proc.h>
 #include <nyx/sched.h>
 
+#include <asi/bug.h>
 #include <asi/irq.h>
 #include <asi/wchan.h>
 
@@ -13,13 +14,22 @@ void __init wait_init() {
     for (size_t i = 0; i < NR_SLEEP_BUCKETS; i++) { list_init(&waittab[i]); }
 }
 
+static inline void setwaitqueue(struct thread *t, const volatile void *ident) {
+    BUG_ON(!list_is_empty(&t->qnode));
+    list_add_tail(&t->qnode, &waittab[WAITID(ident)]);
+}
+
+static inline void rmwaitqueue(struct thread *t) {
+    list_del(&t->qnode);
+}
+
 void unsleep(struct thread *t) {
     if (t->wchan != NULL) {
-        list_del(&t->qnode);
+        rmwaitqueue(t);
         t->wchan = NULL;
         t->wmesg = NULL;
         t->state = TS_RUNNABLE;
-        list_add_tail(&t->qnode, &get_pcpu()->scheds.runq);
+        setrunqueue(t->cpu, t);
     }
 }
 
@@ -29,9 +39,7 @@ void sleep_setup(const volatile void *ident, const char *wmesg) {
 
     t->wchan = ident;
     t->wmesg = wmesg;
-
-    list_add_tail(&t->qnode, &waittab[WAITID(ident)]);
-
+    setwaitqueue(t, ident);
     t->state = TS_SLEEPING;
 
     arch_irq_restore(flags);
