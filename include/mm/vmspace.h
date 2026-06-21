@@ -6,5 +6,6 @@
 #include <nyx/proc.h>
 
 struct vmspace *vmspace_fork(struct process *p);
+struct vmspace *vmspace_share(struct process *p);
 
 #endif

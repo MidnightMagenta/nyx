@@ -31,6 +31,12 @@ typedef atomic_int_t atomic_t;
 
 #define atomic_fetch_add(aptr, diff, memorder) __atomic_fetch_add(&(aptr)->__val, (diff), (memorder))
 #define atomic_fetch_sub(aptr, diff, memorder) __atomic_fetch_sub(&(aptr)->__val, (diff), (memorder))
+#define atomic_fetch_and(aptr, val, memorder)  __atomic_fetch_and(&(aptr)->__val, (val), (memorder))
+#define atomic_fetch_xor(aptr, val, memorder)  __atomic_fetch_xor(&(aptr)->__val, (val), (memorder))
+#define atomic_fetch_or(aptr, val, memorder)   __atomic_fetch_or(&(aptr)->__val, (val), (memorder))
+#define atomic_fetch_nand(aptr, val, memorder) __atomic_fetch_nand(&(aptr)->__val, (val), (memorder))
+
+#define atomic_fetch_and_raw(vptr, val, memorder) __atomic_fetch_and(vptr, val, memorder)
 
 #define atomic_inc_e(aptr, memorder) atomic_fetch_add(aptr, 1, memorder)
 #define atomic_dec_e(aptr, memorder) atomic_fetch_sub(aptr, 1, memorder)

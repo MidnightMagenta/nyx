@@ -13,7 +13,7 @@
 
 extern void arch_fork(struct thread *t1, struct thread *t2, void (*func)(void *), void *arg);
 
-static struct process *new_process(struct process *parent) {
+static struct process *new_process(struct process *parent, int flags) {
     struct process *pr = alloc_proc(M_SLEEPOK);
 
     if (!pr) { return NULL; }
@@ -22,10 +22,10 @@ static struct process *new_process(struct process *parent) {
     list_init(&pr->children_head);
     list_init(&pr->child_node);
 
-    pr->flags = 0;
+    atomic_store_explicit(&pr->flags, 0, ATOMIC_RELAXED);
     pr->state = PS_NEW;
     pr->pid   = get_pid();
-    atomic_store_explicit(&pr->live_thrd_cnt, 0, ATOMIC_RELAXED);
+    atomic_store_explicit(&pr->live_thrd_cnt, 1, ATOMIC_RELAXED);
 
     pr->parent = parent;
     list_add_tail(&pr->child_node, &parent->children_head);
@@ -34,7 +34,15 @@ static struct process *new_process(struct process *parent) {
 
     memcpy(pr->name, parent->name, PROC_NAME_LEN);
 
-    pr->mm = vmspace_fork(parent);
+    if (flags & FORK_SHAREVM) {
+        pr->mm = vmspace_share(parent);
+    } else {
+        pr->mm = vmspace_fork(parent);
+    }
+
+    if (flags & FORK_NOZOMBIE) { atomic_fetch_or(&pr->flags, PF_NOZOMBIE, ATOMIC_RELAXED); }
+
+    atomic_fetch_or(&pr->flags, PF_EMBRYO, ATOMIC_RELAXED);
 
     list_add_tail(&pr->gproc_node, &proc_list);
 
@@ -47,7 +55,7 @@ static struct thread *new_thread(struct process *parent) {
 
     if (!newt) { return NULL; }
 
-    newt->flags = 0;
+    atomic_store_explicit(&newt->flags, 0, ATOMIC_RELAXED);
     newt->state = TS_NEW;
 
     kstack_phys = pm_get_zeroed_page(M_SLEEPOK);
@@ -60,6 +68,7 @@ static struct thread *new_thread(struct process *parent) {
     newt->tid   = get_tid();
     newt->proc  = parent;
     newt->wchan = NULL;
+    newt->wmesg = NULL;
     list_init(&newt->qnode);
     list_init(&newt->thrd_node);
     list_init(&newt->gthrd_node);
@@ -84,9 +93,7 @@ int fork1(struct thread  *curp,
     struct process *newpr;
     struct thread  *newthrd;
 
-    (void) flags;
-
-    newpr = new_process(curpr);
+    newpr = new_process(curpr, flags);
     if (!newpr) { return -ENOSPC; }
 
     newthrd = new_thread(newpr);
@@ -101,6 +108,8 @@ int fork1(struct thread  *curp,
     if (retval) { *retval = newpr->pid; }
 
     newpr->state = PS_NORMAL;
+
+    atomic_fetch_and(&newpr->flags, ~PF_EMBRYO, ATOMIC_RELEASE);
 
     fork_start_thread(newthrd);
 
