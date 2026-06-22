@@ -52,12 +52,12 @@ void __init setup_arch() {
 extern struct process proc0_proc;
 
 #define map_symbol(sym_start, sym_end, flags)                                                                          \
-    vm_map(proc0_proc.mm->pgd,                                                                                         \
-           ALIGN_DOWN(load_base + SYMBOL_OFFSET((sym_start)), PAGE_SIZE),                                              \
-           (virt_addr_t) (sym_start),                                                                                  \
-           ALIGN_UP(((char *) (sym_end) - (char *) (sym_start)), PAGE_SIZE),                                           \
-           flags,                                                                                                      \
-           M_SLEEPOK)
+    vm_map_raw(proc0_proc.mm->pgd,                                                                                     \
+               ALIGN_DOWN(load_base + SYMBOL_OFFSET((sym_start)), PAGE_SIZE),                                          \
+               (virt_addr_t) (sym_start),                                                                              \
+               ALIGN_UP(((char *) (sym_end) - (char *) (sym_start)), PAGE_SIZE),                                       \
+               flags,                                                                                                  \
+               M_SLEEPOK)
 
 #define get_page_count()   (pgdata->spanned_pages)
 #define get_start_of_mem() (pgdata->start_pfn << PAGE_SHIFT)
@@ -76,11 +76,11 @@ void __init map_kernel() {
     map_symbol(__kernel_tests_start, __kernel_tests_end, VM_READ | VM_WRITE | VM_EXEC);
 #endif
 
-    vm_map(proc0_proc.mm->pgd,
-           get_start_of_mem(),
-           ARCH_DIRECT_MAP_BASE,
-           get_page_count() << PAGE_SHIFT,
-           VM_READ | VM_WRITE,
-           M_SLEEPOK);
+    vm_map_raw(proc0_proc.mm->pgd,
+               get_start_of_mem(),
+               ARCH_DIRECT_MAP_BASE,
+               get_page_count() << PAGE_SHIFT,
+               VM_READ | VM_WRITE,
+               M_SLEEPOK);
     vm_activate(proc0_proc.mm->pgd);
 }
