@@ -3,6 +3,7 @@
 #include <nyx/list.h>
 #include <nyx/percpu.h>
 #include <nyx/proc.h>
+#include <nyx/refcount.h>
 
 extern char init_stack_top[];
 
@@ -12,7 +13,7 @@ struct process proc0_proc;
 
 void proc0_init() {
     __proc0_vmspace.pgd = NULL;
-    atomic_store_explicit(&__proc0_vmspace.refcount, 1, ATOMIC_RELAXED);
+    refcount_init(&__proc0_vmspace.refcount, 1);
     list_init(&__proc0_vmspace.vma_regions);
 
     atomic_store_explicit(&proc0.flags, 0, ATOMIC_RELAXED);
