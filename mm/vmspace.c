@@ -24,7 +24,7 @@ struct vmspace *vmspace_fork(struct process *p) {
     struct vmspace *newvm = kmem_cache_alloc(vmspace_cache, M_SLEEPOK);
 
     if (!newvm) { return NULL; }
-    atomic_store_explicit(&newvm->refcount, 1, ATOMIC_RELAXED);
+    refcount_init(&newvm->refcount, 1);
     list_init(&newvm->vma_regions);
     newvm->pgd = vm_get_page_table(M_SLEEPOK);
     if (!newvm->pgd) { goto fail0; }
@@ -40,6 +40,11 @@ fail0:
 }
 
 struct vmspace *vmspace_share(struct process *parent) {
-    atomic_fetch_add(&parent->mm->refcount, 1, ATOMIC_RELEASE);
+    refcount_inc(&parent->mm->refcount);
     return parent->mm;
+}
+
+void vmspace_put(struct vmspace *mm) {
+    if (!mm) { return; }
+    if (refcount_get_dec(&mm->refcount) == 1) { vm_free_user(mm->pgd); }
 }
