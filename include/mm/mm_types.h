@@ -3,6 +3,7 @@
 
 #include <nyx/atomic.h>
 #include <nyx/list.h>
+#include <nyx/refcount.h>
 #include <nyx/types.h>
 
 #include <asi/bitops.h>
@@ -12,21 +13,25 @@
 #define PG_buddy    (1 << 1)
 #define PG_slab     (1 << 2)
 #define PG_pgtable  (1 << 3)
+#define PG_head     (1 << 4)
 
 #define PageReserved(page) test_bit(PG_reserved, &(page)->flags)
 #define PageBuddy(page)    test_bit(PG_buddy, &(page)->flags)
 #define PageSlab(page)     test_bit(PG_slab, &(page)->flags)
 #define PagePgtable(page)  test_bit(PG_pgtable, &(page)->flags)
+#define PageHead(page)     test_bit(PG_head, &(page)->flags)
 
 #define SetPageReserved(page) set_bit(PG_reserved, &(page)->flags)
 #define SetPageBuddy(page)    set_bit(PG_buddy, &(page)->flags)
 #define SetPageSlab(page)     set_bit(PG_slab, &(page)->flags)
 #define SetPagePgtable(page)  set_bit(PG_pgtable, &(page)->flags)
+#define SetPageHead(page)     set_bit(PG_head, &(page)->flags)
 
 #define ClearPageReserved(page) clear_bit(PG_reserved, &(page)->flags)
 #define ClearPageBuddy(page)    clear_bit(PG_buddy, &(page)->flags)
 #define ClearPageSlab(page)     clear_bit(PG_slab, &(page)->flags)
 #define ClearPagePgtable(page)  clear_bit(PG_pgtable, &(page)->flags)
+#define ClearPageHead(page)     clear_bit(PG_head, &(page)->flags)
 
 #define __M_DMA     (1 << 0)
 #define __M_DMA32   (1 << 1)
@@ -47,7 +52,10 @@ struct page {
     struct list_head list;
 
     int zone_id;
+    int head_order;
     u64 private;
+    struct refcount refcnt;
+    struct refcount refcnt_private;
 
     union {
         struct {
@@ -77,7 +85,7 @@ struct vmspace {
     pgd_t           *pgd;
     struct list_head vma_regions;
 
-    atomic_t refcount;
+    struct refcount refcount;
 };
 
 #endif

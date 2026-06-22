@@ -144,6 +144,9 @@ found_page:
         memset(addr, 0, len);
     }
 
+    SetPageHead(page);
+    page->head_order = order;
+
     return page;
 }
 
@@ -168,8 +171,8 @@ void __pm_free_pages(struct page *page, unsigned long order) {
     }
     BUG_ON(!page_real);
 #endif
-
     physmem_pr_dev("freeing block at %#p at order %d\n", page_to_phys(page), order);
+    ClearPageHead(page);
     zone_t *zone = &pgdata->zones[page->zone_id];
     __add_block(page, zone, order);
 }
