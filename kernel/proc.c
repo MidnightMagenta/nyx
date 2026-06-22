@@ -1,4 +1,5 @@
 #include <mm/slab.h>
+#include <mm/vmspace.h>
 #include <nyx/linkage.h>
 #include <nyx/list.h>
 #include <nyx/proc.h>
@@ -28,8 +29,10 @@ struct thread *alloc_thread(int gfp_flags) {
     return kmem_cache_alloc(thread_struct_cache, gfp_flags);
 }
 
-void free_proc(struct process *proc) {
-    kmem_cache_free(proc_struct_cache, proc);
+void free_proc(struct process *pr) {
+    list_del(&pr->child_node);
+    list_del(&pr->gproc_node);
+    kmem_cache_free(proc_struct_cache, pr);
 }
 
 void free_thread(struct thread *thrd) {

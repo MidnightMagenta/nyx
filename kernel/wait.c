@@ -63,7 +63,7 @@ void wakeup(const volatile void *ident) {
     struct thread    *t;
 
     list_for_each_safe(pos, n, list) {
-        t = list_first_entry(pos, struct thread, qnode);
+        t = list_entry(pos, struct thread, qnode);
         if (t->wchan == ident) { unsleep(t); }
     }
 }

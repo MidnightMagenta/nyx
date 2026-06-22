@@ -13,70 +13,76 @@
 
 extern void arch_fork(struct thread *t1, struct thread *t2, void (*func)(void *), void *arg);
 
-static struct process *new_process(struct process *parent, int flags) {
+static inline int new_process(struct process *parent, int flags, struct process **newpr) {
     struct process *pr = alloc_proc(M_SLEEPOK);
 
-    if (!pr) { return NULL; }
+    if (!pr) { return -ENOMEM; }
 
     list_init(&pr->thrds_list);
     list_init(&pr->children_head);
     list_init(&pr->child_node);
 
     atomic_store_explicit(&pr->flags, 0, ATOMIC_RELAXED);
-    pr->state = PS_NEW;
-    pr->pid   = get_pid();
+    pr->parent  = parent;
+    pr->state   = PS_NEW;
+    pr->pid     = get_pid();
+    pr->xstatus = 0;
     atomic_store_explicit(&pr->live_thrd_cnt, 1, ATOMIC_RELAXED);
 
-    pr->parent = parent;
-    list_add_tail(&pr->child_node, &parent->children_head);
-
-    pr->xstatus = 0;
-
     memcpy(pr->name, parent->name, PROC_NAME_LEN);
-
-    if (flags & FORK_SHAREVM) {
-        pr->mm = vmspace_share(parent);
-    } else {
-        pr->mm = vmspace_fork(parent);
-    }
 
     if (flags & FORK_NOZOMBIE) { atomic_fetch_or(&pr->flags, PF_NOZOMBIE, ATOMIC_RELAXED); }
 
     atomic_fetch_or(&pr->flags, PF_EMBRYO, ATOMIC_RELAXED);
 
+    list_add_tail(&pr->child_node, &parent->children_head);
     list_add_tail(&pr->gproc_node, &proc_list);
 
-    return pr;
+    *newpr = pr;
+    return 0;
 }
 
-static struct thread *new_thread(struct process *parent) {
-    struct thread *newt = alloc_thread(M_SLEEPOK);
+static inline int new_thread(struct process *parent, struct thread **newt) {
+    struct thread *t = alloc_thread(M_SLEEPOK);
     phys_addr_t    kstack_phys;
 
-    if (!newt) { return NULL; }
+    if (!t) { return -ENOMEM; }
 
-    atomic_store_explicit(&newt->flags, 0, ATOMIC_RELAXED);
-    newt->state = TS_NEW;
+    atomic_store_explicit(&t->flags, 0, ATOMIC_RELAXED);
+    t->state = TS_NEW;
 
     kstack_phys = pm_get_zeroed_page(M_SLEEPOK);
     if (kstack_phys == INVALID_PHYS_ADDR) {
-        free_thread(newt);
-        return NULL;
+        free_thread(t);
+        return -ENOMEM;
     }
-    newt->kstack = __va(kstack_phys);
+    t->kstack = __va(kstack_phys);
 
-    newt->tid   = get_tid();
-    newt->proc  = parent;
-    newt->wchan = NULL;
-    newt->wmesg = NULL;
-    list_init(&newt->qnode);
-    list_init(&newt->thrd_node);
-    list_init(&newt->gthrd_node);
+    t->tid   = get_tid();
+    t->proc  = parent;
+    t->wchan = NULL;
+    t->wmesg = NULL;
+    list_init(&t->qnode);
+    list_init(&t->thrd_node);
+    list_init(&t->gthrd_node);
 
-    list_add_tail(&newt->thrd_node, &parent->thrds_list);
-    list_add_tail(&newt->gthrd_node, &thread_list);
+    list_add_tail(&t->thrd_node, &parent->thrds_list);
+    list_add_tail(&t->gthrd_node, &thread_list);
 
-    return newt;
+    *newt = t;
+    return 0;
+}
+
+static inline int fork_vmspace(struct process *parent, struct process *pr, int flags) {
+    if (flags & FORK_SHAREVM) {
+        pr->mm = vmspace_share(parent);
+        if (!pr->mm) { return -ENOSPC; }
+    } else {
+        pr->mm = vmspace_fork(parent);
+        if (!pr->mm) { return -ENOMEM; }
+    }
+
+    return 0;
 }
 
 static inline void fork_start_thread(struct thread *t) {
@@ -89,18 +95,15 @@ int fork1(struct thread  *curp,
           void           *arg,
           register_t     *retval,
           struct thread **newproc) {
+    int             err;
     struct process *curpr = curp->proc;
     struct process *newpr;
     struct thread  *newthrd;
 
-    newpr = new_process(curpr, flags);
-    if (!newpr) { return -ENOSPC; }
+    if ((err = new_process(curpr, flags, &newpr))) { goto fail0; }
+    if ((err = fork_vmspace(curpr, newpr, flags))) { goto fail1; }
 
-    newthrd = new_thread(newpr);
-    if (!newthrd) {
-        free_proc(newpr);
-        return -ENOSPC;
-    }
+    if ((err = new_thread(newpr, &newthrd))) { goto fail2; }
 
     arch_fork(curp, newthrd, func, arg);
 
@@ -114,4 +117,11 @@ int fork1(struct thread  *curp,
     fork_start_thread(newthrd);
 
     return 0;
+
+fail2:
+    vmspace_put(newpr->mm);
+fail1:
+    free_proc(newpr);
+fail0:
+    return err;
 }

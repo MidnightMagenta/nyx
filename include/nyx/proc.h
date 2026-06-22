@@ -76,7 +76,7 @@ static inline void proc_set_state(struct process *p, enum proc_state state) {
 
 struct process *alloc_proc(int gfp_flags);
 struct thread  *alloc_thread(int gfp_flags);
-void            free_proc(struct process *proc);
+void            free_proc(struct process *pr);
 void            free_thread(struct thread *thrd);
 
 pid_t get_pid();
