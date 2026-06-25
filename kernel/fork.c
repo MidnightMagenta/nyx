@@ -27,7 +27,7 @@ static inline int new_process(struct process *parent, int flags, struct process 
     pr->state   = PS_NEW;
     pr->pid     = get_pid();
     pr->xstatus = 0;
-    atomic_store_explicit(&pr->live_thrd_cnt, 1, ATOMIC_RELAXED);
+    refcount_init(&pr->live_thrd_cnt, 1);
 
     memcpy(pr->name, parent->name, PROC_NAME_LEN);
 
@@ -89,12 +89,12 @@ static inline void fork_start_thread(struct thread *t) {
     setrunqueue(NULL, t);
 }
 
-int fork1(struct thread  *curp,
-          int             flags,
-          void            (*func)(void *),
-          void           *arg,
-          register_t     *retval,
-          struct thread **newproc) {
+int do_fork(struct thread  *curp,
+            int             flags,
+            void            (*func)(void *),
+            void           *arg,
+            register_t     *retval,
+            struct thread **newproc) {
     int             err;
     struct process *curpr = curp->proc;
     struct process *newpr;

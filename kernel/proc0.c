@@ -32,7 +32,7 @@ void proc0_init() {
     proc0_proc.state = PS_NORMAL;
     proc0_proc.mm    = &__proc0_vmspace;
     proc0_proc.pid   = 0;
-    atomic_store_explicit(&proc0_proc.live_thrd_cnt, 1, ATOMIC_RELAXED);
+    refcount_init(&proc0_proc.live_thrd_cnt, 1);
     proc0_proc.parent  = NULL;
     proc0_proc.xstatus = 0;
 

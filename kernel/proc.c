@@ -30,12 +30,16 @@ struct thread *alloc_thread(int gfp_flags) {
 }
 
 void free_proc(struct process *pr) {
+    put_pid(pr->pid);
     list_del(&pr->child_node);
     list_del(&pr->gproc_node);
     kmem_cache_free(proc_struct_cache, pr);
 }
 
 void free_thread(struct thread *thrd) {
+    put_tid(thrd->tid);
+    list_del(&thrd->thrd_node);
+    list_del(&thrd->gthrd_node);
     kmem_cache_free(thread_struct_cache, thrd);
 }
 
