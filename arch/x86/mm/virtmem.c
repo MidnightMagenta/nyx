@@ -238,11 +238,14 @@ static int vm_arch_map(pgd_t      *pgd,
     while (pg_cnt) {
 #ifdef CONFIG_USE_GIGANTIC_PAGES
         if (can_map_1g(phys, virt, pg_cnt)) {
+            if (inc_refcnts) {
+                BUG(); // unimplemented
+            }
+
             if ((res = map_1g_page(pgd, phys, virt, flags, gfp_flags))) { return res; }
             pg_cnt -= __PAGE_1G_SIZE >> PAGE_SHIFT;
             phys += __PAGE_1G_SIZE;
             virt += __PAGE_1G_SIZE;
-            if (inc_refcnts) { BUG(); }
             continue;
         }
 #endif
