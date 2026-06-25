@@ -38,6 +38,8 @@ struct thread {
     struct list_head gthrd_node;
 };
 
+#define TF_EXITING (1 << 2)
+
 struct process {
     atomic_ulong_t flags;
 
@@ -49,7 +51,7 @@ struct process {
 
     struct vmspace  *mm;
     pid_t            pid;
-    atomic_t         live_thrd_cnt;
+    struct refcount  live_thrd_cnt;
     struct list_head thrds_list;
     struct process  *parent;
     struct list_head children_head;
@@ -60,11 +62,15 @@ struct process {
     char             name[PROC_NAME_LEN];
 };
 
-#define PF_NOZOMBIE (1 << 0)
-#define PF_EMBRYO   (1 << 1)
+#define PF_NOZOMBIE   (1 << 0)
+#define PF_EMBRYO     (1 << 1)
+#define PF_EXITING    (1 << 2)
+#define PF_REALZOMBIE (1 << 3)
 
 extern struct list_head proc_list;
 extern struct list_head thread_list;
+extern struct thread    proc0;
+extern struct thread   *initproc;
 
 static inline void thread_set_state(struct thread *t, enum thread_state state) {
     t->state = state;
@@ -87,6 +93,15 @@ void  put_tid(pid_t tid);
 #define FORK_NOZOMBIE (1 << 0)
 #define FORK_SHAREVM  (1 << 1)
 
-int fork1(struct thread *curp, int flags, void (*func)(void *), void *arg, register_t *retval, struct thread **newproc);
+#define EXIT_NORMAL (1 << 0)
+#define EXIT_THREAD (1 << 1)
+
+int  do_fork(struct thread  *curp,
+             int             flags,
+             void            (*func)(void *),
+             void           *arg,
+             register_t     *retval,
+             struct thread **newproc);
+void do_exit(int code, int flags);
 
 #endif

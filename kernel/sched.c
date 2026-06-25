@@ -16,13 +16,13 @@
 #include <asi/bug.h>
 #include <asi/irq.h>
 
-extern struct thread proc0;
-extern void          context_switch(struct thread *prev, struct thread *next);
+extern void context_switch(struct thread *prev, struct thread *next);
 
 extern void proc_init();
 extern void proc0_init();
 extern void map_kernel();
 extern void wait_init();
+extern void exit_tail(struct thread *t);
 
 void __init init_sched() {
     proc0_init();
@@ -76,6 +76,8 @@ void schedule() {
     context_switch(prev, next);
 
     arch_irq_restore(flags);
+
+    if (prev->state == TS_ZOMBIE) { exit_tail(prev); }
 }
 
 struct cpu_info *sched_pickcpu(struct thread *t) {

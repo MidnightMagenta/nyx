@@ -1,5 +1,5 @@
 O_OBJS := early_printk.o printk.o irq.o tick.o sched.o \
-		  kthread.o proc0.o fork.o proc.o wait.o \
+		  kthread.o proc0.o fork.o exit.o proc.o wait.o \
 		  percpu.o
 
 O_TARGET := kernelar.o
