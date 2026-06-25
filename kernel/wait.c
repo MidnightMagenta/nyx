@@ -24,6 +24,7 @@ static inline void rmwaitqueue(struct thread *t) {
 }
 
 void unsleep(struct thread *t) {
+    if (t->state != TS_SLEEPING) { return; }
     if (t->wchan != NULL) {
         rmwaitqueue(t);
         t->wchan = NULL;
