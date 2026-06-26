@@ -125,7 +125,7 @@ void fudge_exec() {
 
     struct trap_frame *tf = thread_trap_frame(t);
     tf->frame.rip         = 0x10000;
-    tf->frame.cs          = USER_CODE_SEGMENT;
+    tf->frame.cs          = USER_CODE64_SEGMENT;
     tf->frame.ss          = USER_DATA_SEGMENT;
     tf->frame.rflags      = 0x202;
 

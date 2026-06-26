@@ -13,7 +13,7 @@ void gdt_init() {
 }
 
 void gdt_setup() {
-    struct ssd_data *tss       = (struct ssd_data *) &gdt[5];
+    struct ssd_data *tss       = (struct ssd_data *) &gdt[6];
     virt_addr_t      tss_base  = (virt_addr_t) &default_tss;
     virt_addr_t      tss_limit = (virt_addr_t) ((char *) &default_tss + sizeof(struct tss));
 

@@ -90,6 +90,7 @@ gdt:
     .8byte  0x0000000000000000
     .8byte  0x00af9a000000ffff
     .8byte  0x00af92000000ffff
+    .8byte  0x0000000000000000 // user 32 code - unimplemented
     .8byte  0x0000f2000000ffff
     .8byte  0x0020f8000000ffff
     .skip   251 * 8

@@ -15,7 +15,7 @@ syscall_entry:
     pushq   $USER_DATA_SEGMENT
     pushq   %gs:URSP
     pushq   %r11
-    pushq   $USER_CODE_SEGMENT
+    pushq   $USER_CODE64_SEGMENT
     pushq   %rcx
     pushq   $0
     pushq   $0xFFFFFFFFFFFFFFFF     // fake vector

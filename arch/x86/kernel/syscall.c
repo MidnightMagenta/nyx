@@ -16,7 +16,7 @@ extern void syscall_entry();
 void syscall_init() {
     u64 efer;
 
-    wrmsr(MSR_STAR, ((u64) KERNEL_DATA_SEGMENT << 48) | ((u64) KERNEL_CODE_SEGMENT << 32));
+    wrmsr(MSR_STAR, ((u64) USER_CODE32_SEGMENT << 48) | ((u64) KERNEL_CODE_SEGMENT << 32));
     wrmsr(MSR_LSTAR, (u64) syscall_entry);
     wrmsr(MSR_CSTAR, 0);
     wrmsr(MSR_SFMASK, (u64) SFMASK);
