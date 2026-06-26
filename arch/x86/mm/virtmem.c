@@ -400,6 +400,11 @@ int vm_umap(pgd_t *pgd, virt_addr_t virt, size_t len) {
     return 0;
 }
 
+int vm_copy_kernel(pgd_t *dst, pgd_t *src) {
+    memcpy(&dst[256], &src[256], 256 * 8);
+    return 0;
+}
+
 int vm_copy_user(pgd_t *dst, pgd_t *src, int flags) {
     pgd_t      *dpml4t = dst;
     pgd_t      *spml4t = src;
@@ -410,15 +415,15 @@ int vm_copy_user(pgd_t *dst, pgd_t *src, int flags) {
     for (size_t i = 0; i < 256; i++) {
         if (!(spml4t[i] & __PG_PRESENT)) { continue; }
         dpdpt     = vm_get_page_table(flags);
-        dpml4t[i] = ((phys_addr_t) dpdpt & __PAGE_ADDR_MASK) | (spml4t[i] & ~__PAGE_ADDR_MASK);
-        spdpt     = (pgd_t *) __PAGE_ADDR(spml4t[i]);
+        dpml4t[i] = ((phys_addr_t) __pa(dpdpt) & __PAGE_ADDR_MASK) | (spml4t[i] & ~__PAGE_ADDR_MASK);
+        spdpt     = (pgd_t *) __va(__PAGE_ADDR(spml4t[i]));
 
         for (size_t j = 0; j < __PAGE_TABLE_ENTRY_COUNT; j++) {
             if (!(spdpt[j] & __PG_PRESENT)) { continue; }
             if (spdpt[j] & __PG_PDE_PAGE_SIZE) { panic("gigantic page in fork"); }
             dpdt     = vm_get_page_table(flags);
-            dpdpt[j] = ((phys_addr_t) dpdt & __PAGE_ADDR_MASK) | (spdpt[j] & ~__PAGE_ADDR_MASK);
-            spdt     = (pgd_t *) __PAGE_ADDR(spdpt[j]);
+            dpdpt[j] = ((phys_addr_t) __pa(dpdt) & __PAGE_ADDR_MASK) | (spdpt[j] & ~__PAGE_ADDR_MASK);
+            spdt     = (pgd_t *) __va(__PAGE_ADDR(spdpt[j]));
 
             for (size_t k = 0; k < __PAGE_TABLE_ENTRY_COUNT; k++) {
                 if (!(spdt[k] & __PG_PRESENT)) { continue; }
@@ -434,8 +439,8 @@ int vm_copy_user(pgd_t *dst, pgd_t *src, int flags) {
                 }
 
                 dptt    = vm_get_page_table(flags);
-                dpdt[k] = ((phys_addr_t) dptt & __PAGE_ADDR_MASK) | (spdt[k] & ~__PAGE_ADDR_MASK);
-                sptt    = (pgd_t *) __PAGE_ADDR(spdt[k]);
+                dpdt[k] = ((phys_addr_t) __pa(dptt) & __PAGE_ADDR_MASK) | (spdt[k] & ~__PAGE_ADDR_MASK);
+                sptt    = (pgd_t *) __va(__PAGE_ADDR(spdt[k]));
 
                 for (size_t l = 0; l < __PAGE_TABLE_ENTRY_COUNT; l++) {
                     if (!(sptt[l] & __PG_PRESENT)) { continue; }
@@ -456,9 +461,9 @@ int vm_copy_user(pgd_t *dst, pgd_t *src, int flags) {
 
 // TODO: performance, VM - this is naive copy. Implement COW
 int vm_copy(pgd_t *dst, pgd_t *src, int flags) {
-    // copy the higher half wholesale
-    memcpy(&dst[256], &src[256], 256 * 8);
+    int res;
 
+    if ((res = vm_copy_kernel(dst, src)) != 0) { return res; }
     return vm_copy_user(dst, src, flags);
 }
 
