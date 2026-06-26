@@ -6,6 +6,7 @@
 #include <uapi/posix_types.h>
 
 #include <asi/cpu.h>
+#include <asi/page.h>
 #include <asi/proc.h>
 
 #define PROC_NAME_LEN 32
@@ -103,5 +104,9 @@ int  do_fork(struct thread  *curp,
              register_t     *retval,
              struct thread **newproc);
 void do_exit(int code, int flags);
+
+static inline struct trap_frame *thread_trap_frame(struct thread *t) {
+    return (struct trap_frame *) ((char *) t->kstack + PAGE_SIZE) - 1;
+}
 
 #endif

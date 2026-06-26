@@ -11,6 +11,31 @@ struct desc_ptr {
     u64 base;
 } __packed;
 
+struct segment_desc {
+    u64 __void;
+};
+
+struct ssd_bits {
+    u16 type   : 4;
+    u16 zero0  : 1;
+    u16 dpl    : 2;
+    u16 p      : 1;
+    u16 limit1 : 4;
+    u16 avl    : 1;
+    u16 zero1  : 2;
+    u16 g      : 1;
+} __packed;
+
+struct ssd_data {
+    u16             limit0;
+    u16             base0;
+    u8              base1;
+    struct ssd_bits bits;
+    u8              base2;
+    u32             base3;
+    u32             zero;
+} __packed;
+
 struct idt_bits {
     u16 ist : 3, zero : 5, type : 5, dpl : 2, p : 1;
 } __packed;
@@ -37,6 +62,8 @@ struct idt_data {
 } __packed;
 
 #endif
+
+#define SEG_TSS 0x9
 
 #define GATE_INTERRUPT 0xe
 #define GATE_TRAP      0xf

@@ -1,7 +1,18 @@
 #! /usr/bin/env bash
 set -euo pipefail
 
-case "$1" in
+# Shared machine + disk config for record/replay. Both runs MUST see identical
+# hardware or the replay diverges, so they pull from the same arrays here.
+# The ISO is wrapped in blkreplay (block-I/O completions get logged); a plain
+# -cdrom would stall on replay. -net none avoids non-deterministic networking.
+RR_MACHINE=(-m 4G -cpu qemu64 -vga std -net none)
+RR_DISK=(
+    -drive file=tmp/nyxos.qcow2,if=none,format=qcow2,id=img-direct
+    -drive driver=blkreplay,if=none,image=img-direct,id=img-blkreplay
+    -device ide-cd,drive=img-blkreplay,bootindex=1
+)
+
+case "${1:-}" in
 mkimage)
     ./scripts/mkimage.sh
     ;;
@@ -16,8 +27,38 @@ debug)
     qemu-system-x86_64 -cdrom nyxos.iso -m 4G -cpu qemu64 -vga std -s -S -d int,guest_errors,cpu_reset -no-reboot -no-shutdown -D tmp/qemu.log &
     gdb
     ;;
+record)
+    # Fresh qcow2 from the current ISO. rrsnapshot writes an 'init' snapshot
+    # into it that replay needs to rewind. Re-run this whenever the ISO
+    # changes -- the replay log is tied to this exact image + log pair.
+    # Boot, reproduce the bug, then quit QEMU (a triple fault exits via
+    # -no-reboot) to finalize the recording.
+    mkdir -p tmp
+    rm -f tmp/nyxos.qcow2
+    qemu-img convert -f raw -O qcow2 nyxos.iso tmp/nyxos.qcow2
+    qemu-system-x86_64 "${RR_MACHINE[@]}" "${RR_DISK[@]}" \
+        -icount shift=auto,rr=record,rrfile=tmp/replay.bin,rrsnapshot=init \
+        -no-reboot
+    ;;
+replay)
+    # Deterministic replay of tmp/replay.bin with the gdb stub on :1234 and the
+    # CPU frozen (-S). In gdb: `target remote :1234`, then reverse-stepi (rsi) /
+    # reverse-continue (rc). Uses the SAME machine/disk arrays as record.
+    if [[ ! -f tmp/replay.bin || ! -f tmp/nyxos.qcow2 ]]; then
+        echo "No recording found -- run '$0 record' first." >&2
+        exit 1
+    fi
+    qemu-system-x86_64 "${RR_MACHINE[@]}" "${RR_DISK[@]}" \
+        -icount shift=auto,rr=replay,rrfile=tmp/replay.bin,rrsnapshot=init \
+        -s -S -no-reboot -no-shutdown \
+        -d int,guest_errors,cpu_reset -D tmp/qemu-replay.log &
+    QEMU_PID=$!
+    # Free port 1234 when gdb exits so the next replay can bind it.
+    trap 'kill "$QEMU_PID" 2>/dev/null || true' EXIT
+    gdb
+    ;;
 *)
-    echo "Usage: dbg {mkimage|run|run-info|debug}"
+    echo "Usage: dbg {mkimage|run|run-info|debug|record|replay}"
     exit 1
     ;;
 esac

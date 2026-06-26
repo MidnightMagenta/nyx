@@ -1,6 +1,7 @@
 #include <asi/generated/asm-offsets.h>
+#include <asi/cpu.h>
 
-.extern finish_context_switch
+.extern schedule_tail
 
 .section .text
 .global switch_to
@@ -26,9 +27,14 @@ switch_to:
 
 .global proc_trampoline
 proc_trampoline:
-    sti                 // TODO: this could be temporary. Don't know yet
+    sti
+    call schedule_tail
     mov     %r13, %rdi
     call    *%r12
-    // TODO: userret
+    POP_REGS
+    add     $16, %rsp
+    swapgs
+    lfence
+    iretq
 1:  hlt
     jmp     1b

@@ -1,5 +1,6 @@
 #include <nyx/compiler.h>
 #include <nyx/printk.h>
+#include <nyx/proc.h>
 #include <nyx/types.h>
 
 #include <asi/cpu.h>
@@ -67,4 +68,11 @@ extern void irq_dispatch(unsigned int irq);
 
 void __irq_handler(struct trap_frame *frame) {
     irq_dispatch(vector_to_irq(frame->vector));
+}
+
+void child_return(void *arg) {
+    struct thread     *t  = (struct thread *) arg;
+    struct trap_frame *tf = thread_trap_frame(t);
+
+    tf->regs.rax = 0;
 }

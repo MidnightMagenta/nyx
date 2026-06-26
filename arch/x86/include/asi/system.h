@@ -9,6 +9,10 @@
                      :                                                                                                 \
                      : "r"(a)                                                                                          \
                      : "memory")
+#define ltr(a)                                                                                                         \
+    __asm__ volatile("ltr %0"                                                                                          \
+                     :                                                                                                 \
+                     : "r"(a))
 
 #define hcf()                                                                                                          \
     cli();                                                                                                             \

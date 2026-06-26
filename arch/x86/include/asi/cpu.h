@@ -10,7 +10,7 @@ struct percpu;
 
 #define MAX_CPUS 1
 
-struct gp_regs {
+struct regs {
     u64 rax, rbx, rcx, rdx;
     u64 rsi, rdi, rsp, rbp;
     u64 r8, r9, r10, r11;

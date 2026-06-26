@@ -21,6 +21,8 @@
 
 extern void idt_setup_interrupts();
 extern void init_percpu();
+extern void cpu_init();
+extern void gdt_setup();
 
 static void __init add_memblock_regions() {
     u64         rb, re, idx;
@@ -35,18 +37,14 @@ static void __init add_memblock_regions() {
     memblock_trim();
 }
 
-static void bsp_init() {
-    wrmsr(MSR_KERNEL_GS_BASE, (u64) &__pcpu[0]);
-    asm volatile("swapgs");
-}
-
 void __init setup_arch() {
     idt_setup_interrupts();
+    gdt_setup();
     mmap_setup_map();
     memblock_init();
     add_memblock_regions();
     init_percpu();
-    bsp_init();
+    cpu_init();
 }
 
 extern struct process proc0_proc;

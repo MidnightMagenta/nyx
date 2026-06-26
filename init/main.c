@@ -1,8 +1,12 @@
+#include <mm/mm_types.h>
+#include <mm/vmspace.h>
+#include <nyx/current.h>
 #include <nyx/kernel.h>
 #include <nyx/kthread.h>
 #include <nyx/panic.h>
 #include <nyx/sched.h>
 #include <nyx/stddef.h>
+#include <nyx/string.h>
 #include <nyx/wait.h>
 
 #include <asi/bug.h>
@@ -79,6 +83,8 @@ void setup_test_kthreads() {
     kthread_create(test_kthread_d, NULL, "test_d");
 }
 
+#include <asi/msr.h>
+
 void start_kernel() {
     pr_info("kernel build ID: %s\n", NYX_BUILD_ID);
     setup_arch();
@@ -94,21 +100,49 @@ void start_kernel() {
     if (do_fork(&proc0, FORK_NOZOMBIE | FORK_SHAREVM, &init_proc, NULL, NULL, &initproc) != 0) {
         panic("failed to start init");
     }
+    strncpy(initproc->proc->name, "swapper", PROC_NAME_LEN);
 
     kthread_create(reaper, NULL, "procreaper");
 
-    setup_test_kthreads();
+    // setup_test_kthreads();
 
     arch_irq_enable();
-
-    schedule(); // kick off the scheduler
 
     __idle_task_fn();
 
     BUG();
 }
 
+#include "fudgeasm.h"
+#include <asi/gdt.h>
+
+void fudge_exec() {
+    struct thread  *t  = current();
+    struct process *pr = t->proc;
+    struct vmspace *mm = vmspace_new(pr);
+    struct vmspace *oldmm;
+    flags_t         flags;
+
+    struct trap_frame *tf = thread_trap_frame(t);
+    tf->frame.rip         = 0x10000;
+    tf->frame.cs          = USER_CODE_SEGMENT;
+    tf->frame.ss          = USER_DATA_SEGMENT;
+    tf->frame.rflags      = 0x202;
+
+    vmspace_mapcopy(mm, 0x10000, init_fudgeasm_bin, init_fudgeasm_bin_len, VM_EXEC | VM_READ | VM_USER, M_SLEEPOK);
+
+    oldmm = pr->mm;
+
+    flags = arch_irq_save();
+    vmspace_activate(mm);
+    pr->mm = mm;
+    arch_irq_restore(flags);
+
+    vmspace_put(oldmm);
+}
+
 void init_proc(void *arg) {
     (void) arg;
-    while (1) { hlt(); }
+    fudge_exec();
+    return;
 }
