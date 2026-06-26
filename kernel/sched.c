@@ -23,6 +23,7 @@ extern void proc0_init();
 extern void map_kernel();
 extern void wait_init();
 extern void exit_tail(struct thread *t);
+extern void arch_schedule_tail(struct thread *prev, struct thread *next);
 
 void __init init_sched() {
     proc0_init();
@@ -45,6 +46,14 @@ static struct thread *pick_next(struct sched_percpu *schedc) {
 
     return next ? next : schedc->cpu_idle_proc;
 }
+
+void schedule_tail(struct thread *prev, struct thread *next) {
+    arch_schedule_tail(prev, next);
+    get_pcpu()->rsp0 = (u64) next->kstack + PAGE_SIZE;
+    if (prev->state == TS_ZOMBIE) { exit_tail(prev); }
+}
+
+#include <asi/msr.h>
 
 void schedule() {
     struct sched_percpu *schedc = &get_pcpu()->scheds;
@@ -77,7 +86,7 @@ void schedule() {
 
     arch_irq_restore(flags);
 
-    if (prev->state == TS_ZOMBIE) { exit_tail(prev); }
+    schedule_tail(prev, next);
 }
 
 struct cpu_info *sched_pickcpu(struct thread *t) {
