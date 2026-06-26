@@ -1,0 +1,7 @@
+menu "kernel"
+
+config DEBUG_SYSCALL
+    bool "Print syscall debug info"
+    default n
+
+endmenu

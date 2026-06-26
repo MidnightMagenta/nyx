@@ -7,11 +7,18 @@
 #include <nyx/proc.h>
 #include <nyx/sched.h>
 #include <nyx/string.h>
+#include <nyx/syscall.h>
 #include <uapi/posix_types.h>
 
 #include <asi/address.h>
 
 extern void arch_fork(struct thread *t1, struct thread *t2, void (*func)(void *), void *arg);
+extern void child_return(void *arg);
+
+int sys_fork(struct thread *t, struct syscall_args *args, register_t *retval) {
+    (void) args;
+    return do_fork(t, 0, child_return, NULL, retval, NULL);
+}
 
 static inline int new_process(struct process *parent, int flags, struct process **newpr) {
     struct process *pr = alloc_proc(M_SLEEPOK);
@@ -105,7 +112,7 @@ int do_fork(struct thread  *curp,
 
     if ((err = new_thread(newpr, &newthrd))) { goto fail2; }
 
-    arch_fork(curp, newthrd, func, arg);
+    arch_fork(curp, newthrd, func, arg ? arg : curp);
 
     if (newproc) { *newproc = newthrd; }
     if (retval) { *retval = newpr->pid; }

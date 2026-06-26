@@ -2,16 +2,34 @@
 #include <mm/vmspace.h>
 #include <nyx/current.h>
 #include <nyx/list.h>
+#include <nyx/panic.h>
 #include <nyx/percpu.h>
+#include <nyx/printk.h>
 #include <nyx/proc.h>
 #include <nyx/sched.h>
+#include <nyx/syscall.h>
 #include <nyx/wait.h>
 
 #include <asi/bug.h>
 
+#define pr_fmt(fmt) "syscall: " fmt
+
+#ifdef CONFIG_DEBUG_SYSCALL
+#define pr_exit_debug(fmt, ...) printk("syscall/exit:%d: " fmt, __LINE__, ##__VA_ARGS__)
+#else
+#define pr_exit_debug(fmt, ...) /* void */
+#endif
+
 static LIST_HEAD(deadqueue);
 
 void proc_zap(struct process *pr);
+
+int __noreturn sys_exit(struct thread *t, struct syscall_args *args, register_t *retval) {
+    (void) retval;
+    (void) t;
+    do_exit(args->arg1, EXIT_NORMAL);
+    __builtin_unreachable();
+}
 
 static void reparent_children(struct process *pr) {
     struct list_head *cur, *n;
@@ -20,20 +38,23 @@ static void reparent_children(struct process *pr) {
     list_for_each_safe(cur, n, &pr->children_head) {
         child = list_entry(cur, struct process, child_node);
 
-        list_move_tail(&child->child_node, &proc0.proc->children_head);
-        child->parent = proc0.proc;
+        list_move_tail(&child->child_node, &initproc->proc->children_head);
+        child->parent = initproc->proc;
     }
 }
 
 // TODO: major - assumes single threaded
-void do_exit(int code, int flags) {
+void __noreturn do_exit(int code, int flags) {
     struct thread  *t = current();
     struct process *pr;
     (void) flags;
 
+    pr = t->proc;
+    if (t->proc->pid == 1) { panic("init exiting with %d", code); }
+
     atomic_fetch_and(&t->flags, TF_EXITING, ATOMIC_ACQ_REL);
 
-    pr = t->proc;
+    pr_exit_debug("process (pid: %d, name: %s) exiting with %d\n", pr->pid, pr->name, code);
 
     BUG_ON(refcount_get(&pr->live_thrd_cnt) != 1); // unimplemented
     atomic_fetch_and(&pr->flags, PF_EXITING, ATOMIC_ACQ_REL);

@@ -8,13 +8,21 @@
 ENTRY(__div_zero_entry)
     push    $0
     push    $0
-    PUSH_REGS
+    cmpq    $0x08, 24(%rsp)
+    je      1f
+    swapgs
+    lfence
+1:  PUSH_REGS
 unhandled_common:
     mov     %rsp, %rdi
-    call unhandled_exception_handler
+    call    unhandled_exception_handler
     POP_REGS
-    add $16, %rsp
-    iretq
+    add     $16, %rsp
+    cmpq    $0x8, 8(%rsp)
+    je      1f
+    swapgs
+    lfence
+1:  iretq
 
 .macro UNHANDLED_EXCEPTION name vector ecode
 .global \name
