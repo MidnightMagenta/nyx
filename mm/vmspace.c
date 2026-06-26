@@ -15,20 +15,37 @@
 
 kmem_cache_t *vmspace_cache;
 
-void vas_init() {
+void vmspace_init() {
     vmspace_cache =
-            kmem_create_cache("vmspace", sizeof(struct vmspace), _Alignof(struct vmspace), NULL, NULL, M_NOSLEEP);
+            kmem_create_cache("vmspace", sizeof(struct vmspace), _Alignof(struct vmspace), NULL, NULL, M_SLEEPOK);
 }
 
 struct vmspace *vmspace_fork(struct process *p) {
-    struct vmspace *newvm = kmem_cache_alloc(vmspace_cache, M_SLEEPOK);
+    struct vmspace *newvm = vmspace_new(p);
+    if (vm_copy_user(newvm->pgd, p->mm->pgd, M_SLEEPOK) != 0) { goto fail0; }
 
+    return newvm;
+
+fail0:
+    vmspace_put(newvm);
+    return NULL;
+}
+
+struct vmspace *vmspace_share(struct process *parent) {
+    refcount_inc(&parent->mm->refcount);
+    return parent->mm;
+}
+
+struct vmspace *vmspace_new(struct process *parent) {
+    struct vmspace *newvm = kmem_cache_alloc(vmspace_cache, M_SLEEPOK);
     if (!newvm) { return NULL; }
+
     refcount_init(&newvm->refcount, 1);
     list_init(&newvm->vma_regions);
     newvm->pgd = vm_get_page_table(M_SLEEPOK);
     if (!newvm->pgd) { goto fail0; }
-    if (vm_copy(newvm->pgd, p->mm->pgd, M_SLEEPOK) != 0) { goto fail1; }
+
+    if (vm_copy_kernel(newvm->pgd, parent->mm->pgd)) { goto fail1; }
 
     return newvm;
 
@@ -39,12 +56,38 @@ fail0:
     return NULL;
 }
 
-struct vmspace *vmspace_share(struct process *parent) {
-    refcount_inc(&parent->mm->refcount);
-    return parent->mm;
+void vmspace_activate(struct vmspace *mm) {
+    vm_activate(mm->pgd);
 }
 
 void vmspace_put(struct vmspace *mm) {
     if (!mm) { return; }
-    if (refcount_get_dec(&mm->refcount) == 1) { vm_free_user(mm->pgd); }
+    if (refcount_get_dec(&mm->refcount) == 1) {
+        vm_free_user(mm->pgd);
+        vm_free_page_table(mm->pgd);
+        kmem_cache_free(vmspace_cache, mm);
+    }
+}
+
+void vmspace_map(struct vmspace *mm, virt_addr_t addr, size_t len, unsigned long flags, int gfp_flags) {
+    for (size_t off = 0; off < len; off += PAGE_SIZE) {
+        phys_addr_t pa = pm_get_zeroed_page(gfp_flags);
+        vm_map(mm->pgd, pa, addr + off, PAGE_SIZE, flags, gfp_flags);
+    }
+}
+
+void vmspace_mapcopy(struct vmspace *mm, virt_addr_t addr, void *data, size_t len, unsigned long flags, int gfp_flags) {
+    for (size_t off = 0; off < len; off += PAGE_SIZE) {
+        phys_addr_t pa    = pm_get_zeroed_page(gfp_flags);
+        size_t      chunk = MIN(PAGE_SIZE, len - off);
+
+        memcpy(__va(pa), (char *) data + off, chunk);
+        if (chunk < PAGE_SIZE) { memset(((char *) __va(pa)) + chunk, 0, PAGE_SIZE - chunk); }
+
+        vm_map(mm->pgd, pa, addr + off, PAGE_SIZE, flags | VM_USER, gfp_flags);
+    }
+}
+
+void vmspace_unmap(struct vmspace *mm, virt_addr_t addr, size_t len) {
+    vm_umap(mm->pgd, addr, len);
 }
