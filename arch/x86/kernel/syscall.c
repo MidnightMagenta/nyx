@@ -5,6 +5,7 @@
 #include <nyx/syscall.h>
 #include <nyx/types.h>
 
+#include <asi/bug.h>
 #include <asi/cpu.h>
 #include <asi/gdt.h>
 #include <asi/msr.h>
@@ -39,8 +40,8 @@ void __syscall_handler(struct trap_frame *tf) {
             tf->regs.r9,
     };
 
-    if (syscall_table_size < tf->regs.rax) {
-        tf->regs.rax = -EINVAL;
+    if (syscall_table_size < tf->regs.rax || !syscall_table[tf->regs.rax]) {
+        tf->regs.rax = -ENOSYS;
         return;
     }
 
