@@ -22,6 +22,7 @@ void vmspace_init() {
 
 struct vmspace *vmspace_fork(struct process *p) {
     struct vmspace *newvm = vmspace_new(p);
+    if (!newvm) { return NULL; }
     if (vm_copy_user(newvm->pgd, p->mm->pgd, M_SLEEPOK) != 0) { goto fail0; }
 
     return newvm;

@@ -429,10 +429,7 @@ int vm_copy_user(pgd_t *dst, pgd_t *src, int flags) {
                 if (!(spdt[k] & __PG_PRESENT)) { continue; }
                 if (spdt[k] & __PG_PDE_PAGE_SIZE) {
                     cpybuffer = __pm_get_free_pages(flags | __M_ZERO, 9);
-                    if (cpybuffer == INVALID_PHYS_ADDR) {
-                        vm_free_page_table(dst);
-                        return -ENOSPC;
-                    }
+                    if (cpybuffer == INVALID_PHYS_ADDR) { return -ENOSPC; }
                     memcpy(__va(cpybuffer), __va(spdt[k] & __PAGE_ADDR_MASK), __PAGE_2M_SIZE);
                     dpdt[k] = (cpybuffer & __PAGE_ADDR_MASK) | (spdt[k] & ~__PAGE_ADDR_MASK);
                     continue;
@@ -445,10 +442,7 @@ int vm_copy_user(pgd_t *dst, pgd_t *src, int flags) {
                 for (size_t l = 0; l < __PAGE_TABLE_ENTRY_COUNT; l++) {
                     if (!(sptt[l] & __PG_PRESENT)) { continue; }
                     cpybuffer = __pm_get_free_page(flags | __M_ZERO);
-                    if (cpybuffer == INVALID_PHYS_ADDR) {
-                        vm_free_page_table(dst);
-                        return -ENOSPC;
-                    }
+                    if (cpybuffer == INVALID_PHYS_ADDR) { return -ENOSPC; }
                     memcpy(__va(cpybuffer), __va(sptt[l] & __PAGE_ADDR_MASK), __PAGE_4K_SIZE);
                     dptt[l] = (cpybuffer & __PAGE_ADDR_MASK) | (sptt[l] & ~__PAGE_ADDR_MASK);
                 }
