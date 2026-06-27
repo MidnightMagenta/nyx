@@ -19,7 +19,7 @@ static inline int copyout(struct vmspace *mm, virt_addr_t dstva, char *src, size
     return vm_copyout(mm->pgd, dstva, src, len);
 }
 
-static inline int compyin(struct vmspace *mm, char *dst, virt_addr_t srcva, size_t len) {
+static inline int copyin(struct vmspace *mm, char *dst, virt_addr_t srcva, size_t len) {
     return vm_copyin(mm->pgd, dst, srcva, len);
 }
 
