@@ -72,35 +72,49 @@ void vmspace_put(struct vmspace *mm) {
 }
 
 int vmspace_map(struct vmspace *mm, virt_addr_t addr, size_t len, unsigned long flags, int gfp_flags) {
+    int res;
+    addr = PG_ALIGN_DN(addr);
+    len  = PG_ALIGN_UP(len);
+
     for (size_t off = 0; off < len; off += PAGE_SIZE) {
         phys_addr_t pa = pm_get_zeroed_page(gfp_flags);
-        vm_map(mm->pgd, pa, addr + off, PAGE_SIZE, flags, gfp_flags);
+        if (pa == INVALID_PHYS_ADDR) {
+            vm_umap(mm->pgd, addr, len);
+            return -ENOMEM;
+        }
+        if ((res = vm_map(mm->pgd, pa, addr + off, PAGE_SIZE, flags | VM_USER, gfp_flags))) {
+            pm_free_page(pa);
+            vm_umap(mm->pgd, addr, len);
+            return res;
+        }
     }
 
     return 0;
 }
 
 int vmspace_mapcopy(struct vmspace *mm, virt_addr_t addr, void *data, size_t len, unsigned long flags, int gfp_flags) {
-    for (size_t off = 0; off < len; off += PAGE_SIZE) {
+    int    res;
+    size_t end = PG_ALIGN_UP(addr + len);
+    addr       = PG_ALIGN_DN(addr);
+
+    for (size_t off = 0; addr + off < end; off += PAGE_SIZE) {
         phys_addr_t pa    = pm_get_zeroed_page(gfp_flags);
         size_t      chunk = MIN(PAGE_SIZE, len - off);
 
         if (pa == INVALID_PHYS_ADDR) {
-            vm_umap(mm->pgd, addr, PG_ALIGN_UP(len));
+            vm_umap(mm->pgd, addr, off);
             return -ENOMEM;
         }
 
-        vm_map(mm->pgd, pa, addr + off, PAGE_SIZE, flags | VM_USER, gfp_flags);
-
-        if (!vm_access_ok(mm->pgd, addr + off, chunk)) {
-            vm_umap(mm->pgd, addr, PG_ALIGN_UP(len));
-            return -EACCES;
-        };
-
         memcpy(__va(pa), (char *) data + off, chunk);
-        if (chunk < PAGE_SIZE) { memset(((char *) __va(pa)) + chunk, 0, PAGE_SIZE - chunk); }
-    }
+        if (chunk < PAGE_SIZE) memset((char *) __va(pa) + chunk, 0, PAGE_SIZE - chunk);
 
+        if ((res = vm_map(mm->pgd, pa, addr + off, PAGE_SIZE, flags | VM_USER, gfp_flags))) {
+            pm_free_page(pa);
+            vm_umap(mm->pgd, addr, off);
+            return res;
+        }
+    }
     return 0;
 }
 
