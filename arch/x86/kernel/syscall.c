@@ -31,6 +31,7 @@ void syscall_init() {
 // syscall number in rax
 void __syscall_handler(struct trap_frame *tf) {
     register_t          retval;
+    int                 err;
     struct syscall_args args = {
             tf->regs.rdi,
             tf->regs.rsi,
@@ -45,6 +46,6 @@ void __syscall_handler(struct trap_frame *tf) {
         return;
     }
 
-    syscall_table[tf->regs.rax](current(), &args, &retval);
-    tf->regs.rax = retval;
+    err          = syscall_table[tf->regs.rax](current(), &args, &retval);
+    tf->regs.rax = err ? (register_t) err : retval;
 }
