@@ -20,6 +20,7 @@ unhandled_common:
     add     $16, %rsp
     cmpq    $0x8, 8(%rsp)
     je      1f
+    cli
     swapgs
     lfence
 1:  iretq

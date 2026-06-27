@@ -30,6 +30,7 @@ syscall_exit:
     movq    0(%rsp), %rcx
     movq    16(%rsp), %r11
     mov     24(%rsp), %rsp
+    cli
     swapgs
     lfence
     sysretq
