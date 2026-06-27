@@ -23,6 +23,7 @@ switch_to:
     pop     %rbp
     pop     %rbx
  
+    mov     %rdi, %rax
     ret
 
 .global proc_trampoline

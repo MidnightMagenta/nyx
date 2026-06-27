@@ -16,7 +16,7 @@
 #include <asi/bug.h>
 #include <asi/irq.h>
 
-extern void context_switch(struct thread *prev, struct thread *next);
+extern struct thread *context_switch(struct thread *prev, struct thread *next);
 
 extern void proc_init();
 extern void proc0_init();
@@ -82,11 +82,11 @@ void schedule() {
     get_pcpu()->current_task = next;
     next->state              = TS_RUNNING;
 
-    context_switch(prev, next);
+    prev = context_switch(prev, next);
 
     arch_irq_restore(flags);
 
-    schedule_tail(prev, next);
+    schedule_tail(prev, current());
 }
 
 struct cpu_info *sched_pickcpu(struct thread *t) {

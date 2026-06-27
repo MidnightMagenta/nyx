@@ -6,10 +6,11 @@
 
 #include <asi/tss.h>
 
-extern void switch_to(struct thread *prev, struct thread *next);
+extern struct thread *switch_to(struct thread *prev, struct thread *next);
+extern void           schedule_tail(struct thread *prev, struct thread *next);
 
-void context_switch(struct thread *prev, struct thread *next) {
+struct thread *context_switch(struct thread *prev, struct thread *next) {
     if (prev->proc->mm != next->proc->mm) { vmspace_activate(next->proc->mm); }
 
-    switch_to(prev, next);
+    return switch_to(prev, next);
 }

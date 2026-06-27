@@ -93,7 +93,7 @@ gdt:
     .8byte  0x0000000000000000 // user 32 code - unimplemented
     .8byte  0x0000f2000000ffff
     .8byte  0x0020f8000000ffff
-    .skip   251 * 8
+    .skip   250 * 8
 
 .section    .init.bss, "aw", @nobits
 .global bootparams
