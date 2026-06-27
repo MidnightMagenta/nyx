@@ -37,7 +37,7 @@
 #define __PAGE_1G_SIZE         0x40000000ull
 #define __PAGE_PML4_ENTRY_SIZE 0x8000000000ull
 
-#define __PAGE_4K_PGCNT         1
+#define __PAGE_4K_PGCNT         1u
 #define __PAGE_2M_PGCNT         (__PAGE_2M_SIZE >> PAGE_SHIFT)
 #define __PAGE_1G_PGCNT         (__PAGE_1G_SIZE >> PAGE_SHIFT)
 #define __PAGE_PML4_ENTRY_PGCNT (__PAGE_PML4_ENTRY_SIZE >> PAGE_SHIFT)
@@ -266,6 +266,14 @@ static int vm_arch_map(pgd_t      *pgd,
             virt += __PAGE_2M_SIZE;
 
             continue;
+        }
+
+        if (inc_refcnts) {
+            pg = phys_to_page(phys);
+            BUG_ON(PageBuddy(pg));
+            BUG_ON(!PageHead(pg));
+            BUG_ON(pg->head_order != ilog2(__PAGE_4K_PGCNT));
+            refcount_inc(&pg->refcnt);
         }
 
         if ((res = map_4k_page(pgd, phys, virt, flags, gfp_flags))) { return res; }
