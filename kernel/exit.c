@@ -2,6 +2,7 @@
 #include <mm/vmspace.h>
 #include <nyx/compiler.h>
 #include <nyx/current.h>
+#include <nyx/errno.h>
 #include <nyx/list.h>
 #include <nyx/panic.h>
 #include <nyx/percpu.h>
@@ -100,16 +101,20 @@ static inline struct process *find_child(struct process *pr, pid_t pid, int flag
     (void) flags;
 
 again:
+    sleep_setup(pr, "wait");
+
     list_for_each(cur, &pr->children_head) {
         child = list_entry(cur, struct process, child_node);
         if (child->state == PS_ZOMBIE && atomic_load_explicit(&child->flags, ATOMIC_ACQUIRE) & PF_REALZOMBIE) {
-            if (pid == (pid_t) -1 || child->pid == pid) { return child; }
+            if (pid == (pid_t) -1 || child->pid == pid) {
+                sleep_finish(0);
+                return child;
+            }
         }
     }
 
     if (flags & WAIT_NOHANG) { return NULL; }
 
-    sleep_setup(pr, "wait");
     sleep_finish(1);
     goto again;
 }
@@ -121,10 +126,8 @@ int do_wait(struct thread *t, pid_t pid, int *stat_loc, register_t *retval, int 
     pr_wait_debug("pid %d: waiting on %d with stat_loc %#p and flags %x\n", pr->pid, pid, stat_loc, flags);
     // we have no children we could wait for
     if (list_is_empty(&pr->children_head)) {
-        // TODO: set errno
         pr_wait_debug("pid %d: no children to wait on\n", pr->pid);
-        *retval = -1;
-        return 0;
+        return -ECHILD;
     }
 
     child = find_child(pr, pid, flags);
@@ -136,7 +139,7 @@ int do_wait(struct thread *t, pid_t pid, int *stat_loc, register_t *retval, int 
 
     pr_wait_debug("pid %d: waited on %d with exit status %d\n", pr->pid, child->pid, child->xstatus);
 
-    copyout(pr->mm, (virt_addr_t) stat_loc, (char *) &child->xstatus, sizeof(int));
+    if (copyout(pr->mm, (virt_addr_t) stat_loc, (char *) &child->xstatus, sizeof(int))) { return -EFAULT; }
     *retval = child->pid;
     list_del(&child->child_node);
 
