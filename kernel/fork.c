@@ -17,7 +17,12 @@ extern void child_return(void *arg);
 
 int sys_fork(struct thread *t, struct syscall_args *args, register_t *retval) {
     (void) args;
-    return do_fork(t, 0, child_return, NULL, retval, NULL);
+    return do_fork(t, FORK_FORK, child_return, NULL, retval, NULL);
+}
+
+int sys_vfork(struct thread *t, struct syscall_args *args, register_t *retval) {
+    (void) args;
+    return do_fork(t, FORK_VFORK | FORK_SHAREVM, child_return, NULL, retval, NULL);
 }
 
 static inline int new_process(struct process *parent, int flags, struct process **newpr) {

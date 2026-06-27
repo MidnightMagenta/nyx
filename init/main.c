@@ -33,57 +33,12 @@ void        init_proc(void *arg);
 extern struct thread proc0;
 struct thread       *initproc;
 
-int testthrdslp;
-
-void test_kthread_a(void *) {
-    volatile int kt_a = 0;
-    while (1) {
-        if (kt_a == 50000000) {
-            wakeup(&testthrdslp);
-            kt_a = 0;
-        }
-        kt_a++;
+static void start_init() {
+    if (do_fork(&proc0, FORK_NOZOMBIE | FORK_SHAREVM, &init_proc, NULL, NULL, &initproc) != 0) {
+        panic("failed to start init");
     }
+    strncpy(initproc->proc->name, "init", PROC_NAME_LEN);
 }
-
-void test_kthread_b(void *) {
-    int i = 0;
-    while (1) {
-        sleep_setup(&testthrdslp, "test");
-        sleep_finish(1);
-        printk("b woke up\n");
-        if (i++ == 5) { do_exit(0, EXIT_NORMAL); }
-    }
-}
-
-void test_kthread_c(void *) {
-    int i = 0;
-    while (1) {
-        sleep_setup(&testthrdslp, "test");
-        sleep_finish(1);
-        printk("c woke up\n");
-        if (i++ == 5) { do_exit(0, EXIT_NORMAL); }
-    }
-}
-
-void test_kthread_d(void *) {
-    int i = 0;
-    while (1) {
-        sleep_setup(&testthrdslp, "test");
-        sleep_finish(1);
-        printk("d woke up\n");
-        if (i++ == 5) { do_exit(0, EXIT_NORMAL); }
-    }
-}
-
-void setup_test_kthreads() {
-    kthread_create(test_kthread_a, NULL, "test_a");
-    kthread_create(test_kthread_b, NULL, "test_b");
-    kthread_create(test_kthread_c, NULL, "test_c");
-    kthread_create(test_kthread_d, NULL, "test_d");
-}
-
-#include <asi/msr.h>
 
 void start_kernel() {
     pr_info("kernel build ID: %s\n", NYX_BUILD_ID);
@@ -97,14 +52,8 @@ void start_kernel() {
 
     pr_dbg("finish\n");
 
-    if (do_fork(&proc0, FORK_NOZOMBIE | FORK_SHAREVM, &init_proc, NULL, NULL, &initproc) != 0) {
-        panic("failed to start init");
-    }
-    strncpy(initproc->proc->name, "swapper", PROC_NAME_LEN);
-
+    start_init();
     kthread_create(reaper, NULL, "procreaper");
-
-    // setup_test_kthreads();
 
     arch_irq_enable();
 

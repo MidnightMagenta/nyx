@@ -91,11 +91,15 @@ void  put_pid(pid_t pid);
 pid_t get_tid();
 void  put_tid(pid_t tid);
 
-#define FORK_NOZOMBIE (1 << 0)
-#define FORK_SHAREVM  (1 << 1)
+#define FORK_FORK     (1 << 0)
+#define FORK_VFORK    (1 << 1)
+#define FORK_NOZOMBIE (1 << 2)
+#define FORK_SHAREVM  (1 << 3)
 
 #define EXIT_NORMAL (1 << 0)
 #define EXIT_THREAD (1 << 1)
+
+#define WAIT_NOHANG (1 << 0)
 
 int  do_fork(struct thread  *curp,
              int             flags,
@@ -103,7 +107,8 @@ int  do_fork(struct thread  *curp,
              void           *arg,
              register_t     *retval,
              struct thread **newproc);
-void do_exit(int code, int flags);
+void do_exit(struct thread *t, int code, int flags);
+int  do_wait(struct thread *t, pid_t pid, int *stat_loc, register_t *retval, int flags);
 
 static inline struct trap_frame *thread_trap_frame(struct thread *t) {
     return (struct trap_frame *) ((char *) t->kstack + PAGE_SIZE) - 1;
