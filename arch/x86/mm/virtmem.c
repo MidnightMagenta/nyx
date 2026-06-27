@@ -511,6 +511,17 @@ phys_addr_t vm_getphys(pgd_t *pgd, virt_addr_t virt) {
     return INVALID_PHYS_ADDR;
 }
 
+static inline int __access_ok(pgd_t *pte, virt_addr_t virt, size_t len) {
+    if (virt < ARCH_USER_START || virt + len > ARCH_USER_END) { return 0; }
+
+    if (!pte) { return 0; }
+    if (!(*pte & __PG_PRESENT)) { return 0; }
+    if (!(*pte & __PG_USER)) { return 0; }
+
+
+    return 1;
+}
+
 int vm_copyout(pgd_t *pgd, virt_addr_t dst_virt, char *src, size_t len) {
     size_t      n;
     phys_addr_t pa;
@@ -527,6 +538,8 @@ int vm_copyout(pgd_t *pgd, virt_addr_t dst_virt, char *src, size_t len) {
 
         n = PAGE_SIZE - (dst_virt - va);
         if (n > len) { n = len; }
+
+        if (!__access_ok(entry, va, n)) { return -EACCES; }
         memmove(__va(pa + (dst_virt - va)), src, n);
 
         len -= n;
@@ -550,6 +563,8 @@ int vm_copyin(pgd_t *pgd, char *dst, virt_addr_t src_virt, size_t len) {
 
         n = PAGE_SIZE - (src_virt - va);
         if (n > len) { n = len; }
+
+        if (!vm_access_ok(pgd, va, n)) { return -EACCES; }
         memmove(dst, __va(pa + (src_virt - va)), n);
 
         len -= n;
@@ -558,4 +573,18 @@ int vm_copyin(pgd_t *pgd, char *dst, virt_addr_t src_virt, size_t len) {
     }
 
     return 0;
+}
+
+int vm_access_ok(pgd_t *pgd, virt_addr_t virt, size_t len) {
+    pgd_t *pte;
+    if (virt < ARCH_USER_START || virt + len > ARCH_USER_END) { return 0; }
+
+    pte = get_entry(pgd, virt);
+
+    if (!pte) { return 0; }
+    if (!(*pte & __PG_PRESENT)) { return 0; }
+    if (!(*pte & __PG_USER)) { return 0; }
+
+
+    return 1;
 }
