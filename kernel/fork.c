@@ -63,13 +63,6 @@ static inline int new_thread(struct process *parent, struct thread **newt) {
     atomic_store_explicit(&t->flags, 0, ATOMIC_RELAXED);
     t->state = TS_NEW;
 
-    kstack_phys = pm_get_zeroed_page(M_SLEEPOK);
-    if (kstack_phys == INVALID_PHYS_ADDR) {
-        free_thread(t);
-        return -ENOMEM;
-    }
-    t->kstack = __va(kstack_phys);
-
     t->tid   = get_tid();
     t->proc  = parent;
     t->wchan = NULL;
@@ -77,6 +70,13 @@ static inline int new_thread(struct process *parent, struct thread **newt) {
     list_init(&t->qnode);
     list_init(&t->thrd_node);
     list_init(&t->gthrd_node);
+
+    kstack_phys = pm_get_zeroed_page(M_SLEEPOK);
+    if (kstack_phys == INVALID_PHYS_ADDR) {
+        free_thread(t);
+        return -ENOMEM;
+    }
+    t->kstack = __va(kstack_phys);
 
     list_add_tail(&t->thrd_node, &parent->thrds_list);
     list_add_tail(&t->gthrd_node, &thread_list);
