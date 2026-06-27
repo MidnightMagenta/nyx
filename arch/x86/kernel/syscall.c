@@ -40,7 +40,7 @@ void __syscall_handler(struct trap_frame *tf) {
             tf->regs.r9,
     };
 
-    if (syscall_table_size < tf->regs.rax || !syscall_table[tf->regs.rax]) {
+    if (tf->regs.rax >= syscall_table_size || !syscall_table[tf->regs.rax]) {
         tf->regs.rax = -ENOSYS;
         return;
     }
