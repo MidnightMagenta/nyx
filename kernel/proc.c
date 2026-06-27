@@ -8,13 +8,10 @@
 static kmem_cache_t *proc_struct_cache;
 static kmem_cache_t *thread_struct_cache;
 
-struct list_head proc_list;
-struct list_head thread_list;
+LIST_HEAD(proc_list);
+LIST_HEAD(thread_list);
 
 void __init proc_init() {
-    list_init(&proc_list);
-    list_init(&thread_list);
-
     proc_struct_cache =
             kmem_create_cache("proc_struct", sizeof(struct process), _Alignof(struct process), NULL, NULL, M_SLEEPOK);
     thread_struct_cache =
