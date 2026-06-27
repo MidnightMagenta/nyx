@@ -2,137 +2,133 @@
 #include <mm/slab.h>
 #include <nyx/bitmap.h>
 #include <nyx/compiler.h>
+#include <nyx/current.h>
 #include <nyx/kernel.h>
 #include <nyx/linkage.h>
 #include <nyx/list.h>
+#include <nyx/proc.h>
 #include <nyx/sched.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
 #include <uapi/posix_types.h>
 
 #include <asi/address.h>
+#include <asi/bug.h>
+#include <asi/irq.h>
 
-extern void idle_task();
+extern struct thread *context_switch(struct thread *prev, struct thread *next);
 
-static struct task_struct idle_task_struct = {
-        .list = (struct list_head) LIST_HEAD_INIT(idle_task_struct.list),
-};
-
-struct {
-    DECLARE_STATIC_BITMAP(bitmap, PID_MAX);
-} pid_map;
-
-kmem_cache_t *task_struct_cache;
-
-static LIST_HEAD(task_list);
-static LIST_HEAD(runqueue);
-static LIST_HEAD(deadqueue);
-
-static struct task_struct *current = &idle_task_struct;
-
-// HACK: this should be per CPU
-volatile int need_reschedule;
-
-extern char init_stack_top[];
+extern void proc_init();
+extern void proc0_init();
+extern void map_kernel();
+extern void wait_init();
+extern void exit_tail(struct thread *t);
+extern void arch_schedule_tail(struct thread *prev, struct thread *next);
 
 void __init init_sched() {
-    memset(&pid_map, 0, ARRAY_SIZE(pid_map.bitmap));
-    bm_set(pid_map.bitmap, 0);
-
-    task_struct_cache = kmem_create_cache("task_struct",
-                                          sizeof(struct task_struct),
-                                          _Alignof(struct task_struct),
-                                          NULL,
-                                          NULL,
-                                          GFP_ATOMIC);
-
-    idle_task_struct.stack = init_stack_top;
-    idle_task_struct.state = RUNNABLE;
-    idle_task_struct.pid   = 0;
+    proc0_init();
+    map_kernel();
+    get_pcpu()->current_task         = &proc0;
+    get_pcpu()->scheds.cpu_idle_proc = &proc0;
+    get_pcpu()->scheds.flags         = 0;
+    list_init(&get_pcpu()->scheds.runq);
+    proc_init();
+    wait_init();
 }
 
-pid_t get_pid() {
-    size_t pid = 1;
-    while (bm_get(pid_map.bitmap, pid)) { pid++; }
-    bm_set(pid_map.bitmap, pid);
-    return pid;
-}
+static struct thread *pick_next(struct sched_percpu *schedc) {
+    struct thread *next = NULL;
 
-
-struct task_struct *task_alloc(const char *name) {
-    struct task_struct *task = kmem_cache_alloc(task_struct_cache, 0);
-    if (!task) { return NULL; }
-
-    memset(task, 0, sizeof(struct task_struct));
-    task->stack = __va(pm_get_zeroed_page(GFP_ATOMIC));
-    task->pid   = get_pid();
-
-    if (name) {
-        strncpy(task->name, name, TASK_NAME_LEN - 1);
-        task->name[TASK_NAME_LEN - 1] = '\0';
+    if (!list_is_empty(&schedc->runq)) {
+        next = list_first_entry(&schedc->runq, struct thread, qnode);
+        rmrunqueue(next);
     }
 
-    task->state = TASK_NEW;
-    list_add_tail(&task->task_list, &task_list);
-
-    return task;
+    return next ? next : schedc->cpu_idle_proc;
 }
 
-void task_make_runnable(struct task_struct *task) {
-    list_add_tail(&task->list, &runqueue);
-    task->state = RUNNABLE;
+void schedule_tail(struct thread *prev, struct thread *next) {
+    arch_schedule_tail(prev, next);
+    get_pcpu()->rsp0 = (u64) next->kstack + PAGE_SIZE;
+    if (prev->state == TS_ZOMBIE) { exit_tail(prev); }
 }
 
-// TODO: need a reaper thread that cleans up zombie tasks
-void __noreturn task_exit() {
-    struct task_struct *task = get_current_task();
-    list_del(&task->list);
-    list_add(&task->list, &deadqueue);
-    task->state = ZOMBIE;
-    schedule();
-
-    while (1);
-}
-
-static struct task_struct *pick_next() {
-    struct task_struct *task;
-    struct list_head   *cur;
-
-    list_for_each(cur, &runqueue) {
-        task = list_entry(cur, struct task_struct, list);
-        if (task->state == RUNNABLE) {
-            list_move_tail(&task->list, &runqueue);
-            return task;
-        }
-    }
-
-    return &idle_task_struct;
-}
-
-struct task_struct *get_current_task() {
-    return current;
-}
-
-extern void switch_to(struct task_struct *prev, struct task_struct *next);
+#include <asi/msr.h>
 
 void schedule() {
-    struct task_struct *cur  = get_current_task();
-    struct task_struct *next = pick_next();
+    struct sched_percpu *schedc = &get_pcpu()->scheds;
+    struct thread       *prev, *next;
+    flags_t              flags;
 
-    need_reschedule = 0;
+    if (list_is_empty(&schedc->runq) && current()->state == TS_RUNNING) { return; }
 
-    if (cur->state == RUNNING) { cur->state = RUNNABLE; }
-    next->state = RUNNING;
+    flags = arch_irq_save();
 
-    current = next;
+    prev = current();
+    next = pick_next(schedc);
 
-    switch_to(cur, next);
+    schedc->flags &= ~SCHED_NEED_RESCHED;
+
+    if (next == schedc->cpu_idle_proc && prev->state == TS_RUNNING) {
+        arch_irq_restore(flags);
+        return;
+    }
+
+    if (prev->state == TS_RUNNING) {
+        prev->state = TS_RUNNABLE;
+        if (prev != schedc->cpu_idle_proc) { setrunqueue(prev->cpu, prev); }
+    }
+
+    get_pcpu()->current_task = next;
+    next->state              = TS_RUNNING;
+
+    prev = context_switch(prev, next);
+
+    arch_irq_restore(flags);
+
+    schedule_tail(prev, current());
+}
+
+struct cpu_info *sched_pickcpu(struct thread *t) {
+    // TODO: fudged function
+
+    (void) t;
+    return &__cpus[0];
+}
+
+void setrunqueue(struct cpu_info *cpu, struct thread *t) {
+    struct sched_percpu *schedc;
+    flags_t              flags;
+
+    BUG_ON(!list_is_empty(&t->qnode));
+
+    if (cpu == NULL) { cpu = sched_pickcpu(t); }
+
+    flags = arch_irq_save();
+
+    t->cpu   = cpu;
+    t->state = TS_RUNNABLE;
+
+    schedc = &t->cpu->percpu->scheds;
+    schedc->nr_run++;
+    list_add_tail(&t->qnode, &schedc->runq);
+
+    arch_irq_restore(flags);
+}
+
+void rmrunqueue(struct thread *t) {
+    struct sched_percpu *schedc;
+    flags_t              flags;
+
+    flags = arch_irq_save();
+
+    schedc = &t->cpu->percpu->scheds;
+    schedc->nr_run--;
+    list_del(&t->qnode);
+
+    arch_irq_restore(flags);
 }
 
 void scheduler_tick() {
-    need_reschedule = 1;
-}
-
-int need_resched() {
-    return need_reschedule;
+    if (!list_is_empty(&get_pcpu()->scheds.runq)) { get_pcpu()->scheds.flags |= SCHED_NEED_RESCHED; }
 }

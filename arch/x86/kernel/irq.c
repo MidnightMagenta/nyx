@@ -16,7 +16,7 @@ unsigned int vector_to_irq(unsigned int vector) {
 }
 
 void handle_irq(struct irq_desc *desc) {
-    // HACK: we're just doing PIC for now. Obv wrong
+    // TODO: minor, irq - generic irq source chip handling
 
     if (i8259_is_spurious(desc->irq)) { goto exit; }
 

@@ -11,4 +11,4 @@ KERNEL_TEST(physmem_round_trip) {
     __pm_free_pages(second_page, 0);
 }
 
-// TODO: write physmem allocator tests
+// TODO: minor, PMM/tests - write physmem allocator tests

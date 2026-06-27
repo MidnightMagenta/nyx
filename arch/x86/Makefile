@@ -27,11 +27,11 @@ archclean:
 	rm -f arch/$(ARCH)/X86_64_link.lds
 	$(MAKEBOOT) clean
 
-%.lds: %.ld
+%.lds: %.ld include/generated/autoconf.h
 	@echo -e "CPP $@"
-	$(Q)$(CPP) -P -x assembler-with-cpp -include include/generated/autoconf.h $^ -o $@
+	$(Q)$(CPP) -P -x assembler-with-cpp -include include/generated/autoconf.h $< -o $@
 
-$(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.s: $(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.c
+$(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.s: $(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.c include/generated/autoconf.h
 	@echo "CC $@"
 	$(Q)$(CC) $(CFLAGS) -MMD -MP -S $< -o $@
 

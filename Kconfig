@@ -33,3 +33,4 @@ endmenu
 
 source "arch/$(ARCH)/Kconfig"
 source "mm/Kconfig"
+source "kernel/Kconfig"

@@ -24,7 +24,7 @@ struct free_area_s {
 
 typedef struct zone_s {
     size_t free_pages;
-    // TODO: watermarks
+    // TODO: minor, PMM - watermarks
 
     /* index into this array is block order */
     struct free_area_s free_area[MAX_ORDER];

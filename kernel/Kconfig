@@ -1,0 +1,23 @@
+menu "kernel"
+
+menu "syscalls"
+
+config DEBUG_SYSCALL
+    bool "Print syscall debug info"
+    default n
+
+config DEBUG_EXIT
+    bool "Print sys_exit debug info"
+    default n
+
+config DEBUG_WAIT
+    bool "Print sys_wait debug info"
+    default n
+
+config DEBUG_FORK
+    bool "Print sys_fork debug info"
+    default n
+
+endmenu
+
+endmenu

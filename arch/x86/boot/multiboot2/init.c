@@ -38,7 +38,7 @@ static int verify_ehdr(const Elf64_Ehdr *const ehdr) {
     if (memcmpb(&ehdr->e_ident[EI_MAG0], ELFMAG, SELFMAG) != 0) { return 1; }
     if (ehdr->e_ident[EI_CLASS] != ELFCLASS64) { return 1; }
     if (ehdr->e_ident[EI_DATA] != ELFDATA2LSB) { return 1; }
-    if (ehdr->e_type != ET_EXEC) { return 1; } // TODO: ET_DYN support later
+    if (ehdr->e_type != ET_EXEC) { return 1; } // TODO: minor, KASLR - add ET_DYN support
     if (ehdr->e_machine != EM_AMD64) { return 1; }
     if (ehdr->e_version != EV_CURRENT) { return 1; }
     return 0;
@@ -378,7 +378,8 @@ static int map_memory(u64 bi, const struct kernel_loadinfo *loadinfo, struct mem
         return res;
     }
 
-    __asm__ volatile("mov %0, %%cr3" ::"r"(pml4) : "memory");
+    __asm__ volatile("mov %0, %%cr3" ::"r"(pml4)
+                     : "memory");
 
     return 0;
 }

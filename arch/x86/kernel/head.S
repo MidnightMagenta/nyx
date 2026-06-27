@@ -72,22 +72,28 @@ ignore_int:
 init_stack_top:
 
 .section    .data, "aw"
+.global gdt_desc
 .align      8
 gdt_desc:
     .2byte  256 * 8 - 1
     .8byte  0
 
+.global idt_desc
 .align       8
 idt_desc:
     .2byte  256 * 16 - 1
     .8byte  0
 
+.global gdt
 .align      0x1000
 gdt:
     .8byte  0x0000000000000000
     .8byte  0x00af9a000000ffff
     .8byte  0x00af92000000ffff
-    .skip   253 * 8
+    .8byte  0x0000000000000000 // user 32 code - unimplemented
+    .8byte  0x0000f2000000ffff
+    .8byte  0x0020f8000000ffff
+    .skip   250 * 8
 
 .section    .init.bss, "aw", @nobits
 .global bootparams

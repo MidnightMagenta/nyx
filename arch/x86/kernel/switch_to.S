@@ -1,4 +1,7 @@
 #include <asi/generated/asm-offsets.h>
+#include <asi/cpu.h>
+
+.extern schedule_tail
 
 .section .text
 .global switch_to
@@ -19,10 +22,20 @@ switch_to:
     pop     %r12
     pop     %rbp
     pop     %rbx
-
+ 
+    mov     %rdi, %rax
     ret
 
-.global start_task
-start_task:
-    mov     %r12, %rdi
+.global proc_trampoline
+proc_trampoline:
+    sti
+    call schedule_tail
+    mov     %r13, %rdi
+    call    *%r12
+    POP_REGS
+    add     $16, %rsp
+    swapgs
+    lfence
     iretq
+1:  hlt
+    jmp     1b

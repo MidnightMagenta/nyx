@@ -8,6 +8,8 @@
 *.auto
 *.lds
 *.tmp
+*.bin
+*.qcow2
 
 # directories
 .cache/

@@ -1,20 +1,24 @@
 #include <nyx/errno.h>
 #include <nyx/kthread.h>
+#include <nyx/proc.h>
 #include <nyx/sched.h>
+#include <nyx/string.h>
 #include <nyx/types.h>
 
-extern void kthread_trampoline(void *);
+#include <asi/bug.h>
 
-int kthread_create(void (*entry)(void), const char *name) {
-    struct task_struct *kthread = task_alloc(name);
-    if (!kthread) { return -ENOSPC; }
+extern struct thread proc0;
 
-    arch_init_task(kthread, kthread->stack, kthread_trampoline, (virt_addr_t) entry);
-    task_make_runnable(kthread);
+int kthread_create(void (*entry)(void *), void *arg, const char *name) {
+    int            res;
+    struct thread *t;
 
+    if ((res = do_fork(&proc0, FORK_NOZOMBIE | FORK_SHAREVM, entry, arg, NULL, &t))) { return res; }
+
+    strncpy(t->proc->name, name, PROC_NAME_LEN);
     return 0;
 }
 
 void kthread_exit() {
-    task_exit();
+    BUG();
 }

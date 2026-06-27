@@ -6,12 +6,23 @@
 #include <nyx/compiler.h>
 #include <nyx/types.h>
 
-struct gp_regs {
+struct percpu;
+
+#define MAX_CPUS 1
+
+struct regs {
     u64 rax, rbx, rcx, rdx;
     u64 rsi, rdi, rsp, rbp;
     u64 r8, r9, r10, r11;
     u64 r12, r13, r14, r15;
 } __packed;
+
+struct cpu_info {
+    struct cpu_info *self;
+    struct percpu   *percpu;
+};
+
+extern struct cpu_info __cpus[MAX_CPUS];
 
 #else
 // clang-format off

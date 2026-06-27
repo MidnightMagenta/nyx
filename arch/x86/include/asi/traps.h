@@ -15,7 +15,7 @@ struct interrupt_frame {
 } __packed;
 
 struct trap_frame {
-    struct gp_regs         regs;
+    struct regs            regs;
     u64                    vector;
     u64                    ecode;
     struct interrupt_frame frame;

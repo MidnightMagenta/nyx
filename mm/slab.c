@@ -219,6 +219,8 @@ static void cache_shrink(struct kmem_cache_s *cache) {
 }
 
 int __init kmem_cache_init() {
+    memset(&cache_cache, 0, sizeof(kmem_cache_t));
+
     cache_cache.list  = (struct list_head) LIST_HEAD_INIT(cache_cache.list);
     cache_cache.flags = 0;
 
@@ -228,7 +230,7 @@ int __init kmem_cache_init() {
     cache_cache.slab_lists.free_objects  = 0;
 
     cache_cache.gfp_order = 0;
-    cache_cache.gfp_flags = GFP_ATOMIC;
+    cache_cache.gfp_flags = M_NOSLEEP;
 
     cache_cache.obj_size  = sizeof(struct kmem_cache_s);
     cache_cache.obj_align = _Alignof(struct kmem_cache_s);
@@ -298,6 +300,9 @@ kmem_cache_t *kmem_create_cache(const char *name,
     if (align == 0) { align = 1; }
 
     cache = kmem_cache_alloc(&cache_cache, 0);
+    if (!cache) { return NULL; }
+
+    memset(cache, 0, sizeof(kmem_cache_t));
 
     cache->flags = 0;
     cache->list  = (struct list_head) LIST_HEAD_INIT(cache->list);

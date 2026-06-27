@@ -1,4 +1,5 @@
 #include <mm/memblock.h>
+#include <mm/mm_types.h>
 #include <mm/mmzone.h>
 #include <mm/virtmem.h>
 #include <nyx/linkage.h>
@@ -10,10 +11,7 @@ extern void init_page_alloc();
 extern void arch_init_memory();
 extern void kmem_cache_init();
 extern void kmalloc_init();
-
-pgd_t *kernel_pgtable;
-
-extern void map_kernel();
+extern void vmspace_init();
 
 void __init init_memory() {
     arch_init_memory();
@@ -22,5 +20,5 @@ void __init init_memory() {
     memblock_free_all();
     kmem_cache_init();
     kmalloc_init();
-    map_kernel();
+    vmspace_init();
 }

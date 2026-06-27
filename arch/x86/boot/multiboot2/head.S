@@ -141,7 +141,7 @@ gdt32:
 .quad 0x0000920000000000    // kernel data
 gdt32_end:
 
-// TODO: boot IDT
+// TODO: minor, boot - need boot IDT for 32 bit mode
 
 .section .bss, "aw", @nobits
 .align  0x1000
