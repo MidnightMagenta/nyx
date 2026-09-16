@@ -79,9 +79,9 @@ struct page {
 #define VM_USER          (1 << 3)
 #define VM_CACHE_DISABLE (1 << 4)
 
-#define MAP_PRIVATE   (1 << 0)
-#define MAP_SHARED    (1 << 1)
-#define MAP_ANONYMOUS (1 << 2)
+#define MME_PRIVATE   (1 << 0)
+#define MME_SHARED    (1 << 1)
+#define MME_ANONYMOUS (1 << 2)
 
 struct vm_map_entry {
     virt_addr_t vm_start;
@@ -98,6 +98,10 @@ struct vm_map_entry {
 
 struct vmspace {
     pgd_t *v_pgd;
+
+    // TODO: implement brk
+    // virt_addr_t          v_initial_brk;
+    // struct vm_map_entry *v_brk_vme;
 
     struct refcount  v_refcount;
     struct list_head v_vmmap;

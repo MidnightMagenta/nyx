@@ -3,7 +3,6 @@
 #include <mm/kmalloc.h>
 #include <mm/mm_types.h>
 #include <nyx/errno.h>
-#include <nyx/fcntl.h>
 #include <nyx/kernel.h>
 #include <nyx/linkage.h>
 #include <nyx/list.h>
@@ -12,6 +11,7 @@
 #include <nyx/types.h>
 #include <nyx/uio.h>
 #include <nyx/vfs.h>
+#include <uapi/fcntl.h>
 #include <uapi/posix_types.h>
 
 #include <asi/bug.h>

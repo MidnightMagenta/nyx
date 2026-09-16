@@ -40,4 +40,7 @@
 #define ENAMETOOLONG  37 /* Name too long */
 #define ELOOP         38 /* Is a cycle */
 
+#define MAX_ERRNO       4095
+#define IS_ERR_VALUE(x) ((x) >= (unsigned long) -MAX_ERRNO)
+
 #endif

@@ -17,10 +17,17 @@
 #define pr_fmt(fmt) "vmspace: " fmt
 
 kmem_cache_t *vmspace_cache;
+kmem_cache_t *vmmap_cache;
 
 void vmspace_init() {
     vmspace_cache =
             kmem_create_cache("vmspace", sizeof(struct vmspace), _Alignof(struct vmspace), NULL, NULL, M_SLEEPOK);
+    vmmap_cache = kmem_create_cache("vm_map_entry",
+                                    sizeof(struct vm_map_entry),
+                                    _Alignof(struct vm_map_entry),
+                                    NULL,
+                                    NULL,
+                                    0);
 }
 
 struct vmspace *vmspace_fork(struct process *p) {
@@ -46,7 +53,7 @@ struct vmspace *vmspace_new(struct process *parent) {
 
     refcount_init(&newvm->v_refcount, 1);
     list_init(&newvm->v_vmmap);
-    newvm->v_pgd = vm_get_page_table(M_SLEEPOK);
+    newvm->v_pgd = vm_alloc_page_table(M_SLEEPOK);
     if (!newvm->v_pgd) { goto fail0; }
 
     if (vm_copy_kernel(newvm->v_pgd, parent->p_mm->v_pgd)) { goto fail1; }
@@ -122,4 +129,21 @@ int vmspace_mapcopy(struct vmspace *mm, virt_addr_t addr, void *data, size_t len
 
 void vmspace_unmap(struct vmspace *mm, virt_addr_t addr, size_t len) {
     vm_umap(mm->v_pgd, addr, len);
+}
+
+int vms_mmap(struct process *pr,
+             virt_addr_t     addr,
+             size_t          len,
+             int             prot,
+             int             flags,
+             struct vnode   *vp,
+             off_t           off,
+             virt_addr_t    *pa) {
+    if (len == 0) { return -EINVAL; }
+
+    return 0;
+}
+
+int vms_munmap(struct process *pr, virt_addr_t addr, size_t len) {
+    return 0;
 }

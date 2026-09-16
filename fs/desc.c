@@ -1,7 +1,6 @@
 #include <mm/kmalloc.h>
 #include <mm/mm_types.h>
 #include <nyx/errno.h>
-#include <nyx/fcntl.h>
 #include <nyx/proc.h>
 #include <nyx/refcount.h>
 #include <nyx/spinlock.h>
@@ -10,6 +9,7 @@
 #include <nyx/types.h>
 #include <nyx/uio.h>
 #include <nyx/vfs.h>
+#include <uapi/fcntl.h>
 #include <uapi/posix_types.h>
 
 #include <asi/bug.h>
@@ -300,6 +300,7 @@ int vfs_open(struct process *p, const char *path, enum uio_seg seg, int flags, u
     fp->f_offset = 0;
     fp->f_flags  = flags;
     if (flags & O_CLOEXEC) { p->p_fd->fd_files[fd].fe_flags |= FD_CLOEXEC; }
+    if (flags & O_CLOFORK) { p->p_fd->fd_files[fd].fe_flags |= FD_CLOFORK; }
 
     *fdout = fd;
     return 0;

@@ -20,6 +20,7 @@ extern void idt_setup_interrupts();
 extern void init_percpu();
 extern void cpu_init();
 extern void gdt_setup();
+extern void detect_cpu_features();
 
 static void __init add_memblock_regions() {
     u64         rb, re, idx;
@@ -40,6 +41,7 @@ void __init setup_arch() {
     mmap_setup_map();
     memblock_init();
     add_memblock_regions();
+    detect_cpu_features();
     init_percpu();
     cpu_init();
 }
@@ -60,7 +62,7 @@ extern struct process proc0_proc;
 void __init map_kernel() {
     u64 load_base = bootparams->kernel_load_base;
 
-    proc0_proc.p_mm->v_pgd = vm_get_page_table(M_SLEEPOK);
+    proc0_proc.p_mm->v_pgd = vm_alloc_page_table(M_SLEEPOK);
     if (!proc0_proc.p_mm->v_pgd) { early_panic("could not allocate kernel page table"); }
 
     map_symbol(__text_start, __text_end, VM_READ | VM_EXEC);

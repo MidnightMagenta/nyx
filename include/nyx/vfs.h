@@ -99,7 +99,8 @@ struct fdentry {
     int          fe_flags;
 };
 
-#define FD_CLOEXEC 1
+#define FD_CLOEXEC (1 << 0)
+#define FD_CLOFORK (1 << 1)
 
 struct filedesc {
     struct fdentry *fd_files;

@@ -3,7 +3,6 @@
 #include <mm/vmspace.h>
 #include <nyx/compiler.h>
 #include <nyx/current.h>
-#include <nyx/fcntl.h>
 #include <nyx/kernel.h>
 #include <nyx/kthread.h>
 #include <nyx/linkage.h>
@@ -14,6 +13,7 @@
 #include <nyx/types.h>
 #include <nyx/uio.h>
 #include <nyx/vfs.h>
+#include <uapi/fcntl.h>
 
 #include <asi/address.h>
 #include <asi/bootparam.h>
@@ -71,6 +71,8 @@ static __init void start_init() {
     if (do_fork(&proc0, FORK_NOZOMBIE | FORK_SHAREVM, &init_proc, NULL, NULL, &initproc) != 0) {
         panic("failed to start init");
     }
+
+    BUG_ON(initproc->t_proc->p_pid != 1);
     strncpy(initproc->t_proc->p_name, "init", PROC_NAME_LEN);
 
     BUG_ON(vfs_open(initproc->t_proc, "/dev/console", UIO_SYSSPACE, O_RDWR, 0, &stdinfd));
@@ -91,26 +93,6 @@ void __init start_kernel() {
     init_sched();
     mount_devfs();
     do_initcalls();
-
-    struct nameidata nd;
-    nd.ni_dirp   = "/../../test/path/a/../a/././..///../path/a//../../../testfile.txt";
-    nd.ni_segflg = UIO_SYSSPACE;
-    nd.ni_op     = NAMEI_LOOKUP;
-    nd.ni_flags  = 0;
-    nd.ni_proc   = current()->t_proc;
-
-    if (!namei(&nd)) {
-        printk("Found vnode: %#p\n", nd.ni_vp);
-    } else {
-        printk("namei failed :(\n");
-    }
-
-    static char buf[256];
-    memset(buf, 0, 256);
-
-    vn_rdwr(UIO_READ, nd.ni_vp, buf, 255, 0, NULL);
-
-    printk("%s\n", buf);
 
     __do_kernel_tests();
 

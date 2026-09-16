@@ -8,8 +8,19 @@
 #include <asi/address.h>
 #include <asi/page_data.h>
 
-pgd_t *vm_get_page_table(int gfp_flags);
+typedef int vm_sizeclass_t;
+
+pgd_t *vm_alloc_page_table(int gfp_flags);
 void   vm_free_page_table(pgd_t *pgd);
+
+vm_sizeclass_t vm_sc_for_bytes(size_t bytes);
+vm_sizeclass_t vm_lagest_fitting(phys_addr_t pa, virt_addr_t va, size_t len);
+bool           vm_sc_supported(vm_sizeclass_t sc);
+size_t         vm_sc_bytes(vm_sizeclass_t sc);
+int vm_map_page(pgd_t *pgd, phys_addr_t pa, virt_addr_t va, unsigned long flags, vm_sizeclass_t sc, int gfp_flags);
+int vm_unmap_page(pgd_t *pgd, virt_addr_t va, vm_sizeclass_t *sc);
+int vm_query_page(pgd_t *pgd, virt_addr_t va, phys_addr_t *pa, unsigned long *flags, vm_sizeclass_t *sc);
+int vm_set_prot(pgd_t *pgd, virt_addr_t va, unsigned long new_prot);
 
 int         vm_map(pgd_t *pgd, phys_addr_t phys, virt_addr_t virt, size_t len, unsigned long flags, int gfp_flags);
 int         vm_map_raw(pgd_t *pgd, phys_addr_t phys, virt_addr_t virt, size_t len, unsigned long flags, int gfp_flags);
