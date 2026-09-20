@@ -17,7 +17,7 @@
 #ifdef CONFIG_DEBUG_FORK
 #define pr_fork_debug(fmt, ...) printk("syscall/fork:%d: " fmt, __LINE__, ##__VA_ARGS__)
 #else
-#define pr_wait_debug(fmt, ...) /* void */
+#define pr_fork_debug(fmt, ...) /* void */
 #endif
 
 struct syscall_args;
