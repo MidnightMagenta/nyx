@@ -241,7 +241,7 @@ static int cpio_getattr(struct vnode *vp, struct vattr *vap) {
 
 static int cpio_readlink(struct vnode *vp, struct uio *uio) {
     struct cpio_node *cn = VTOCN(vp);
-    if (vp->v_type != VLNK) { return EINVAL; }
+    if (vp->v_type != VLNK) { return -EINVAL; }
     return uiomove((void *) cn->n_data, cn->n_size, uio);
 }
 
@@ -274,7 +274,7 @@ static int cpio_mount(struct mount *mp, void *data) {
     cm->cm_root = cpio_node_alloc(".", 1, VDIR);
     if (!cm->cm_root) {
         kfree(cm);
-        return ENOMEM;
+        return -ENOMEM;
     }
     cm->cm_root->c_node.fn_ino  = 1;
     cm->cm_root->c_node.fn_mode = 0755;

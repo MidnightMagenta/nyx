@@ -37,7 +37,7 @@ static u8 vtype_to_dtype(enum vtype t) {
 int fsnode_init(struct fsnode *fn, const char *name, size_t namelen, enum vtype type, const struct vnodeops *vops) {
     memset(fn, 0, sizeof(*fn));
     fn->fn_name = kmalloc(namelen + 1, M_SLEEPOK);
-    if (!fn->fn_name) { return ENOMEM; }
+    if (!fn->fn_name) { return -ENOMEM; }
 
     memcpy(fn->fn_name, name, namelen);
     fn->fn_name[namelen] = '\0';
@@ -85,7 +85,7 @@ int fsnode_vget(struct mount *mp, struct fsnode *n, struct vnode **vpp) {
 
 int fsnode_lookup(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp) {
     struct fsnode *dn = dvp->v_data;
-    if (dn->fn_type != VDIR) { return ENOTDIR; }
+    if (dn->fn_type != VDIR) { return -ENOTDIR; }
 
     struct fsnode *t;
     if (cnp->cn_namelen == 2 && cnp->cn_nameptr[0] == '.' && cnp->cn_nameptr[1] == '.') {
@@ -94,7 +94,7 @@ int fsnode_lookup(struct vnode *dvp, struct vnode **vpp, struct componentname *c
         t = dn;
     } else {
         t = fsnode_child(dn, cnp->cn_nameptr, cnp->cn_namelen);
-        if (!t) { return ENOENT; }
+        if (!t) { return -ENOENT; }
     }
     return fsnode_vget(dvp->v_mount, t, vpp);
 }
@@ -121,7 +121,7 @@ static int emit_dirent(struct uio *uio, u64 ino, u8 type, const char *name, size
 
 int fsnode_readdir(struct vnode *vp, struct uio *uio) {
     struct fsnode *dn = vp->v_data;
-    if (dn->fn_type != VDIR) { return ENOTDIR; }
+    if (dn->fn_type != VDIR) { return -ENOTDIR; }
 
     off_t          target = uio->uio_offset;
     off_t          i      = 0;

@@ -43,7 +43,7 @@ void __init init_filesystems() {
 
 int getnewvnode(struct mount *mp, const struct vnodeops *ops, enum vtype type, struct vnode **vpp) {
     struct vnode *vp = kmem_cache_alloc(vnode_cache, M_SLEEPOK);
-    if (!vp) { return ENOMEM; }
+    if (!vp) { return -ENOMEM; }
 
     memset(vp, 0, sizeof(*vp));
     vp->v_type        = type;
@@ -173,7 +173,7 @@ int vop_nolookup(struct vnode *v, struct vnode **vpp, struct componentname *c) {
     (void) v;
     (void) vpp;
     (void) c;
-    return ENOTDIR;
+    return -ENOTDIR;
 }
 int vop_noopen(struct vnode *v, int m) {
     (void) v;
@@ -189,29 +189,29 @@ int vop_noread(struct vnode *v, struct uio *u, int f) {
     (void) v;
     (void) u;
     (void) f;
-    return EISDIR;
+    return -EISDIR;
 }
 int vop_nowrite(struct vnode *v, struct uio *u, int f) {
     (void) v;
     (void) u;
     (void) f;
-    return EISDIR;
+    return -EISDIR;
 }
 int vop_noioctl(struct vnode *v, unsigned long c, void *d) {
     (void) v;
     (void) c;
     (void) d;
-    return ENOTTY;
+    return -ENOTTY;
 }
 int vop_noreaddir(struct vnode *v, struct uio *u) {
     (void) v;
     (void) u;
-    return ENOTDIR;
+    return -ENOTDIR;
 }
 int vop_noreadlink(struct vnode *v, struct uio *u) {
     (void) v;
     (void) u;
-    return EINVAL;
+    return -EINVAL;
 }
 int vop_null(struct vnode *v) {
     (void) v;

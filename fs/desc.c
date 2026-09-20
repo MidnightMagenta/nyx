@@ -23,7 +23,7 @@ static int fd_grow(struct filedesc *fdp, int want) {
     while (ncap <= want) { ncap *= 2; }
 
     na = kmalloc(ncap * sizeof(struct fdentry), M_SLEEPOK);
-    if (!na) { return ENOMEM; }
+    if (!na) { return -ENOMEM; }
     memset(na, 0, ncap * sizeof(struct fdentry));
 
     if (fdp->fd_files) {
@@ -39,14 +39,14 @@ static int fd_grow(struct filedesc *fdp, int want) {
 
 int fdinit(struct process *p) {
     struct filedesc *fdp = kmalloc(sizeof(*fdp), M_SLEEPOK);
-    if (!fdp) { return ENOMEM; }
+    if (!fdp) { return -ENOMEM; }
 
     memset(fdp, 0, sizeof(*fdp));
     spinlock_init(&fdp->fd_lock);
 
     if (fd_grow(fdp, FD_INITIAL - 1) != 0) {
         kfree(fdp);
-        return ENOMEM;
+        return -ENOMEM;
     }
 
     if (rootvnode) {
@@ -131,7 +131,7 @@ int falloc(struct process *p, struct file **fpout, int *fdout) {
     if (error) return error;
 
     fp = kmalloc(sizeof(*fp), M_SLEEPOK);
-    if (!fp) { return ENOMEM; }
+    if (!fp) { return -ENOMEM; }
     memset(fp, 0, sizeof(*fp));
     refcount_set(&fp->f_count, 1);
 
@@ -170,9 +170,9 @@ int fd_close(struct process *p, int fd) {
     struct filedesc *fdp = p->p_fd;
     struct file     *fp;
 
-    if (fd < 0 || fd >= fdp->fd_nfiles) { return EBADF; }
+    if (fd < 0 || fd >= fdp->fd_nfiles) { return -EBADF; }
     fp = fdp->fd_files[fd].fe_file;
-    if (!fp) { return EBADF; }
+    if (!fp) { return -EBADF; }
 
     fdp->fd_files[fd].fe_file  = NULL;
     fdp->fd_files[fd].fe_flags = 0;
@@ -192,7 +192,7 @@ static int vn_read(struct file *fp, struct uio *uio, int flags) {
     struct vnode *vp;
     int           error;
 
-    if (!fp_can_read(fp)) { return EBADF; }
+    if (!fp_can_read(fp)) { return -EBADF; }
 
     vp              = fp->f_data;
     uio->uio_offset = fp->f_offset;
@@ -206,7 +206,7 @@ static int vn_write(struct file *fp, struct uio *uio, int flags) {
     struct vnode *vp;
     int           error;
 
-    if (!fp_can_write(fp)) { return EBADF; }
+    if (!fp_can_write(fp)) { return -EBADF; }
 
     vp              = fp->f_data;
     uio->uio_offset = fp->f_offset;
@@ -362,7 +362,7 @@ int kern_dup(struct process *p, int oldfd, int *newfd) {
     struct file *fp = fget(p, oldfd);
     int          fd, error;
 
-    if (!fp) return EBADF;
+    if (!fp) return -EBADF;
 
     error = fdalloc(p, 0, &fd);
     if (error) {

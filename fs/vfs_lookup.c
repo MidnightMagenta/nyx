@@ -76,7 +76,7 @@ static int lookup(struct nameidata *ndp) {
         if (*q == '\0') {
             if (path == ndp->ni_pathbuf && *path == '\0') {
                 vrele(dvp);
-                return ENOENT;
+                return -ENOENT;
             }
             ndp->ni_vp  = dvp;
             ndp->ni_dvp = NULL;
@@ -88,7 +88,7 @@ static int lookup(struct nameidata *ndp) {
         path = next_component(cnp, path);
         if (path == NULL) {
             vrele(dvp);
-            return ENAMETOOLONG;
+            return -ENAMETOOLONG;
         }
         bool last = (cnp->cn_flags & NAMEI_ISLASTCN) != 0;
 
@@ -115,13 +115,13 @@ static int lookup(struct nameidata *ndp) {
         } else {
             if (dvp->v_type != VDIR) {
                 vrele(dvp);
-                return ENOTDIR;
+                return -ENOTDIR;
             }
             vn_lock(dvp, LK_EXCLUSIVE);
             int error = VOP_LOOKUP(dvp, &vp, cnp);
             VOP_UNLOCK(dvp);
 
-            if (error == ENOENT && last && ndp->ni_op == NAMEI_CREATE) {
+            if (error == -ENOENT && last && ndp->ni_op == NAMEI_CREATE) {
                 ndp->ni_dvp = dvp;
                 ndp->ni_vp  = NULL;
                 return 0;
@@ -140,7 +140,7 @@ static int lookup(struct nameidata *ndp) {
             if (vp->v_type == VLNK && (!last || (ndp->ni_flags & NAMEI_FOLLOW))) {
                 vrele(vp);
                 vrele(dvp);
-                return ENOSYS;
+                return -ENOSYS;
             }
         }
 
@@ -170,7 +170,7 @@ int namei(struct nameidata *ndp) {
         if (err) { goto fail0; }
     } else {
         if (strlcpy(buf, ndp->ni_dirp, MAXPATH) >= MAXPATH) {
-            err = ENAMETOOLONG;
+            err = -ENAMETOOLONG;
             goto fail0;
         }
     }
@@ -184,7 +184,7 @@ int namei(struct nameidata *ndp) {
         err = lookup(ndp);
         // TODO: if err == ERESTART_SYMLINK
         if (++ndp->ni_loopcnt > MAXSYMLINKS) {
-            err = ELOOP;
+            err = -ELOOP;
             goto fail0;
         }
         ndp->ni_pathbuf = NULL;
