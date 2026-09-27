@@ -18,7 +18,7 @@
 #include <asi/memory.h>
 #include <asi/page.h>
 
-DEFINE_SUBSYS_LOG(virtmem_log, "virtmem", CONFIG_VIRTMEM_LOG_LEVEL);
+DEFINE_SUBSYS_LOG(vmspace_log, "vmspace", CONFIG_VIRTMEM_LOG_LEVEL);
 
 kmem_cache_t *vmspace_cache;
 kmem_cache_t *vmmap_cache;
@@ -253,6 +253,8 @@ int vms_mmap(struct vmspace *vs,
              virt_addr_t    *pa) {
     int res;
 
+    pr_debug(vmspace_log, "mmap(%#p, %#lx, %ld, %#x, %#x, %#p, %ld)\n", vs, addr, len, prot, flags, vp, off);
+
     if (len == 0) { return -EINVAL; }
     addr = PG_ALIGN_DN(addr);
     len  = PG_ALIGN_UP(len);
@@ -263,6 +265,8 @@ int vms_mmap(struct vmspace *vs,
         addr = find_free_range(vs, addr, len);
         if (!addr) { return -ENOMEM; }
     }
+
+    pr_debug(vmspace_log, "    mapping to address %#lx\n", addr);
 
     if ((res = vm_map_insert(vs, addr, len, prot, flags, vp, off))) { return res; }
     *pa = addr;
@@ -283,6 +287,8 @@ int kern_mmap(struct process *pr,
               off_t           off,
               virt_addr_t    *pa) {
     struct file *f = NULL;
+
+    pr_debug(vmspace_log, "kern_mmap called for PID %ld\n", pr->p_pid);
 
     if (!(flags & MAP_ANONYMOUS)) {
         f = fget(pr, fd);
