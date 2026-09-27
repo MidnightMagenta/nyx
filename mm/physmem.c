@@ -146,6 +146,7 @@ found_page:
 
     SetPageHead(page);
     page->pg_head_order = order;
+    refcount_set(&page->pg_refcnt, 0);
 
     return page;
 }
@@ -161,6 +162,7 @@ phys_addr_t __pm_get_free_pages(int gfp_mask, unsigned long order) {
 void __pm_free_pages(struct page *page, unsigned long order) {
     BUG_ON(order >= MAX_ORDER);
     BUG_ON(!page);
+    BUG_ON(refcount_get(&page->pg_refcnt));
 #ifdef __DEBUG
     bool page_real = false;
     for (int i = 0; i < MAX_NR_ZONES; ++i) {
