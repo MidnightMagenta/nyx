@@ -2,6 +2,7 @@
 #include <mm/mm_types.h>
 #include <mm/physmem.h>
 #include <mm/virtmem.h>
+#include <nyx/atomic.h>
 #include <nyx/errno.h>
 #include <nyx/linkage.h>
 #include <nyx/panic.h>
@@ -119,66 +120,22 @@ static inline unsigned int ptt_idx(virt_addr_t va) {
 struct {
     bool   supported;
     size_t bytes;
+    int    max_ptes_none;
 } vm_sc_info[VM_SC_CLASS_COUNT] = {
-        {true, __PAGE_4K_SIZE},
-        {false, 0},
-        {false, 0},
+        {true, __PAGE_4K_SIZE, 0},
+        {true, __PAGE_2M_SIZE, 100},
 };
-
-void __init virtmem_init() {
-    // 2M pages
-    vm_sc_info[VM_SC_2M].bytes     = __PAGE_2M_SIZE;
-    vm_sc_info[VM_SC_2M].supported = true;
-
-    // 1G pages
-#ifdef CONFIG_USE_GIGANTIC_PAGES
-    if (g_cpu_features.cf_pdpe1g) {
-        vm_sc_info[VM_SC_1G].bytes     = __PAGE_1G_SIZE;
-        vm_sc_info[VM_SC_1G].supported = true;
-    } else {
-        vm_sc_info[VM_SC_1G].bytes     = 0;
-        vm_sc_info[VM_SC_1G].supported = false;
-    }
-#endif
-}
-
-vm_sizeclass_t vm_sc_for_bytes(size_t bytes) {
-    for (int sc = 0; sc < VM_SC_CLASS_COUNT; sc++) {
-        if (!vm_sc_supported(sc)) { continue; }
-
-        if (bytes > vm_sc_info[sc].bytes) { continue; }
-        return (vm_sizeclass_t) sc;
-    }
-
-    return -1;
-}
-
-vm_sizeclass_t vm_lagest_fitting(phys_addr_t pa, virt_addr_t va, size_t len) {
-    for (int sc = VM_SC_CLASS_COUNT - 1; sc >= VM_SC_4K; sc--) {
-        if (!vm_sc_supported(sc)) { continue; }
-
-        size_t bytes = vm_sc_info[sc].bytes;
-        if (len < bytes) { continue; }
-        if ((pa & (bytes - 1)) || (va & (bytes - 1))) { continue; }
-
-        return (vm_sizeclass_t) sc;
-    }
-
-    return VM_SC_4K;
-}
-
-bool vm_sc_supported(vm_sizeclass_t sc) {
-    return vm_sc_info[sc].supported;
-}
-
-size_t vm_sc_bytes(vm_sizeclass_t sc) {
-    return vm_sc_info[sc].bytes;
-}
 
 /*
  * struct page's refcnt_private field is used to count the number of
  * active entries in the page table, if PG_pgtable is set.
  */
+static inline void set_pgtable_refcount(pgd_t *pgd, int rc) {
+    struct page *page = virt_to_page(pgd);
+    BUG_ON(!PagePgtable(page));
+    refcount_set(&page->pg_refcnt_private, rc);
+}
+
 static inline int inc_pgtable_refcount(pgd_t *pgd) {
     struct page *page = virt_to_page(pgd);
     BUG_ON(!PagePgtable(page));
@@ -195,6 +152,89 @@ static inline int is_pgtable_empty(pgd_t *pgd) {
     struct page *page = virt_to_page(pgd);
     BUG_ON(!PagePgtable(page));
     return !refcount_get(&page->pg_refcnt_private);
+}
+
+void __init virtmem_init() {
+    // 2M pages
+    vm_sc_info[VM_SC_2M].bytes         = __PAGE_2M_SIZE;
+    vm_sc_info[VM_SC_2M].supported     = true;
+    vm_sc_info[VM_SC_2M].max_ptes_none = 100;
+}
+
+#define KERNEL_PML4_FIRST_IDX 256
+
+void __init prepopulate_pdpt_entries(pgd_t *pgd) {
+    pgd_t *pdpt;
+
+    for (unsigned int idx = KERNEL_PML4_FIRST_IDX; idx < __PAGE_TABLE_ENTRY_COUNT; idx++) {
+        if (pgd[idx] & __PG_PRESENT) {
+            pdpt = __va(__PAGE_ADDR(pgd[idx]));
+            BUG_ON(!PagePgtable(virt_to_page(pdpt)));
+        } else {
+            pdpt = vm_alloc_page_table(M_SLEEPOK);
+            if (!pdpt) { BUG(); }
+            pgd[idx] = (pgd_t) __pa(pdpt) | __PG_PRESENT | __PG_WRITE;
+            inc_pgtable_refcount(pgd);
+        }
+
+        inc_pgtable_refcount(pdpt); /* permanent kernel pin - never freed */
+    }
+}
+
+vm_sizeclass_t vm_sc_for_bytes(size_t bytes) {
+    for (int sc = 0; sc < VM_SC_CLASS_COUNT; sc++) {
+        if (!vm_sc_supported(sc)) { continue; }
+
+        if (bytes > vm_sc_info[sc].bytes) { continue; }
+        return (vm_sizeclass_t) sc;
+    }
+
+    return -1;
+}
+
+vm_sizeclass_t vm_lagest_fitting(virt_addr_t va, phys_addr_t pa, size_t len) {
+    for (int sc = VM_SC_CLASS_COUNT - 1; sc >= VM_SC_4K; sc--) {
+        size_t bytes;
+
+        if (!vm_sc_supported(sc)) { continue; }
+
+        bytes = vm_sc_info[sc].bytes;
+        if (len < bytes) { continue; }
+        if ((pa & (bytes - 1)) || (va & (bytes - 1))) { continue; }
+
+        return (vm_sizeclass_t) sc;
+    }
+
+    return VM_SC_4K;
+}
+
+vm_sizeclass_t vm_pick_sizeclass(virt_addr_t va, phys_addr_t pa, size_t len, unsigned int flags) {
+    for (int sc = VM_SC_CLASS_COUNT - 1; sc >= VM_SC_4K; sc--) {
+        size_t bytes, max_waste;
+
+        if (!vm_sc_supported(sc)) { continue; }
+
+        bytes = vm_sc_info[sc].bytes;
+        if ((pa & (bytes - 1)) || (va & (bytes - 1))) { continue; }
+        if (len >= bytes) { return (vm_sizeclass_t) sc; }
+
+        if (sc == VM_SC_4K) { return VM_SC_4K; }
+        if (!(flags & VM_MAP_OVERMAP)) { continue; }
+        max_waste = (bytes >> ilog2((unsigned int) __PAGE_TABLE_ENTRY_COUNT)) * vm_sc_info[sc].max_ptes_none;
+        if ((bytes - len) > max_waste) { continue; }
+
+        return (vm_sizeclass_t) sc;
+    }
+
+    return VM_SC_4K;
+}
+
+bool vm_sc_supported(vm_sizeclass_t sc) {
+    return vm_sc_info[sc].supported;
+}
+
+size_t vm_sc_bytes(vm_sizeclass_t sc) {
+    return vm_sc_info[sc].bytes;
 }
 
 pgd_t *vm_alloc_page_table(int gfp_flags) {
@@ -247,7 +287,6 @@ static inline pgd_t *get_pgtable(pgd_t *pgd, size_t idx, bool allocate, int gfp_
     return out_table;
 }
 
-
 static const struct {
     vm_sizeclass_t terminates_at;
     unsigned int   (*index_of)(virt_addr_t va);
@@ -269,37 +308,53 @@ static inline int walk(pgd_t *pgd, virt_addr_t va, struct pt_walk_entry *path, i
     unsigned int idx   = __PML4T_IDX(va);
     int          d     = 0;
 
-    if (!(table[idx] & __PG_PRESENT)) { return -ENOENT; }
+    *depth = 0;
+
     path[d++] = (struct pt_walk_entry){table, idx};
-    table     = get_pgtable(pgd, idx, false, 0);
+    *depth    = d;
+    if (!(table[idx] & __PG_PRESENT)) { return -ENOENT; }
+    table = __va(__PAGE_ADDR(table[idx]));
 
     for (size_t i = 0; i < ARRAY_SIZE(pt_levels); i++) {
-        bool is_leaf;
+        idx       = pt_levels[i].index_of(va);
+        path[d++] = (struct pt_walk_entry){table, idx};
+        *depth    = d;
 
-        idx = pt_levels[i].index_of(va);
         if (!(table[idx] & __PG_PRESENT)) { return -ENOENT; }
 
-        is_leaf = (pt_levels[i].terminates_at != VM_SC_4K) && (table[idx] & __PG_PDE_PAGE_SIZE);
-
-        path[d++] = (struct pt_walk_entry){table, idx};
-
-        if (is_leaf) {
-            *sc    = pt_levels[i].terminates_at;
-            *depth = d;
+        if ((pt_levels[i].terminates_at == VM_SC_4K) || (table[idx] & __PG_PDE_PAGE_SIZE)) {
+            *sc = pt_levels[i].terminates_at;
             return 0;
         }
 
-        table = get_pgtable(table, idx, false, 0);
+        table = __va(__PAGE_ADDR(table[idx]));
     }
 
     BUG();
     __unreachable;
 }
 
+static void prune_empty_tables(struct pt_walk_entry *path, int depth) {
+    for (int i = depth - 1; i > 0; i--) {
+        pgd_t *pt = path[i].table;
+
+        if (!is_pgtable_empty(pt)) { break; }
+
+        pgd_t       *parent     = path[i - 1].table;
+        unsigned int parent_idx = path[i - 1].idx;
+
+        vm_free_page_table(pt);
+        parent[parent_idx] = 0;
+        dec_pgtable_refcount(parent);
+    }
+}
+
 int vm_map_page(pgd_t *pgd, phys_addr_t pa, virt_addr_t va, unsigned long flags, vm_sizeclass_t sc, int gfp_flags) {
-    pgd_t       *table;
-    u64          entry_flags;
-    unsigned int idx;
+    pgd_t               *table;
+    u64                  entry_flags;
+    struct pt_walk_entry path[MAX_PT_DEPTH];
+    int                  depth = 0;
+    unsigned int         idx;
 
     if (sc >= VM_SC_CLASS_COUNT) {
         BUG();
@@ -314,13 +369,17 @@ int vm_map_page(pgd_t *pgd, phys_addr_t pa, virt_addr_t va, unsigned long flags,
         return -EINVAL;
     }
 
-    table = get_pgtable(pgd, __PML4T_IDX(va), true, gfp_flags);
+    path[depth++] = (struct pt_walk_entry){pgd, __PML4T_IDX(va)};
+    table         = get_pgtable(pgd, __PML4T_IDX(va), true, gfp_flags);
     if (!table) { return -ENOMEM; }
 
     for (size_t i = 0; i < ARRAY_SIZE(pt_levels); i++) {
-        idx = pt_levels[i].index_of(va);
+        idx           = pt_levels[i].index_of(va);
+        path[depth++] = (struct pt_walk_entry){table, idx};
 
         if (sc == pt_levels[i].terminates_at) {
+            if (table[idx] & __PG_PRESENT) { return -EEXIST; }
+
             entry_flags = get_pte_flags(flags);
             if (sc != VM_SC_4K) { entry_flags |= __PG_PDE_PAGE_SIZE; }
             table[idx] = (pa & __PAGE_ADDR_MASK) | entry_flags;
@@ -329,8 +388,13 @@ int vm_map_page(pgd_t *pgd, phys_addr_t pa, virt_addr_t va, unsigned long flags,
             return 0;
         }
 
+        if ((table[idx] & __PG_PRESENT) && (table[idx] & __PG_PDE_PAGE_SIZE)) { return -EEXIST; }
+
         table = get_pgtable(table, idx, true, gfp_flags);
-        if (!table) { return -ENOMEM; }
+        if (!table) {
+            prune_empty_tables(path, depth);
+            return -ENOMEM;
+        }
     }
 
     BUG();
@@ -353,21 +417,7 @@ int vm_unmap_page(pgd_t *pgd, virt_addr_t va, vm_sizeclass_t *sc) {
     leaf.table[leaf.idx]      = 0;
     invlpg(va);
     dec_pgtable_refcount(leaf.table);
-
-    for (int i = depth - 1; i > 0; i--) {
-        pgd_t       *table = path[i].table;
-        pgd_t       *parent;
-        unsigned int parent_idx;
-
-        if (!is_pgtable_empty(table)) { break; }
-
-        parent     = path[i - 1].table;
-        parent_idx = path[i - 1].idx;
-
-        vm_free_page_table(table);
-        parent[parent_idx] = 0;
-        dec_pgtable_refcount(parent);
-    }
+    prune_empty_tables(path, depth);
 
     return 0;
 }
@@ -383,64 +433,71 @@ static unsigned long pg_flags_to_vm_flags(u64 pg_flags) {
     return flags;
 }
 
-int vm_query_page(pgd_t *pgd, virt_addr_t va, phys_addr_t *pa, unsigned long *flags, vm_sizeclass_t *sc) {
-    pgd_t       *table;
-    unsigned int idx;
+int vm_query_page(pgd_t *pgd, virt_addr_t va, struct vm_pginfo *info) {
+    struct pt_walk_entry path[MAX_PT_DEPTH];
+    int                  depth;
+    int                  res;
+    pgd_t               *table;
+    unsigned int         idx;
 
     if (va & __PAGE_4K_MASK) {
         BUG();
         return -EINVAL;
     }
 
-    table = get_pgtable(pgd, __PML4T_IDX(va), false, 0);
-    if (!table) { return -ENOENT; }
-
-    for (size_t i = 0; i < ARRAY_SIZE(pt_levels); i++) {
-        idx = pt_levels[i].index_of(va);
-
-        if (!(table[idx] & __PG_PRESENT)) { return -ENOENT; }
-
-        if ((pt_levels[i].terminates_at != VM_SC_4K) && (table[idx] & __PG_PDE_PAGE_SIZE)) {
-            *sc = pt_levels[i].terminates_at;
-            break;
+    res = walk(pgd, va, path, &depth, &info->pi_sc);
+    if (res == -ENOENT) {
+        switch (depth) {
+            case 1:
+                info->pi_len = __PAGE_PML4_ENTRY_SIZE;
+                break;
+            case 2:
+                info->pi_len = __PAGE_1G_SIZE;
+                break;
+            case 3:
+                info->pi_len = __PAGE_2M_SIZE;
+                break;
+            default:
+                info->pi_len = __PAGE_4K_SIZE;
+                break;
         }
-
-        table = get_pgtable(pgd, idx, false, 0);
+        info->pi_virt_base = va & ~(info->pi_len - 1);
+        info->pi_sc        = -1;
+        return -ENOENT;
+    } else if (res) {
+        return res;
     }
 
-    *flags = pg_flags_to_vm_flags(table[idx] & ~__PAGE_ADDR_MASK);
-    *pa    = __PAGE_ADDR(table[idx]);
+    table = path[depth - 1].table;
+    idx   = path[depth - 1].idx;
+
+    info->pi_len       = vm_sc_bytes(info->pi_sc);
+    info->pi_virt_base = va & ~(info->pi_len - 1);
+    info->pi_phys_base = __PAGE_ADDR(table[idx]);
+    info->pi_flags     = pg_flags_to_vm_flags(table[idx] & ~__PAGE_ADDR_MASK);
 
     return 0;
 }
 
 int vm_set_prot(pgd_t *pgd, virt_addr_t va, unsigned long new_prot) {
-    pgd_t         *table;
-    unsigned int   idx;
-    vm_sizeclass_t sc = VM_SC_4K;
-    phys_addr_t    old_pa;
-    u64            pg_flags;
+    struct pt_walk_entry path[MAX_PT_DEPTH];
+    int                  depth;
+    vm_sizeclass_t       sc;
+    pgd_t               *table;
+    unsigned int         idx;
+    phys_addr_t          old_pa;
+    u64                  pg_flags;
+    int                  res;
 
     if (va & __PAGE_4K_MASK) {
         BUG();
         return -EINVAL;
     }
 
-    table = get_pgtable(pgd, __PML4T_IDX(va), false, 0);
-    if (!table) { return -ENOENT; }
+    if ((res = walk(pgd, va, path, &depth, &sc))) { return res; }
 
-    for (size_t i = 0; i < ARRAY_SIZE(pt_levels); i++) {
-        idx = pt_levels[i].index_of(va);
-
-        if (!(table[idx] & __PG_PRESENT)) { return -ENOENT; }
-
-        if ((pt_levels[i].terminates_at != VM_SC_4K) && (table[idx] & __PG_PDE_PAGE_SIZE)) {
-            sc = pt_levels[i].terminates_at;
-            break;
-        }
-
-        table = get_pgtable(pgd, idx, false, 0);
-    }
+    table = path[depth - 1].table;
+    idx   = path[depth - 1].idx;
 
     if (va & (vm_sc_bytes(sc) - 1)) { return -EINVAL; }
 
@@ -453,271 +510,321 @@ int vm_set_prot(pgd_t *pgd, virt_addr_t va, unsigned long new_prot) {
     return 0;
 }
 
+int vm_split(pgd_t *pgd, virt_addr_t va, int gfp_flags) {
+    struct pt_walk_entry path[MAX_PT_DEPTH];
+    int                  depth, res;
+    vm_sizeclass_t       sc, child_sc;
+    struct pt_walk_entry leaf;
+    u64                  orig, child_flags;
+    phys_addr_t          base_pa;
+    size_t               child_bytes;
+    pgd_t               *new_pt;
+
+    if ((res = walk(pgd, va, path, &depth, &sc))) { return res; }
+    if (sc == VM_SC_4K) { return 0; }
+
+    leaf        = path[depth - 1];
+    orig        = leaf.table[leaf.idx];
+    child_sc    = sc - 1;
+    child_bytes = vm_sc_bytes(child_sc);
+    base_pa     = __PAGE_ADDR(orig);
+
+    child_flags = orig & ~(__PAGE_ADDR_MASK | __PG_PDE_PAGE_SIZE);
+    if (child_sc != VM_SC_4K) { child_flags |= __PG_PDE_PAGE_SIZE; }
+
+    new_pt = vm_alloc_page_table(gfp_flags);
+    if (!new_pt) { return -ENOMEM; }
+
+    for (int n = 0; n < __PAGE_TABLE_ENTRY_COUNT; n++) {
+        new_pt[n] = ((base_pa + (phys_addr_t) n * child_bytes) & __PAGE_ADDR_MASK) | child_flags;
+    }
+    set_pgtable_refcount(new_pt, __PAGE_TABLE_ENTRY_COUNT);
+
+    barrier();
+
+    leaf.table[leaf.idx] = (pgd_t) __pa(new_pt) | __PG_PRESENT | __PG_WRITE | __PG_USER;
+    invlpg(va); /* SMP: needs a shootdown */
+
+    return 0;
+}
+
+int vm_can_map(virt_addr_t va, phys_addr_t pa, vm_sizeclass_t sc) {
+    size_t bytes;
+
+    if (sc >= VM_SC_CLASS_COUNT) { BUG(); }
+    bytes = vm_sc_bytes(sc);
+    return !((va & (bytes - 1)) || (pa & (bytes - 1)));
+}
+
 /////////////////////////////////////////////////////////////////////
 /// OLD IMPLEMENTATION
 /// MARK FOR DELETE
 /////////////////////////////////////////////////////////////////////
 
-static inline pgd_t *get_table(pgd_t *pgd, int idx, int gfp_flags) {
-    pgd_t *out_table;
-
-    if (!(pgd[idx] & __PG_PRESENT)) {
-        out_table = vm_alloc_page_table(gfp_flags);
-        if (!out_table) { return NULL; }
-        pgd[idx] = (pgd_t) __pa(out_table) | __PG_PRESENT | __PG_WRITE | __PG_USER;
-        inc_pgtable_refcount(pgd);
-    }
-
-    return (pgd_t *) __va(__PAGE_ADDR(pgd[idx]));
-}
-
-static inline int can_map_2m(phys_addr_t phys, virt_addr_t virt, size_t len) {
-    if (phys & __PAGE_2M_MASK || virt & __PAGE_2M_MASK) { return 0; }
-    if (len < (__PAGE_2M_SIZE >> PAGE_SHIFT)) { return 0; }
-    return 1;
-}
-
-#ifdef CONFIG_USE_GIGANTIC_PAGES
-static inline int can_map_1g(phys_addr_t phys, virt_addr_t virt, size_t len) {
-    if (phys & __PAGE_1G_MASK || virt & __PAGE_1G_MASK) { return 0; }
-    if (len < (__PAGE_1G_SIZE >> PAGE_SHIFT)) { return 0; }
-    return 1;
-}
-
-static inline int map_1g_page(pgd_t *pgd, phys_addr_t phys, virt_addr_t virt, u64 flags, int gfp_flags) {
-    pgd_t *pdpt;
-
-    virtmem_dev_pr("mapping 1G page at physical address %#p to virtual %#p with flags 0x%016lx\n", phys, virt, flags);
-
-    pdpt = get_table(pgd, __PML4T_IDX(virt), gfp_flags);
-    if (!pdpt) { return -ENOMEM; }
-
-    pdpt[__PDPT_IDX(virt)] = (phys & __PAGE_ADDR_MASK) | __PG_PDE_PAGE_SIZE | flags;
-    inc_pgtable_refcount(pdpt);
-    invlpg(virt);
-    return 0;
-}
-#endif
-
-static inline int map_2m_page(pgd_t *pgd, phys_addr_t phys, virt_addr_t virt, u64 flags, int gfp_flags) {
-    pgd_t *pdpt, *pdt;
-
-    virtmem_dev_pr("mapping 2M page at physical address %#p to virtual %#p with flags 0x%016lx\n", phys, virt, flags);
-
-    pdpt = get_table(pgd, __PML4T_IDX(virt), gfp_flags);
-    if (!pdpt) { return -ENOMEM; }
-
-    pdt = get_table(pdpt, __PDPT_IDX(virt), gfp_flags);
-    if (!pdt) { return -ENOMEM; }
-
-    pdt[__PDT_IDX(virt)] = (phys & __PAGE_ADDR_MASK) | __PG_PDE_PAGE_SIZE | flags;
-    inc_pgtable_refcount(pdt);
-    invlpg(virt);
-    return 0;
-}
-
-static inline int map_4k_page(pgd_t *pgd, phys_addr_t phys, virt_addr_t virt, u64 flags, int gfp_flags) {
-    pgd_t *pdpt, *pdt, *ptt;
-
-    virtmem_dev_pr("mapping 4K page at physical address %#p to virtual %#p with flags 0x%016lx\n", phys, virt, flags);
-
-    pdpt = get_table(pgd, __PML4T_IDX(virt), gfp_flags);
-    if (!pdpt) { return -ENOMEM; }
-
-    pdt = get_table(pdpt, __PDPT_IDX(virt), gfp_flags);
-    if (!pdt) { return -ENOMEM; }
-
-    ptt = get_table(pdt, __PDT_IDX(virt), gfp_flags);
-    if (!ptt) { return -ENOMEM; }
-
-    ptt[__PTT_IDX(virt)] = (phys & __PAGE_ADDR_MASK) | flags;
-    inc_pgtable_refcount(ptt);
-    invlpg(virt);
-    return 0;
-}
-
-static int vm_arch_map(pgd_t      *pgd,
-                       phys_addr_t phys,
-                       virt_addr_t virt,
-                       size_t      pg_cnt,
-                       u64         flags,
-                       int         gfp_flags,
-                       bool        inc_refcnts) {
-    int          res;
-    struct page *pg;
-
-    while (pg_cnt) {
-#ifdef CONFIG_USE_GIGANTIC_PAGES
-        if (can_map_1g(phys, virt, pg_cnt)) {
-            if (inc_refcnts) {
-                BUG(); // unimplemented
-            }
-
-            if ((res = map_1g_page(pgd, phys, virt, flags, gfp_flags))) { return res; }
-            pg_cnt -= __PAGE_1G_SIZE >> PAGE_SHIFT;
-            phys += __PAGE_1G_SIZE;
-            virt += __PAGE_1G_SIZE;
-            continue;
-        }
-#endif
-
-        if (can_map_2m(phys, virt, pg_cnt)) {
-            if ((res = map_2m_page(pgd, phys, virt, flags, gfp_flags))) { return res; }
-
-            if (inc_refcnts) {
-                pg = phys_to_page(phys);
-                BUG_ON(PageBuddy(pg));
-                BUG_ON(!PageHead(pg));
-                BUG_ON(pg->pg_head_order != ilog2(__PAGE_2M_PGCNT));
-                refcount_inc(&pg->pg_refcnt);
-            }
-
-            pg_cnt -= __PAGE_2M_SIZE >> PAGE_SHIFT;
-            phys += __PAGE_2M_SIZE;
-            virt += __PAGE_2M_SIZE;
-
-            continue;
-        }
-
-        if (inc_refcnts) {
-            pg = phys_to_page(phys);
-            BUG_ON(PageBuddy(pg));
-            BUG_ON(!PageHead(pg));
-            BUG_ON(pg->pg_head_order != ilog2(__PAGE_4K_PGCNT));
-            refcount_inc(&pg->pg_refcnt);
-        }
-
-        if ((res = map_4k_page(pgd, phys, virt, flags, gfp_flags))) { return res; }
-        pg_cnt--;
-        phys += __PAGE_4K_SIZE;
-        virt += __PAGE_4K_SIZE;
-    }
-
-    BUG_ON(pg_cnt != 0);
-    return 0;
-}
-
-static inline bool skip_absent(bool present, virt_addr_t *virt, size_t *pg_cnt, size_t entry_size, size_t entry_pgcnt) {
-    if (present) { return false; }
-    BUG_ON(*pg_cnt < entry_pgcnt);
-    *virt += entry_size;
-    *pg_cnt -= entry_pgcnt;
-    return true;
-}
-
-#define skip_absent_pml4(ent, virt, pg_cnt)                                                                            \
-    skip_absent((*(ent) & __PG_PRESENT), &(virt), &(pg_cnt), __PAGE_PML4_ENTRY_SIZE, __PAGE_PML4_ENTRY_PGCNT)
-
-#define skip_absent_pdpt(ent, virt, pg_cnt)                                                                            \
-    skip_absent((*(ent) & __PG_PRESENT), &(virt), &(pg_cnt), __PAGE_1G_SIZE, __PAGE_1G_PGCNT)
-
-#define skip_absent_pd(ent, virt, pg_cnt)                                                                              \
-    skip_absent((*(ent) & __PG_PRESENT), &(virt), &(pg_cnt), __PAGE_2M_SIZE, __PAGE_2M_PGCNT)
-
-#define skip_absent_pt(ent, virt, pg_cnt)                                                                              \
-    skip_absent((*(ent) & __PG_PRESENT), &(virt), &(pg_cnt), __PAGE_4K_SIZE, __PAGE_4K_PGCNT)
-
-static inline bool try_free_table(pgd_t *table, pgd_t *parent_entry, pgd_t *parent_table) {
-    int rc = dec_pgtable_refcount(table);
-    if (rc != 1) return false;
-    *parent_entry = 0;
-    dec_pgtable_refcount(parent_table);
-    vm_free_page_table(table);
-    return true;
-}
-
-static inline void unmap_leaf(pgd_t *entry, virt_addr_t virt, struct page *pg, size_t order) {
-    *entry = 0;
-    invlpg(virt);
-    if (refcount_get_dec(&pg->pg_refcnt) == 1) { __pm_free_pages(pg, order); }
-}
-
-static void vm_arch_umap(pgd_t *pgd, virt_addr_t virt, size_t pg_cnt) {
-    pgd_t       *pml4e, *pdpte, *pde, *pte;
-    pgd_t       *pdpt, *pd, *pt;
-    struct page *pg;
-
-    while (pg_cnt) {
-        pml4e = &pgd[__PML4T_IDX(virt)];
-        if (skip_absent_pml4(pml4e, virt, pg_cnt)) { continue; }
-
-        pdpt  = __va(__PAGE_ADDR(*pml4e));
-        pdpte = &pdpt[__PDPT_IDX(virt)];
-        if (skip_absent_pdpt(pdpte, virt, pg_cnt)) { continue; }
-
-#ifdef CONFIG_USE_GIGANTIC_PAGES
-        if (*pdpte & __PG_PDE_PAGE_SIZE) {
-            BUG(); // unimplemented
-        }
-#else
-        BUG_ON(*pdpte & __PG_PDE_PAGE_SIZE);
-#endif
-
-        pd  = __va(__PAGE_ADDR(*pdpte));
-        pde = &pd[__PDT_IDX(virt)];
-        if (skip_absent_pd(pde, virt, pg_cnt)) { continue; }
-
-        if (*pde & __PG_PDE_PAGE_SIZE) {
-            pg = phys_to_page(__PAGE_ADDR(*pde));
-            unmap_leaf(pde, virt, pg, ilog2(__PAGE_2M_PGCNT));
-
-            BUG_ON(virt & (__PAGE_2M_SIZE - 1));
-            BUG_ON(pg_cnt < __PAGE_2M_PGCNT);
-            virt += __PAGE_2M_SIZE;
-            pg_cnt -= __PAGE_2M_PGCNT;
-
-            if (!try_free_table(pd, pdpte, pdpt)) { continue; }
-            if (!try_free_table(pdpt, pml4e, pgd)) { continue; }
-
-            continue;
-        }
-
-        pt  = __va(__PAGE_ADDR(*pde));
-        pte = &pt[__PTT_IDX(virt)];
-        if (skip_absent_pt(pte, virt, pg_cnt)) { continue; }
-
-
-        pg = phys_to_page(__PAGE_ADDR(*pte));
-        unmap_leaf(pte, virt, pg, 1);
-
-        virt += PAGE_SIZE;
-        pg_cnt -= __PAGE_4K_PGCNT;
-
-        if (!try_free_table(pt, pde, pd)) { continue; }
-        if (!try_free_table(pd, pdpte, pdpt)) { continue; }
-        if (!try_free_table(pdpt, pml4e, pgd)) { continue; }
-    }
-}
-
-int vm_map(pgd_t *pgd, phys_addr_t phys, virt_addr_t virt, size_t len, unsigned long flags, int gfp_flags) {
-    u64 pte_base_flags;
-
-    if (!pgd || len == 0) { return -EINVAL; }
-    if (phys & __PAGE_4K_MASK || virt & __PAGE_4K_MASK || len & __PAGE_4K_MASK) { return -EINVAL; }
-
-    pte_base_flags = get_pte_flags(flags);
-    return vm_arch_map(pgd, phys, virt, len >> PAGE_SHIFT, pte_base_flags, gfp_flags, true);
-}
-
-int vm_map_raw(pgd_t *pgd, phys_addr_t phys, virt_addr_t virt, size_t len, unsigned long flags, int gfp_flags) {
-    u64 pte_base_flags;
-
-    if (!pgd || len == 0) { return -EINVAL; }
-    if (phys & __PAGE_4K_MASK || virt & __PAGE_4K_MASK || len & __PAGE_4K_MASK) { return -EINVAL; }
-
-    pte_base_flags = get_pte_flags(flags);
-    return vm_arch_map(pgd, phys, virt, len >> PAGE_SHIFT, pte_base_flags, gfp_flags, false);
-}
-
-int vm_umap(pgd_t *pgd, virt_addr_t virt, size_t len) {
-    if (!pgd) { return -EINVAL; }
-    if (virt & __PAGE_4K_MASK || len & __PAGE_4K_SIZE) { return -EINVAL; }
-
-    len >>= PAGE_SHIFT;
-    vm_arch_umap(pgd, virt, len);
-
-    return 0;
-}
+// static inline pgd_t *get_table(pgd_t *pgd, int idx, int gfp_flags) {
+//     pgd_t *out_table;
+//
+//     if (!(pgd[idx] & __PG_PRESENT)) {
+//         out_table = vm_alloc_page_table(gfp_flags);
+//         if (!out_table) { return NULL; }
+//         pgd[idx] = (pgd_t) __pa(out_table) | __PG_PRESENT | __PG_WRITE | __PG_USER;
+//         inc_pgtable_refcount(pgd);
+//     }
+//
+//     return (pgd_t *) __va(__PAGE_ADDR(pgd[idx]));
+// }
+//
+// static inline int can_map_2m(phys_addr_t phys, virt_addr_t virt, size_t len) {
+//     if (phys & __PAGE_2M_MASK || virt & __PAGE_2M_MASK) { return 0; }
+//     if (len < (__PAGE_2M_SIZE >> PAGE_SHIFT)) { return 0; }
+//     return 1;
+// }
+//
+// #ifdef CONFIG_USE_GIGANTIC_PAGES
+// static inline int can_map_1g(phys_addr_t phys, virt_addr_t virt, size_t len) {
+//     if (phys & __PAGE_1G_MASK || virt & __PAGE_1G_MASK) { return 0; }
+//     if (len < (__PAGE_1G_SIZE >> PAGE_SHIFT)) { return 0; }
+//     return 1;
+// }
+//
+// static inline int map_1g_page(pgd_t *pgd, phys_addr_t phys, virt_addr_t virt, u64 flags, int gfp_flags) {
+//     pgd_t *pdpt;
+//
+//     virtmem_dev_pr("mapping 1G page at physical address %#p to virtual %#p with flags 0x%016lx\n", phys, virt,
+//     flags);
+//
+//     pdpt = get_table(pgd, __PML4T_IDX(virt), gfp_flags);
+//     if (!pdpt) { return -ENOMEM; }
+//
+//     pdpt[__PDPT_IDX(virt)] = (phys & __PAGE_ADDR_MASK) | __PG_PDE_PAGE_SIZE | flags;
+//     inc_pgtable_refcount(pdpt);
+//     invlpg(virt);
+//     return 0;
+// }
+// #endif
+//
+// static inline int map_2m_page(pgd_t *pgd, phys_addr_t phys, virt_addr_t virt, u64 flags, int gfp_flags) {
+//     pgd_t *pdpt, *pdt;
+//
+//     virtmem_dev_pr("mapping 2M page at physical address %#p to virtual %#p with flags 0x%016lx\n", phys, virt,
+//     flags);
+//
+//     pdpt = get_table(pgd, __PML4T_IDX(virt), gfp_flags);
+//     if (!pdpt) { return -ENOMEM; }
+//
+//     pdt = get_table(pdpt, __PDPT_IDX(virt), gfp_flags);
+//     if (!pdt) { return -ENOMEM; }
+//
+//     pdt[__PDT_IDX(virt)] = (phys & __PAGE_ADDR_MASK) | __PG_PDE_PAGE_SIZE | flags;
+//     inc_pgtable_refcount(pdt);
+//     invlpg(virt);
+//     return 0;
+// }
+//
+// static inline int map_4k_page(pgd_t *pgd, phys_addr_t phys, virt_addr_t virt, u64 flags, int gfp_flags) {
+//     pgd_t *pdpt, *pdt, *ptt;
+//
+//     virtmem_dev_pr("mapping 4K page at physical address %#p to virtual %#p with flags 0x%016lx\n", phys, virt,
+//     flags);
+//
+//     pdpt = get_table(pgd, __PML4T_IDX(virt), gfp_flags);
+//     if (!pdpt) { return -ENOMEM; }
+//
+//     pdt = get_table(pdpt, __PDPT_IDX(virt), gfp_flags);
+//     if (!pdt) { return -ENOMEM; }
+//
+//     ptt = get_table(pdt, __PDT_IDX(virt), gfp_flags);
+//     if (!ptt) { return -ENOMEM; }
+//
+//     ptt[__PTT_IDX(virt)] = (phys & __PAGE_ADDR_MASK) | flags;
+//     inc_pgtable_refcount(ptt);
+//     invlpg(virt);
+//     return 0;
+// }
+//
+// static int vm_arch_map(pgd_t      *pgd,
+//                        phys_addr_t phys,
+//                        virt_addr_t virt,
+//                        size_t      pg_cnt,
+//                        u64         flags,
+//                        int         gfp_flags,
+//                        bool        inc_refcnts) {
+//     int          res;
+//     struct page *pg;
+//
+//     while (pg_cnt) {
+// #ifdef CONFIG_USE_GIGANTIC_PAGES
+//         if (can_map_1g(phys, virt, pg_cnt)) {
+//             if (inc_refcnts) {
+//                 BUG(); // unimplemented
+//             }
+//
+//             if ((res = map_1g_page(pgd, phys, virt, flags, gfp_flags))) { return res; }
+//             pg_cnt -= __PAGE_1G_SIZE >> PAGE_SHIFT;
+//             phys += __PAGE_1G_SIZE;
+//             virt += __PAGE_1G_SIZE;
+//             continue;
+//         }
+// #endif
+//
+//         if (can_map_2m(phys, virt, pg_cnt)) {
+//             if ((res = map_2m_page(pgd, phys, virt, flags, gfp_flags))) { return res; }
+//
+//             if (inc_refcnts) {
+//                 pg = phys_to_page(phys);
+//                 BUG_ON(PageBuddy(pg));
+//                 BUG_ON(!PageHead(pg));
+//                 BUG_ON(pg->pg_head_order != ilog2(__PAGE_2M_PGCNT));
+//                 refcount_inc(&pg->pg_refcnt);
+//             }
+//
+//             pg_cnt -= __PAGE_2M_SIZE >> PAGE_SHIFT;
+//             phys += __PAGE_2M_SIZE;
+//             virt += __PAGE_2M_SIZE;
+//
+//             continue;
+//         }
+//
+//         if (inc_refcnts) {
+//             pg = phys_to_page(phys);
+//             BUG_ON(PageBuddy(pg));
+//             BUG_ON(!PageHead(pg));
+//             BUG_ON(pg->pg_head_order != ilog2(__PAGE_4K_PGCNT));
+//             refcount_inc(&pg->pg_refcnt);
+//         }
+//
+//         if ((res = map_4k_page(pgd, phys, virt, flags, gfp_flags))) { return res; }
+//         pg_cnt--;
+//         phys += __PAGE_4K_SIZE;
+//         virt += __PAGE_4K_SIZE;
+//     }
+//
+//     BUG_ON(pg_cnt != 0);
+//     return 0;
+// }
+//
+// static inline bool skip_absent(bool present, virt_addr_t *virt, size_t *pg_cnt, size_t entry_size, size_t
+// entry_pgcnt) {
+//     if (present) { return false; }
+//     BUG_ON(*pg_cnt < entry_pgcnt);
+//     *virt += entry_size;
+//     *pg_cnt -= entry_pgcnt;
+//     return true;
+// }
+//
+// #define skip_absent_pml4(ent, virt, pg_cnt) \
+//     skip_absent((*(ent) & __PG_PRESENT), &(virt), &(pg_cnt), __PAGE_PML4_ENTRY_SIZE, __PAGE_PML4_ENTRY_PGCNT)
+//
+// #define skip_absent_pdpt(ent, virt, pg_cnt) \
+//     skip_absent((*(ent) & __PG_PRESENT), &(virt), &(pg_cnt), __PAGE_1G_SIZE, __PAGE_1G_PGCNT)
+//
+// #define skip_absent_pd(ent, virt, pg_cnt) \
+//     skip_absent((*(ent) & __PG_PRESENT), &(virt), &(pg_cnt), __PAGE_2M_SIZE, __PAGE_2M_PGCNT)
+//
+// #define skip_absent_pt(ent, virt, pg_cnt) \
+//     skip_absent((*(ent) & __PG_PRESENT), &(virt), &(pg_cnt), __PAGE_4K_SIZE, __PAGE_4K_PGCNT)
+//
+// static inline bool try_free_table(pgd_t *table, pgd_t *parent_entry, pgd_t *parent_table) {
+//     int rc = dec_pgtable_refcount(table);
+//     if (rc != 1) return false;
+//     *parent_entry = 0;
+//     dec_pgtable_refcount(parent_table);
+//     vm_free_page_table(table);
+//     return true;
+// }
+//
+// static inline void unmap_leaf(pgd_t *entry, virt_addr_t virt, struct page *pg, size_t order) {
+//     *entry = 0;
+//     invlpg(virt);
+//     if (refcount_get_dec(&pg->pg_refcnt) == 1) { __pm_free_pages(pg, order); }
+// }
+//
+// static void vm_arch_umap(pgd_t *pgd, virt_addr_t virt, size_t pg_cnt) {
+//     pgd_t       *pml4e, *pdpte, *pde, *pte;
+//     pgd_t       *pdpt, *pd, *pt;
+//     struct page *pg;
+//
+//     while (pg_cnt) {
+//         pml4e = &pgd[__PML4T_IDX(virt)];
+//         if (skip_absent_pml4(pml4e, virt, pg_cnt)) { continue; }
+//
+//         pdpt  = __va(__PAGE_ADDR(*pml4e));
+//         pdpte = &pdpt[__PDPT_IDX(virt)];
+//         if (skip_absent_pdpt(pdpte, virt, pg_cnt)) { continue; }
+//
+// #ifdef CONFIG_USE_GIGANTIC_PAGES
+//         if (*pdpte & __PG_PDE_PAGE_SIZE) {
+//             BUG(); // unimplemented
+//         }
+// #else
+//         BUG_ON(*pdpte & __PG_PDE_PAGE_SIZE);
+// #endif
+//
+//         pd  = __va(__PAGE_ADDR(*pdpte));
+//         pde = &pd[__PDT_IDX(virt)];
+//         if (skip_absent_pd(pde, virt, pg_cnt)) { continue; }
+//
+//         if (*pde & __PG_PDE_PAGE_SIZE) {
+//             pg = phys_to_page(__PAGE_ADDR(*pde));
+//             unmap_leaf(pde, virt, pg, ilog2(__PAGE_2M_PGCNT));
+//
+//             BUG_ON(virt & (__PAGE_2M_SIZE - 1));
+//             BUG_ON(pg_cnt < __PAGE_2M_PGCNT);
+//             virt += __PAGE_2M_SIZE;
+//             pg_cnt -= __PAGE_2M_PGCNT;
+//
+//             if (!try_free_table(pd, pdpte, pdpt)) { continue; }
+//             if (!try_free_table(pdpt, pml4e, pgd)) { continue; }
+//
+//             continue;
+//         }
+//
+//         pt  = __va(__PAGE_ADDR(*pde));
+//         pte = &pt[__PTT_IDX(virt)];
+//         if (skip_absent_pt(pte, virt, pg_cnt)) { continue; }
+//
+//
+//         pg = phys_to_page(__PAGE_ADDR(*pte));
+//         unmap_leaf(pte, virt, pg, 1);
+//
+//         virt += PAGE_SIZE;
+//         pg_cnt -= __PAGE_4K_PGCNT;
+//
+//         if (!try_free_table(pt, pde, pd)) { continue; }
+//         if (!try_free_table(pd, pdpte, pdpt)) { continue; }
+//         if (!try_free_table(pdpt, pml4e, pgd)) { continue; }
+//     }
+// }
+//
+// int vm_map(pgd_t *pgd, phys_addr_t phys, virt_addr_t virt, size_t len, unsigned long flags, int gfp_flags) {
+//     u64 pte_base_flags;
+//
+//     if (!pgd || len == 0) { return -EINVAL; }
+//     if (phys & __PAGE_4K_MASK || virt & __PAGE_4K_MASK || len & __PAGE_4K_MASK) { return -EINVAL; }
+//
+//     pte_base_flags = get_pte_flags(flags);
+//     return vm_arch_map(pgd, phys, virt, len >> PAGE_SHIFT, pte_base_flags, gfp_flags, true);
+// }
+//
+// int vm_map_raw(pgd_t *pgd, phys_addr_t phys, virt_addr_t virt, size_t len, unsigned long flags, int gfp_flags) {
+//     u64 pte_base_flags;
+//
+//     if (!pgd || len == 0) { return -EINVAL; }
+//     if (phys & __PAGE_4K_MASK || virt & __PAGE_4K_MASK || len & __PAGE_4K_MASK) { return -EINVAL; }
+//
+//     pte_base_flags = get_pte_flags(flags);
+//     return vm_arch_map(pgd, phys, virt, len >> PAGE_SHIFT, pte_base_flags, gfp_flags, false);
+// }
+//
+// int vm_umap(pgd_t *pgd, virt_addr_t virt, size_t len) {
+//     if (!pgd) { return -EINVAL; }
+//     if (virt & __PAGE_4K_MASK || len & __PAGE_4K_SIZE) { return -EINVAL; }
+//
+//     len >>= PAGE_SHIFT;
+//     vm_arch_umap(pgd, virt, len);
+//
+//     return 0;
+// }
 
 int vm_copy_kernel(pgd_t *dst, pgd_t *src) {
     memcpy(&dst[256], &src[256], 256 * 8);
@@ -781,7 +888,7 @@ int vm_copy(pgd_t *dst, pgd_t *src, int flags) {
 }
 
 void vm_free_user(pgd_t *pgd) {
-    vm_arch_umap(pgd, ARCH_USER_START, (ARCH_USER_END - ARCH_USER_START + 1) >> PAGE_SHIFT);
+    vm_unmap(pgd, ARCH_USER_START, (ARCH_USER_END - ARCH_USER_START + 1));
 }
 
 void vm_activate(pgd_t *pgd) {
@@ -889,57 +996,36 @@ int vm_copyin(pgd_t *pgd, char *dst, virt_addr_t src_virt, size_t len) {
 }
 
 int vm_copyinstr(pgd_t *pgd, void *dst, virt_addr_t srcva, size_t len, size_t *done) {
-    size_t      n, i;
+    size_t      n;
     phys_addr_t pa;
     virt_addr_t va;
-    char       *d;
+    char       *d = (char *) dst;
     const char *s;
 
     *done = 0;
 
     while (len > 0) {
         va = PG_ALIGN_DN(srcva);
-        pa = vm_getphys(pgd, va);
-
-        if (pa == INVALID_PHYS_ADDR) { return -EADDRNOTAVAIL; }
 
         n = PAGE_SIZE - (srcva - va);
         if (n > len) { n = len; }
 
-        if (!vm_access_ok(pgd, va, n)) { return -EACCES; }
+        if (!vm_access_ok(pgd, srcva, n)) { return -EACCES; }
 
-        d = (char *) dst;
-        s = __va(pa + (srcva - va));
+        pa = vm_getphys(pgd, va);
+        if (pa == INVALID_PHYS_ADDR) { return -EADDRNOTAVAIL; }
 
-        i = n;
-        if (d < s) {
-            while (i--) {
-                if (!*s) {
-                    *d = '\0';
-                    (*done)++;
-                    return 0;
-                }
-                *d++ = *s++;
-                (*done)++;
-            }
-        } else {
-            char *lasts = (char *) (s + n - 1);
-            char *lastd = d + n - 1;
+        s = (const char *) __va(pa + (srcva - va));
 
-            while (i--) {
-                if (!*lasts) {
-                    *d = '\0';
-                    (*done)++;
-                    return 0;
-                }
-                *lastd-- = *lasts--;
-                (*done)++;
-            }
+        for (size_t i = 0; i < n; i++) {
+            char c = s[i];
+            *d++   = c;
+            (*done)++;
+            if (c == '\0') { return 0; }
         }
 
         len -= n;
-        dst   = d;
-        srcva = va + PAGE_SIZE;
+        srcva += n;
     }
 
     return -ENAMETOOLONG;

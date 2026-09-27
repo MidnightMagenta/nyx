@@ -8,6 +8,8 @@
 #include <nyx/vfs.h>
 #include <uapi/posix_types.h>
 
+#include <uapi/mman.h>
+
 #include <asi/bitops.h>
 #include <asi/page_data.h>
 
@@ -73,9 +75,9 @@ struct page {
     };
 };
 
-#define VM_READ          (1 << 0)
-#define VM_WRITE         (1 << 1)
-#define VM_EXEC          (1 << 2)
+#define VM_READ          PROT_READ
+#define VM_WRITE         PROT_WRITE
+#define VM_EXEC          PROT_EXEC
 #define VM_USER          (1 << 3)
 #define VM_CACHE_DISABLE (1 << 4)
 
@@ -85,7 +87,7 @@ struct page {
 
 struct vm_map_entry {
     virt_addr_t vm_start;
-    virt_addr_t vm_end;
+    size_t      vm_end;
     int         vm_prot;
     int         vm_flags;
 
