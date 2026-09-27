@@ -11,7 +11,7 @@ void __init early_panic(const char *fmt, ...) {
     va_list params;
     va_start(params, fmt);
 
-    vprintk(fmt, params);
+    early_vprintk(fmt, params);
     printk("\n");
 
     va_end(params);
