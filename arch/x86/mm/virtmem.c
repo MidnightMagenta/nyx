@@ -4,6 +4,7 @@
 #include <mm/virtmem.h>
 #include <nyx/atomic.h>
 #include <nyx/errno.h>
+#include <nyx/kernel.h>
 #include <nyx/linkage.h>
 #include <nyx/panic.h>
 #include <nyx/refcount.h>
@@ -18,6 +19,8 @@
 #include <asi/page.h>
 #include <asi/page_data.h>
 #include <asi/system.h>
+
+DECLARE_SUBSYS_LOG(virtmem_log);
 
 #define __PAGE_TABLE_ENTRY_COUNT 512
 
@@ -349,6 +352,14 @@ int vm_map_page(pgd_t *pgd, phys_addr_t pa, virt_addr_t va, unsigned long flags,
     int                  depth = 0;
     unsigned int         idx;
 
+    pr_debug(virtmem_log,
+             "Mapping %#lx to va %#lx with flags %#lx for %ld bytes from pgd %#p\n",
+             pa,
+             va,
+             flags,
+             vm_sc_bytes(sc),
+             pgd);
+
     if (sc >= VM_SC_CLASS_COUNT) {
         BUG();
         return -EINVAL;
@@ -399,6 +410,8 @@ int vm_unmap_page(pgd_t *pgd, virt_addr_t va, vm_sizeclass_t *sc) {
     int                  depth;
     int                  res;
 
+    pr_debug(virtmem_log, "Unmapping %#p from pgd %#p\n", va, pgd);
+
     if (va & __PAGE_4K_MASK) {
         BUG();
         return -EINVAL;
@@ -407,7 +420,11 @@ int vm_unmap_page(pgd_t *pgd, virt_addr_t va, vm_sizeclass_t *sc) {
     if ((res = walk(pgd, va, path, &depth, sc))) { return res; }
 
     struct pt_walk_entry leaf = path[depth - 1];
-    leaf.table[leaf.idx]      = 0;
+
+    pr_debug(virtmem_log, "    found entry at index %d in table at depth %d at %#p\n", leaf.idx, depth, leaf.table);
+    pr_debug(virtmem_log, "    value of entry: %#lx\n", leaf.table[leaf.idx]);
+
+    leaf.table[leaf.idx] = 0;
     invlpg(va);
     dec_pgtable_refcount(leaf.table);
     prune_empty_tables(path, depth);
@@ -482,6 +499,8 @@ int vm_set_prot(pgd_t *pgd, virt_addr_t va, unsigned long new_prot) {
     u64                  pg_flags;
     int                  res;
 
+    pr_debug(virtmem_log, "Changing prot for %#lx - new prot: %#lx for pgd %#p\n", va, new_prot, pgd);
+
     if (va & __PAGE_4K_MASK) {
         BUG();
         return -EINVAL;
@@ -491,6 +510,8 @@ int vm_set_prot(pgd_t *pgd, virt_addr_t va, unsigned long new_prot) {
 
     table = path[depth - 1].table;
     idx   = path[depth - 1].idx;
+
+    pr_debug(virtmem_log, "    old entry %#lx", table[idx]);
 
     if (va & (vm_sc_bytes(sc) - 1)) { return -EINVAL; }
 
@@ -513,6 +534,8 @@ int vm_split(pgd_t *pgd, virt_addr_t va, int gfp_flags) {
     size_t               child_bytes;
     pgd_t               *new_pt;
 
+    pr_debug(virtmem_log, "Splitting page at %#lx for pgd %#p\n", va, pgd);
+
     if ((res = walk(pgd, va, path, &depth, &sc))) { return res; }
     if (sc == VM_SC_4K) { return 0; }
 
@@ -521,6 +544,8 @@ int vm_split(pgd_t *pgd, virt_addr_t va, int gfp_flags) {
     child_sc    = sc - 1;
     child_bytes = vm_sc_bytes(child_sc);
     base_pa     = __PAGE_ADDR(orig);
+
+    pr_debug(virtmem_log, "    old pa was %#lx for %ld bytes. Splitting to %ld bytes\n", orig, sc, child_sc);
 
     child_flags = orig & ~(__PAGE_ADDR_MASK | __PG_PDE_PAGE_SIZE);
     if (child_sc != VM_SC_4K) { child_flags |= __PG_PDE_PAGE_SIZE; }

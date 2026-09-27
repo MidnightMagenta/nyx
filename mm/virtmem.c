@@ -1,10 +1,13 @@
 #include <mm/virtmem.h>
 #include <nyx/compiler.h>
 #include <nyx/errno.h>
+#include <nyx/kernel.h>
 #include <nyx/minmax.h>
 
 #include <asi/bug.h>
 #include <asi/page.h>
+
+DEFINE_SUBSYS_LOG(virtmem_log, "virtmem", CONFIG_VIRTMEM_LOG_LEVEL);
 
 int vm_map(pgd_t *pgd, phys_addr_t pa, virt_addr_t va, size_t len, unsigned long flags, int gfp_flags) {
     size_t         mapped = 0;
