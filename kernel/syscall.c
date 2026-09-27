@@ -17,6 +17,7 @@ EXTERN_SYSCALL(sys_fork);
 EXTERN_SYSCALL(sys_vfork);
 EXTERN_SYSCALL(sys_exit);
 EXTERN_SYSCALL(sys_wait3);
+EXTERN_SYSCALL(sys_mmap);
 
 syscall_fn syscall_table[] = {
         [SYS_read]  = sys_read,
@@ -28,6 +29,7 @@ syscall_fn syscall_table[] = {
         [SYS_vfork] = sys_vfork,
         [SYS_exit]  = sys_exit,
         [SYS_wait]  = sys_wait3,
+        [SYS_mmap]  = sys_mmap,
 };
 
 size_t syscall_table_size = ARRAY_SIZE(syscall_table);

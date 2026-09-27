@@ -20,7 +20,7 @@ int  vmspace_map(struct vmspace *mm, virt_addr_t addr, size_t len, unsigned long
 int  vmspace_mapcopy(struct vmspace *mm, virt_addr_t addr, void *data, size_t len, unsigned long flags, int gfp_flags);
 void vmspace_unmap(struct vmspace *mm, virt_addr_t addr, size_t len);
 
-int vms_mmap(struct process *pr,
+int vms_mmap(struct vmspace *vs,
              virt_addr_t     addr,
              size_t          len,
              int             prot,
@@ -28,7 +28,7 @@ int vms_mmap(struct process *pr,
              struct vnode   *vp,
              off_t           off,
              virt_addr_t    *pa);
-int vms_munmap(struct process *pr, virt_addr_t addr, size_t len);
+int vms_munmap(struct vmspace *vs, virt_addr_t addr, size_t len);
 
 int kern_mmap(struct process *pr,
               virt_addr_t     addr,
