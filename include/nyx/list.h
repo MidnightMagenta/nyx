@@ -71,6 +71,10 @@ static inline void list_move_tail(struct list_head *list, struct list_head *head
     list_add_tail(list, head);
 }
 
+typedef int (*list_cmp_t)(void *priv, const struct list_head *a, const struct list_head *b);
+
+void list_sort(void *priv, struct list_head *head, list_cmp_t cmp);
+
 #define list_next_entry(pos, member) list_entry((pos)->member.next, typeof(*(pos)), member)
 
 #define list_for_each(pos, head)         for (pos = (head)->next; pos != (head); pos = pos->next)
