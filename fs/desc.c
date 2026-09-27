@@ -295,6 +295,7 @@ int vfs_open(struct process *p, const char *path, enum uio_seg seg, int flags, u
         return error;
     }
 
+    fp->f_type   = DTYPE_VNODE;
     fp->f_ops    = &vnops;
     fp->f_data   = nd.ni_vp;
     fp->f_offset = 0;

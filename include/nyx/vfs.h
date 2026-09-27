@@ -86,7 +86,10 @@ struct fileops {
     int (*fo_close)(struct file *fp);
 };
 
+enum { DTYPE_VNODE = 1, DTYPE_PIPE, DTYPE_SOCKET, DTYPE_KQUEUE };
+
 struct file {
+    short                 f_type;
     const struct fileops *f_ops;
     void                 *f_data;
     off_t                 f_offset;
