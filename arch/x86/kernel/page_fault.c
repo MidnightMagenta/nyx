@@ -1,10 +1,13 @@
 #include <nyx/current.h>
+#include <nyx/kernel.h>
 #include <nyx/page_fault.h>
 #include <nyx/panic.h>
 #include <nyx/printk.h>
 #include <nyx/proc.h>
 
 #include <asi/traps.h>
+
+DECLARE_SUBSYS_LOG(pgflt_log);
 
 #define FAULT_PRESENT      (1 << 0)
 #define FAULT_WRITE        (1 << 1)
@@ -36,6 +39,15 @@ void page_fault_handler(struct trap_frame *frame) {
             .pf_write  = frame->ecode & FAULT_WRITE,
             .pf_exec   = frame->ecode & FAULT_INSTR_FETCH,
     };
+
+    pr_debug(pgflt_log, "page fault at address %#p\n", pfi.pf_addr);
+    pr_debug(pgflt_log,
+             "    x86 error code: [%s %s %s %s %s]\n",
+             frame->ecode & FAULT_PRESENT ? "A" : "P",
+             frame->ecode & FAULT_WRITE ? "W" : "R",
+             frame->ecode & FAULT_USER ? "U" : "S",
+             frame->ecode & FAULT_INSTR_FETCH ? "IF" : "AC",
+             frame->ecode & FAULT_RESERVED_BIT ? "RB" : "NRB");
 
     int res = handle_page_fault(current(), &pfi);
 

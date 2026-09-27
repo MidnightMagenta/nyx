@@ -1,5 +1,20 @@
 menu "kernel"
 
+menu "debug"
+
+config PGFLT_LOG_LEVEL
+    int "Page fault message verbosity levels"
+    range 0 4
+    default 2
+    help
+        0 = none
+        1 = errors only
+        2 = errors and warnings
+        3 = errors, warnings, and info
+        4 = errors, warnings, info, and verbose info
+
+endmenu
+
 menu "syscalls"
 
 menu "debug"

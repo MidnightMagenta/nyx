@@ -2,6 +2,7 @@
 #include <mm/physmem.h>
 #include <mm/virtmem.h>
 #include <nyx/errno.h>
+#include <nyx/kernel.h>
 #include <nyx/minmax.h>
 #include <nyx/page_fault.h>
 #include <nyx/panic.h>
@@ -14,6 +15,8 @@
 #include <uapi/mman.h>
 
 #include <asi/page.h>
+
+DEFINE_SUBSYS_LOG(pgflt_log, "pgflt", CONFIG_PGFLT_LOG_LEVEL);
 
 static struct vm_map_entry *find_faulting_vma(struct process *p, virt_addr_t va) {
     struct vm_map_entry *vma;
@@ -37,41 +40,36 @@ static int handle_cow_page_fault(struct vmspace         *vms,
                                  struct pgflt_info      *pfi,
                                  struct vm_map_entry    *vma,
                                  const struct vm_pginfo *pginfo) {
+    (void) vms;
+    (void) vma;
+    (void) pginfo;
+
     panic("COW page at addr %#p", pfi->pf_addr);
 }
 
 static int handle_anon_page_fault(struct vmspace *vms, struct pgflt_info *pfi, struct vm_map_entry *vma) {
-    struct vm_pginfo pginfo;
-    phys_addr_t      pa;
-    virt_addr_t      va;
-    struct page     *pg;
-    int              res;
+    phys_addr_t  pa;
+    virt_addr_t  va;
+    struct page *pg;
+    int          res;
 
-    res = vm_query_page(vms->v_pgd, pfi->pf_addr, &pginfo);
+    pr_debug(pgflt_log, "    handling anonymous page fault\n");
 
-    if (res == -ENOENT) {
-        pa = pm_get_zeroed_page(M_SLEEPOK);
-        if (pa == INVALID_PHYS_ADDR) { panic("oom"); }
+    pa = pm_get_zeroed_page(M_SLEEPOK);
+    if (pa == INVALID_PHYS_ADDR) { panic("oom"); }
 
-        pg = phys_to_page(pa);
-        va = PG_ALIGN_DN(pfi->pf_addr);
+    pg = phys_to_page(pa);
+    va = PG_ALIGN_DN(pfi->pf_addr);
 
-        if ((res = vm_map_page(vms->v_pgd,
-                               pa,
-                               va,
-                               get_vm_flags(vma) | VM_USER,
-                               vm_sc_for_bytes(PAGE_SIZE),
-                               M_SLEEPOK))) {
-            pm_free_page(pa);
-            return res;
-        }
-
-        refcount_inc(&pg->pg_refcnt);
-    } else if (res == 0 && pfi->pf_write && !(pginfo.pi_flags & VM_WRITE)) {
-        return handle_cow_page_fault(vms, pfi, vma, &pginfo);
-    } else {
+    if ((res = vm_map_page(vms->v_pgd, pa, va, get_vm_flags(vma) | VM_USER, vm_sc_for_bytes(PAGE_SIZE), M_SLEEPOK))) {
+        pm_free_page(pa);
         return res;
     }
+
+    pr_debug(pgflt_log, "    mapped new page %#lx to va %#lx with prot %#lx\n", pa, va, vma->vm_prot);
+
+    refcount_inc(&pg->pg_refcnt);
+
 
     return 0;
 }
@@ -85,6 +83,8 @@ static int handle_file_backed_page_fault(struct vmspace *vms, struct pgflt_info 
     struct page *pg;
     void        *frame;
     int          res;
+
+    pr_debug(pgflt_log, "    handling file backed page fault\n");
 
     res = VOP_GETATTR(vma->vm_vn, &attr);
     if (res) {
@@ -116,12 +116,16 @@ static int handle_file_backed_page_fault(struct vmspace *vms, struct pgflt_info 
         return res;
     }
 
+    pr_debug(pgflt_log, "    mapped new page %#lx to va %#lx with prot %#lx\n", pa, va, vma->vm_prot);
+
     return 0;
 }
 
 static int handle_user_page_fault(struct thread *t, struct pgflt_info *pfi) {
     struct process      *p = t->t_proc;
     struct vm_map_entry *vma;
+    struct vm_pginfo     pginfo;
+    int                  res;
 
     if (pfi->pf_reason == PGFLT_RESERVED_BIT) {
         panic("Attempted to access page with reserved bit set at address %#p", pfi->pf_addr);
@@ -144,12 +148,20 @@ static int handle_user_page_fault(struct thread *t, struct pgflt_info *pfi) {
         return -EFAULT;
     }
 
-    if (pfi->pf_reason == PGFLT_NOT_PRESENT) {
+    res = vm_query_page(p->p_mm->v_pgd, pfi->pf_addr, &pginfo);
+
+    if (pfi->pf_reason == PGFLT_NOT_PRESENT && res == -ENOENT) {
         if (vma->vm_flags & MAP_ANONYMOUS) {
             return handle_anon_page_fault(p->p_mm, pfi, vma);
         } else if (vma->vm_vn) {
             return handle_file_backed_page_fault(p->p_mm, pfi, vma);
         }
+    } else if (!res && pfi->pf_reason == PGFLT_PROT_VIOLATION) {
+        if (!(pginfo.pi_flags & VM_WRITE) && vma->vm_prot & VM_WRITE) {
+            return handle_cow_page_fault(p->p_mm, pfi, vma, &pginfo);
+        }
+    } else {
+        return -EFAULT; // TODO: deliver SIGSEGV
     }
 
     panic("unhandled page fault at %#p", pfi->pf_addr);
