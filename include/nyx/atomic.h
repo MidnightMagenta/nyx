@@ -45,6 +45,9 @@ typedef atomic_int_t atomic_t;
 #define atomic_dec_e(aptr, memorder) atomic_fetch_sub(aptr, 1, memorder)
 
 #define atomic_thread_fence(memorder) __atomic_thread_fence(memorder)
+#define barrier()                                                                                                      \
+    asm volatile("" ::                                                                                                 \
+                         : "memory")
 
 #define refcnt_inc(aptr) atomic_inc_e(aptr, ATOMIC_RELAXED)
 #define refcnt_dec(aptr) atomic_dec_e(aptr, ATOMIC_ACQ_REL)
