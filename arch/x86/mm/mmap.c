@@ -11,7 +11,7 @@
 #include <asi/page.h>
 #include <asi/setupdata.h>
 
-#define pr_fmt(fmt) "mmap: " fmt
+#define pr_fmt(fmt) "[mmap]: " fmt
 
 struct mmap_map mmap_map;
 
