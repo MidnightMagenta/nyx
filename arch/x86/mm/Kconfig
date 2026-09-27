@@ -4,10 +4,4 @@ config VIRTMEM_DEV_PRINT
     bool "Print debug information"
     default n
 
-config USE_GIGANTIC_PAGES
-    bool "Use gigantic pages"
-    default n
-    help
-        Should the kernel use 1 gigabyte pages when mapping memory. Set to no if unsure.
-
 endmenu

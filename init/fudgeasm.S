@@ -41,9 +41,32 @@ section .text
     mov rdi, 1
     syscall
 
+    mov rax, 9
+    mov rdi, 0
+    mov rsi, 0x1000
+    mov rdx, 0x7
+    mov r10, 5
+    mov r8,  -1
+    mov r9,  0
+    syscall
+
+    mov [rax], 10
+
+    mov rax, 9
+    mov rdi, 0
+    mov rsi, 0x1000
+    mov rdx, 0x7
+    mov r10, 1
+    mov r8,  r15
+    mov r9,  0
+    syscall
+
+    mov rbx, [rax]
+
     mov rax, 3
     mov rdi, r15
     syscall
+
 
 .Loop:
     jmp     .Loop

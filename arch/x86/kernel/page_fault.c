@@ -15,7 +15,7 @@
 static inline enum pgflt_reason decode_fault_reason(u64 ecode) {
     if (ecode & FAULT_INSTR_FETCH) { return PGFLT_INSTR_FETCH_NX; }
     if (ecode & FAULT_RESERVED_BIT) { return PGFLT_RESERVED_BIT; }
-    return (ecode & FAULT_PRESENT) ? PGFLT_NOT_PRESENT : PGFLT_PROT_VIOLATION;
+    return (ecode & FAULT_PRESENT) ? PGFLT_PROT_VIOLATION : PGFLT_NOT_PRESENT;
 }
 
 static inline u64 read_cr2() {
@@ -36,6 +36,7 @@ void page_fault_handler(struct trap_frame *frame) {
             .pf_write  = frame->ecode & FAULT_WRITE,
             .pf_exec   = frame->ecode & FAULT_INSTR_FETCH,
     };
+
     int res = handle_page_fault(current(), &pfi);
 
     if (res) { panic("Page fault not handled %d\n", res); }
