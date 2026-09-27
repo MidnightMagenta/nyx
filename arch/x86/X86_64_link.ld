@@ -40,6 +40,12 @@ SECTIONS {
         __data_end = .;
     } :data
  
+    .subsys_logs : {
+        __subsys_logs_start = .;
+        KEEP(*(.subsys_logs))
+        __subsys_logs_stop = .;
+    }
+
     __kernel_end = .;
 
     . = ALIGN(0x1000);

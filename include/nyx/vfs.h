@@ -250,6 +250,11 @@ void             fhold(struct file *fp);
 void             fdrop(struct file *fp);
 int              fd_close(struct process *p, int fd);
 
+static inline struct vnode *getvnode(struct file *fp) {
+    if (fp->f_type != DTYPE_VNODE) { return NULL; }
+    return fp->f_data;
+}
+
 int vn_open(struct nameidata *ndp, int fflags, u16 mode);
 int vn_rdwr(enum uio_rw rw, struct vnode *vp, void *buf, size_t len, off_t off, size_t *residp);
 int vfs_open(struct process *p, const char *path, enum uio_seg seg, int flags, u16 mode, int *fdout);

@@ -18,7 +18,7 @@
 #include <asi/memory.h>
 #include <asi/page.h>
 
-#define pr_fmt(fmt) "vmspace: " fmt
+DEFINE_SUBSYS_LOG(virtmem_log, "virtmem", CONFIG_VIRTMEM_LOG_LEVEL);
 
 kmem_cache_t *vmspace_cache;
 kmem_cache_t *vmmap_cache;

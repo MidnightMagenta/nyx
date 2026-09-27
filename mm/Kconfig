@@ -2,25 +2,57 @@ menu "Memory configuration"
 
 menu "Memblock"
 
-config MEMBLOCK_DEV_PRINT
-    bool "Print debug information"
-    default n
-
 endmenu
 
 menu "Physmem allocator"
-
-config PHYSMEM_DEV_PRINT
-    bool "Print debug information"
-    default n
 
 endmenu
 
 menu "Debug"
 
-config MEMORY_DEBUG
-    bool "Print memory debug information"
-    default n
+config MEMBLOCK_LOG_LEVEL
+    int "Memblock message verbosity levels"
+    range 0 4
+    default 2
+    help
+        0 = none
+        1 = errors only
+        2 = errors and warnings
+        3 = errors, warnings, and info
+        4 = errors, warnings, info, and verbose info
+
+config PHYSMEM_LOG_LEVEL
+    int "Physmem message verbosity levels"
+    range 0 4
+    default 2
+    help
+        0 = none
+        1 = errors only
+        2 = errors and warnings
+        3 = errors, warnings, and info
+        4 = errors, warnings, info, and verbose info
+
+config VIRTMEM_LOG_LEVEL
+    int "Virtmem message verbosity levels"
+    range 0 4
+    default 2
+    help
+        0 = none
+        1 = errors only
+        2 = errors and warnings
+        3 = errors, warnings, and info
+        4 = errors, warnings, info, and verbose info
+
+config MEMORY_LOG_LEVEL
+    int "Memory message verbosity levels"
+    range 0 4
+    default 2
+    help
+        0 = none
+        1 = errors only
+        2 = errors and warnings
+        3 = errors, warnings, and info
+        4 = errors, warnings, info, and verbose info
 
 endmenu
 

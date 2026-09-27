@@ -3,6 +3,7 @@
 #include <nyx/atomic.h>
 #include <nyx/compiler.h>
 #include <nyx/errno.h>
+#include <nyx/kernel.h>
 #include <nyx/list.h>
 #include <nyx/panic.h>
 #include <nyx/printk.h>
@@ -20,21 +21,10 @@
 #include <asi/bug.h>
 #include <asi/system.h>
 
-#define pr_fmt(fmt) "syscall: " fmt
-
-#ifdef CONFIG_DEBUG_EXIT
-#define pr_exit_debug(fmt, ...) printk("syscall/exit:%d: " fmt, __LINE__, ##__VA_ARGS__)
-#else
-#define pr_exit_debug(fmt, ...) /* void */
-#endif
-
-#ifdef CONFIG_DEBUG_WAIT
-#define pr_wait_debug(fmt, ...) printk("syscall/wait:%d: " fmt, __LINE__, ##__VA_ARGS__)
-#else
-#define pr_wait_debug(fmt, ...) /* void */
-#endif
-
 static LIST_HEAD(deadqueue);
+
+DEFINE_SUBSYS_LOG(exit_log, "exit", CONFIG_EXIT_LOG_LEVEL);
+DEFINE_SUBSYS_LOG(wait_log, "wait", CONFIG_WAIT_LOG_LEVEL);
 
 void proc_zap(struct process *pr);
 
@@ -69,7 +59,7 @@ void __noreturn do_exit(struct thread *t, int code, int flags) {
 
     atomic_fetch_or(&t->t_flags, TF_EXITING, ATOMIC_ACQ_REL);
 
-    pr_exit_debug("process (pid: %d, name: %s) exiting with %d\n", pr->p_pid, pr->p_name, code);
+    pr_debug(exit_log, "process (pid: %d, name: %s) exiting with %d\n", pr->p_pid, pr->p_name, code);
 
     BUG_ON(refcount_get(&pr->p_live_thrd_cnt) != 1); // unimplemented
     atomic_fetch_or(&pr->p_flags, PF_EXITING, ATOMIC_ACQ_REL);
@@ -130,10 +120,15 @@ int do_wait(struct thread *t, pid_t pid, int *stat_loc, register_t *retval, int 
     struct process *pr = t->t_proc;
     struct process *child;
 
-    pr_wait_debug("pid %d: waiting on [pid: %d] with stat_loc %#p and flags %x\n", pr->p_pid, pid, stat_loc, flags);
+    pr_debug(wait_log,
+             "pid %d: waiting on [pid: %d] with stat_loc %#p and flags %x\n",
+             pr->p_pid,
+             pid,
+             stat_loc,
+             flags);
     // we have no children we could wait for
     if (list_is_empty(&pr->p_children)) {
-        pr_wait_debug("pid %d: no children to wait on\n", pr->p_pid);
+        pr_debug(wait_log, "pid %d: no children to wait on\n", pr->p_pid);
         return -ECHILD;
     }
 
@@ -144,7 +139,7 @@ int do_wait(struct thread *t, pid_t pid, int *stat_loc, register_t *retval, int 
         return 0;
     }
 
-    pr_wait_debug("pid %d: waited on [pid: %d] with exit status %d\n", pr->p_pid, child->p_pid, child->p_xstatus);
+    pr_debug(wait_log, "pid %d: waited on [pid: %d] with exit status %d\n", pr->p_pid, child->p_pid, child->p_xstatus);
 
     if (copyout(stat_loc, (char *) &child->p_xstatus, sizeof(int))) { return -EFAULT; }
     *retval = child->p_pid;

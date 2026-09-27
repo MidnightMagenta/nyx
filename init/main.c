@@ -82,24 +82,9 @@ static __init void start_init() {
     BUG_ON(stdinfd != 0 || stdoutfd != 1 || stderrfd != 2);
 }
 
-struct test_sort {
-    int              v;
-    struct list_head l;
-};
-
-static struct test_sort ts[10];
-
-static int test_cmp(void *priv, const struct list_head *a, const struct list_head *b) {
-    (void) priv;
-    const struct test_sort *ea = list_entry(a, struct test_sort, l);
-    const struct test_sort *eb = list_entry(b, struct test_sort, l);
-    if (ea->v < eb->v) { return -1; }
-    if (ea->v > eb->v) { return 1; }
-    return 0;
-}
-
 void __init start_kernel() {
-    pr_info("kernel build ID: %s\n", NYX_BUILD_ID);
+    pr_info(log_generic, "kernel build ID: %s\n", NYX_BUILD_ID);
+
     setup_arch();
     init_memory();
     init_irq();
@@ -113,7 +98,7 @@ void __init start_kernel() {
 
     __do_kernel_tests();
 
-    pr_dbg("finish\n");
+    pr_info(log_generic, "finish\n");
 
     start_init();
     kthread_create(reaper, NULL, "procreaper");

@@ -3,6 +3,7 @@
 #include <mm/vmspace.h>
 #include <nyx/atomic.h>
 #include <nyx/errno.h>
+#include <nyx/kernel.h>
 #include <nyx/list.h>
 #include <nyx/printk.h>
 #include <nyx/proc.h>
@@ -14,11 +15,7 @@
 
 #include <asi/address.h>
 
-#ifdef CONFIG_DEBUG_FORK
-#define pr_fork_debug(fmt, ...) printk("syscall/fork:%d: " fmt, __LINE__, ##__VA_ARGS__)
-#else
-#define pr_fork_debug(fmt, ...) /* void */
-#endif
+DEFINE_SUBSYS_LOG(fork_log, "fork", CONFIG_FORK_LOG_LEVEL);
 
 struct syscall_args;
 
@@ -141,7 +138,7 @@ int do_fork(struct thread  *curp,
     if (newproc) { *newproc = newthrd; }
     if (retval) { *retval = newpr->p_pid; }
 
-    pr_fork_debug("forked process [pid: %d] from process [pid: %d]\n", newpr->p_pid, curp->t_proc->p_pid);
+    pr_debug(fork_log, "forked process [pid: %d] from process [pid: %d]\n", newpr->p_pid, curp->t_proc->p_pid);
 
     newpr->p_state = PS_NORMAL;
 

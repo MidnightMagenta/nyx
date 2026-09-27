@@ -14,13 +14,7 @@
 #include <asi/bug.h>
 #include <asi/page.h>
 
-#define pr_fmt(fmt) "memblock: " fmt
-
-#ifdef CONFIG_MEMBLOCK_DEV_PRINT
-#define memblock_pr_dev(fmt, ...) printk(pr_fmt(fmt), ##__VA_ARGS__)
-#else
-#define memblock_pr_dev(fmt, ...)
-#endif
+DEFINE_SUBSYS_LOG(memblock_log, "memblock", CONFIG_MEMBLOCK_LOG_LEVEL);
 
 /* the maximum number of needed regions is roughly the number of regions in the
  * sanitised memory map + number of allocations. Since firmware memory maps usually
@@ -85,7 +79,7 @@ static void __init memblock_merge_regions(struct memblock_region *const r, size_
     memblock_merge_regions(r, n);
 
 static int __init __memblock_add(struct memblock_type *regions, phys_addr_t addr, size_t size) {
-    memblock_pr_dev("adding region [%#p - %#p] to %s\n", addr, addr + size, regions->name);
+    pr_debug(memblock_log, "adding region [%#p - %#p] to %s\n", addr, addr + size, regions->name);
     if (regions->cnt >= regions->max) { return -ENOSPC; }
     regions->regions[regions->cnt++] = (struct memblock_region){addr, size};
     memblock_sort_and_merge(regions->regions, &regions->cnt);
@@ -98,7 +92,7 @@ static int __init __memblock_remove(struct memblock_type *regions, phys_addr_t a
     u64    se;
     size_t i;
 
-    memblock_pr_dev("removing region [%#p - %#p] from %s\n", addr, addr + size, regions->name);
+    pr_debug(memblock_log, "removing region [%#p - %#p] from %s\n", addr, addr + size, regions->name);
 
     if (size == 0) return 0;
 
@@ -191,7 +185,7 @@ void __init memblock_trim() {
 }
 
 void __init memblock_reserve(phys_addr_t addr, size_t size) {
-    memblock_pr_dev("reserving region [%#p - %#p]\n", addr, addr + size);
+    pr_debug(memblock_log, "reserving region [%#p - %#p]\n", addr, addr + size);
     __memblock_remove(&memblock.memory, addr, size);
     __memblock_add(&memblock.reserved, addr, size);
 }
@@ -339,16 +333,16 @@ void memblock_print_regions() {
     size_t                        i;
     const struct memblock_region *r;
 
-    pr_info(pr_fmt("memory regions:\n"));
+    pr_info(memblock_log, "memory regions:\n");
     for (i = 0; i < memblock.memory.cnt; ++i) {
         r = &memblock.memory.regions[i];
-        pr_info(pr_fmt("[%#p - %#p]\n"), r->base, r->base + r->size);
+        pr_info(memblock_log, "[%#p - %#p]\n", r->base, r->base + r->size);
     }
 
-    pr_info(pr_fmt("reserved regions:\n"));
+    pr_info(memblock_log, "reserved regions:\n");
     for (i = 0; i < memblock.reserved.cnt; ++i) {
         r = &memblock.reserved.regions[i];
-        pr_info(pr_fmt("[%#p - %#p]\n"), r->base, r->base + r->size);
+        pr_info(memblock_log, "[%#p - %#p]\n", r->base, r->base + r->size);
     }
 }
 #endif

@@ -2,21 +2,42 @@ menu "kernel"
 
 menu "syscalls"
 
-config DEBUG_SYSCALL
-    bool "Print syscall debug info"
-    default n
+menu "debug"
 
-config DEBUG_EXIT
-    bool "Print sys_exit debug info"
-    default n
+config FORK_LOG_LEVEL
+    int "Fork message verbosity levels"
+    range 0 4
+    default 2
+    help
+        0 = none
+        1 = errors only
+        2 = errors and warnings
+        3 = errors, warnings, and info
+        4 = errors, warnings, info, and verbose info
 
-config DEBUG_WAIT
-    bool "Print sys_wait debug info"
-    default n
+config EXIT_LOG_LEVEL
+    int "Exit message verbosity levels"
+    range 0 4
+    default 2
+    help
+        0 = none
+        1 = errors only
+        2 = errors and warnings
+        3 = errors, warnings, and info
+        4 = errors, warnings, info, and verbose info
 
-config DEBUG_FORK
-    bool "Print sys_fork debug info"
-    default n
+config WAIT_LOG_LEVEL
+    int "Wait message verbosity levels"
+    range 0 4
+    default 2
+    help
+        0 = none
+        1 = errors only
+        2 = errors and warnings
+        3 = errors, warnings, and info
+        4 = errors, warnings, info, and verbose info
+
+endmenu
 
 endmenu
 

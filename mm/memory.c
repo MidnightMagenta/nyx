@@ -1,6 +1,9 @@
 #include <mm/memblock.h>
 #include <mm/mmzone.h>
+#include <nyx/kernel.h>
 #include <nyx/linkage.h>
+
+DEFINE_SUBSYS_LOG(memory_log, "memory", CONFIG_MEMORY_LOG_LEVEL);
 
 struct pg_data_s  contigmem_pagedata;
 struct pg_data_s *pgdata = &contigmem_pagedata;

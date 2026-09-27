@@ -19,13 +19,6 @@
 #include <asi/page_data.h>
 #include <asi/system.h>
 
-#define pr_fmt(fmt) "arch virtmem: " fmt
-#ifdef CONFIG_VIRTMEM_DEV_PRINT
-#define virtmem_dev_pr(fmt, ...) printk(pr_fmt(fmt), ##__VA_ARGS__)
-#else
-#define virtmem_dev_pr(fmt, ...)
-#endif
-
 #define __PAGE_TABLE_ENTRY_COUNT 512
 
 #define __PAGE_INDEX_MASK 0x1FFull

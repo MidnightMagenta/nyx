@@ -1,6 +1,7 @@
 #ifndef _NYX_SYSCALL_H
 #define _NYX_SYSCALL_H
 
+#include <nyx/kernel.h>
 #include <nyx/proc.h>
 #include <nyx/stddef.h>
 #include <nyx/types.h>
@@ -10,7 +11,6 @@ struct syscall_args {
 };
 
 typedef int (*syscall_fn)(struct thread *, struct syscall_args *, register_t *);
-
 
 extern syscall_fn syscall_table[];
 extern size_t     syscall_table_size;
