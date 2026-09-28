@@ -75,6 +75,9 @@ struct page {
     };
 };
 
+#define page_ref(page)   refcount_inc(&(page)->pg_refcnt)
+#define page_unref(page) refcount_dec(&(page)->pg_refcnt)
+
 #define VM_READ          PROT_READ
 #define VM_WRITE         PROT_WRITE
 #define VM_EXEC          PROT_EXEC
