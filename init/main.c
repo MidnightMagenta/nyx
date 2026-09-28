@@ -133,6 +133,15 @@ void fudge_exec() {
                     VM_EXEC | VM_READ | VM_WRITE | VM_USER,
                     M_SLEEPOK);
 
+    vms_mmap(mm,
+             0x10000,
+             init_fudgeasm_bin_len,
+             VM_EXEC | VM_READ | VM_WRITE,
+             MAP_ANON | MAP_PRIVATE | MAP_FIXED,
+             NULL,
+             0,
+             NULL);
+
     oldmm = pr->p_mm;
 
     flags = arch_irq_save();

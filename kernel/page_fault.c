@@ -38,38 +38,51 @@ static inline unsigned long get_vm_flags(struct vm_map_entry *vma) {
 
 static int handle_cow_page_fault(struct vmspace         *vms,
                                  struct pgflt_info      *pfi,
-                                 struct vm_map_entry    *vma,
+                                 struct vm_map_entry    *vme,
                                  const struct vm_pginfo *pginfo) {
-    (void) vms;
-    (void) vma;
-    (void) pginfo;
+    virt_addr_t    va = PG_ALIGN_DN(pfi->pf_addr);
+    vm_sizeclass_t sc;
+    struct page   *old, *new;
+    int            res;
 
-    panic("COW page at addr %#p", pfi->pf_addr);
+    old = phys_to_page(pginfo->pi_phys_base);
+    if (refcount_get(&old->pg_refcnt) == 1) { return vm_set_page_prot(vms->v_pgd, va, vme->vm_prot, &sc); }
+
+    new = vm_alloc_page(M_SLEEPOK);
+    if (!new) { panic("oom"); }
+
+    memcpy(page_address(new), page_address(old), PAGE_SIZE);
+
+    res = vm_remap_page(vms->v_pgd, page_to_phys(new), va, vme->vm_prot);
+    if (res) {
+        vm_put_page(new);
+        return -EFAULT;
+    }
+
+    vm_put_page(old);
+    return 0;
 }
 
 static int handle_anon_page_fault(struct vmspace *vms, struct pgflt_info *pfi, struct vm_map_entry *vma) {
-    phys_addr_t  pa;
-    virt_addr_t  va;
+    virt_addr_t  va = PG_ALIGN_DN(pfi->pf_addr);
     struct page *pg;
     int          res;
 
     pr_debug(pgflt_log, "    handling anonymous page fault\n");
 
-    pa = pm_get_zeroed_page(M_SLEEPOK);
-    if (pa == INVALID_PHYS_ADDR) { panic("oom"); }
+    pg = vm_alloc_page(M_SLEEPOK);
 
-    pg = phys_to_page(pa);
-    va = PG_ALIGN_DN(pfi->pf_addr);
-
-    if ((res = vm_map_page(vms->v_pgd, pa, va, get_vm_flags(vma) | VM_USER, vm_sc_for_bytes(PAGE_SIZE), M_SLEEPOK))) {
-        pm_free_page(pa);
+    if ((res = vm_map_page(vms->v_pgd,
+                           page_to_phys(pg),
+                           va,
+                           get_vm_flags(vma) | VM_USER,
+                           vm_sc_for_bytes(PAGE_SIZE),
+                           M_SLEEPOK))) {
+        vm_put_page(pg);
         return res;
     }
 
-    pr_debug(pgflt_log, "    mapped new page %#lx to va %#lx with prot %#lx\n", pa, va, vma->vm_prot);
-
-    refcount_inc(&pg->pg_refcnt);
-
+    pr_debug(pgflt_log, "    mapped new page %#lx to va %#lx with prot %#lx\n", page_to_phys(pg), va, vma->vm_prot);
 
     return 0;
 }
@@ -78,8 +91,7 @@ static int handle_file_backed_page_fault(struct vmspace *vms, struct pgflt_info 
     struct vattr attr;
     off_t        file_off;
     size_t       rem, to_read;
-    phys_addr_t  pa;
-    virt_addr_t  va;
+    virt_addr_t  va = PG_ALIGN_DN(pfi->pf_addr);
     struct page *pg;
     void        *frame;
     int          res;
@@ -97,13 +109,10 @@ static int handle_file_backed_page_fault(struct vmspace *vms, struct pgflt_info 
     rem      = (file_off < attr.va_size) ? (attr.va_size - file_off) : 0;
     to_read  = MIN(rem, PAGE_SIZE);
 
-    pa = pm_get_zeroed_page(M_SLEEPOK);
-    if (pa == INVALID_PHYS_ADDR) { panic("oom"); }
-    pg = phys_to_page(pa);
-    va = PG_ALIGN_DN(pfi->pf_addr);
-    refcount_inc(&pg->pg_refcnt);
+    pg = vm_alloc_page(M_SLEEPOK);
+    if (!pg) { panic("oom"); }
 
-    frame = __va(pa);
+    frame = page_address(pg);
     if (to_read > 0) {
         res = vn_rdwr(UIO_READ, vma->vm_vn, frame, to_read, file_off, NULL);
         if (res) { return res; }
@@ -111,12 +120,17 @@ static int handle_file_backed_page_fault(struct vmspace *vms, struct pgflt_info 
 
     if (to_read < PAGE_SIZE) { memset((char *) frame + to_read, 0, PAGE_SIZE - to_read); }
 
-    if ((res = vm_map_page(vms->v_pgd, pa, va, get_vm_flags(vma) | VM_USER, vm_sc_for_bytes(PAGE_SIZE), M_SLEEPOK))) {
-        pm_free_page(pa);
+    if ((res = vm_map_page(vms->v_pgd,
+                           page_to_phys(pg),
+                           va,
+                           get_vm_flags(vma) | VM_USER,
+                           vm_sc_for_bytes(PAGE_SIZE),
+                           M_SLEEPOK))) {
+        pm_free_page(page_to_phys(pg));
         return res;
     }
 
-    pr_debug(pgflt_log, "    mapped new page %#lx to va %#lx with prot %#lx\n", pa, va, vma->vm_prot);
+    pr_debug(pgflt_log, "    mapped new page %#lx to va %#lx with prot %#lx\n", page_to_phys(pg), va, vma->vm_prot);
 
     return 0;
 }
@@ -157,7 +171,7 @@ static int handle_user_page_fault(struct thread *t, struct pgflt_info *pfi) {
             return handle_file_backed_page_fault(p->p_mm, pfi, vma);
         }
     } else if (!res && pfi->pf_reason == PGFLT_PROT_VIOLATION) {
-        if (!(pginfo.pi_flags & VM_WRITE) && vma->vm_prot & VM_WRITE) {
+        if (!(pginfo.pi_prot & VM_WRITE) && vma->vm_prot & VM_WRITE) {
             return handle_cow_page_fault(p->p_mm, pfi, vma, &pginfo);
         }
     } else {
