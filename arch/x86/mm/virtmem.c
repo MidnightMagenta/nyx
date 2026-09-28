@@ -113,6 +113,8 @@ static inline unsigned int ptt_idx(virt_addr_t va) {
 #define VM_SC_CLASS_COUNT 2
 #endif
 
+phys_addr_t kernel_pdpts[256];
+
 struct {
     bool   supported;
     size_t bytes;
@@ -173,6 +175,7 @@ void __init prepopulate_pdpt_entries(pgd_t *pgd) {
             inc_pgtable_refcount(pgd);
         }
 
+        kernel_pdpts[idx - KERNEL_PML4_FIRST_IDX] = pgd[idx];
         inc_pgtable_refcount(pdpt); /* permanent kernel pin - never freed */
     }
 }
@@ -345,7 +348,7 @@ static void prune_empty_tables(struct pt_walk_entry *path, int depth) {
     }
 }
 
-int vm_map_page(pgd_t *pgd, phys_addr_t pa, virt_addr_t va, unsigned long flags, vm_sizeclass_t sc, int gfp_flags) {
+int vm_map_page(pgd_t *pgd, phys_addr_t pa, virt_addr_t va, unsigned long prot, vm_sizeclass_t sc, int gfp_flags) {
     pgd_t               *table;
     u64                  entry_flags;
     struct pt_walk_entry path[MAX_PT_DEPTH];
@@ -356,7 +359,7 @@ int vm_map_page(pgd_t *pgd, phys_addr_t pa, virt_addr_t va, unsigned long flags,
              "Mapping %#lx to va %#lx with flags %#lx for %ld bytes from pgd %#p\n",
              pa,
              va,
-             flags,
+             prot,
              vm_sc_bytes(sc),
              pgd);
 
@@ -384,7 +387,7 @@ int vm_map_page(pgd_t *pgd, phys_addr_t pa, virt_addr_t va, unsigned long flags,
         if (sc == pt_levels[i].terminates_at) {
             if (table[idx] & __PG_PRESENT) { return -EEXIST; }
 
-            entry_flags = get_pte_flags(flags);
+            entry_flags = get_pte_flags(prot);
             if (sc != VM_SC_4K) { entry_flags |= __PG_PDE_PAGE_SIZE; }
             table[idx] = (pa & __PAGE_ADDR_MASK) | entry_flags;
             inc_pgtable_refcount(table);
@@ -405,12 +408,39 @@ int vm_map_page(pgd_t *pgd, phys_addr_t pa, virt_addr_t va, unsigned long flags,
     return -EINVAL;
 }
 
+int vm_remap_page(pgd_t *pgd, phys_addr_t pa, virt_addr_t va, unsigned long prot) {
+    struct pt_walk_entry path[MAX_PT_DEPTH];
+    vm_sizeclass_t       sc;
+    int                  depth;
+    int                  res;
+
+    pr_debug(virtmem_log, "Remapping %#lx to pa %#lx from pgd %#p\n", va, pa, pgd);
+
+    if (va & __PAGE_4K_MASK) {
+        BUG();
+        return -EINVAL;
+    }
+
+    if ((res = walk(pgd, va, path, &depth, &sc))) { return res; }
+
+    struct pt_walk_entry leaf = path[depth - 1];
+
+    pr_debug(virtmem_log, "    found entry at index %d in table at depth %d at %#p\n", leaf.idx, depth, leaf.table);
+    pr_debug(virtmem_log, "    value of entry: %#lx\n", leaf.table[leaf.idx]);
+
+    leaf.table[leaf.idx] = (pa & __PAGE_ADDR_MASK) | get_pte_flags(prot);
+    inc_pgtable_refcount(leaf.table);
+    invlpg(va);
+
+    return 0;
+}
+
 int vm_unmap_page(pgd_t *pgd, virt_addr_t va, vm_sizeclass_t *sc) {
     struct pt_walk_entry path[MAX_PT_DEPTH];
     int                  depth;
     int                  res;
 
-    pr_debug(virtmem_log, "Unmapping %#p from pgd %#p\n", va, pgd);
+    pr_debug(virtmem_log, "Unmapping %#lx from pgd %#p\n", va, pgd);
 
     if (va & __PAGE_4K_MASK) {
         BUG();
@@ -484,15 +514,14 @@ int vm_query_page(pgd_t *pgd, virt_addr_t va, struct vm_pginfo *info) {
     info->pi_len       = vm_sc_bytes(info->pi_sc);
     info->pi_virt_base = va & ~(info->pi_len - 1);
     info->pi_phys_base = __PAGE_ADDR(table[idx]);
-    info->pi_flags     = pg_flags_to_vm_flags(table[idx] & ~__PAGE_ADDR_MASK);
+    info->pi_prot      = pg_flags_to_vm_flags(table[idx] & ~__PAGE_ADDR_MASK);
 
     return 0;
 }
 
-int vm_set_prot(pgd_t *pgd, virt_addr_t va, unsigned long new_prot) {
+int vm_set_page_prot(pgd_t *pgd, virt_addr_t va, unsigned long new_prot, vm_sizeclass_t *sc) {
     struct pt_walk_entry path[MAX_PT_DEPTH];
     int                  depth;
-    vm_sizeclass_t       sc;
     pgd_t               *table;
     unsigned int         idx;
     phys_addr_t          old_pa;
@@ -506,14 +535,14 @@ int vm_set_prot(pgd_t *pgd, virt_addr_t va, unsigned long new_prot) {
         return -EINVAL;
     }
 
-    if ((res = walk(pgd, va, path, &depth, &sc))) { return res; }
+    if ((res = walk(pgd, va, path, &depth, sc))) { return res; }
 
     table = path[depth - 1].table;
     idx   = path[depth - 1].idx;
 
     pr_debug(virtmem_log, "    old entry %#lx", table[idx]);
 
-    if (va & (vm_sc_bytes(sc) - 1)) { return -EINVAL; }
+    if (va & (vm_sc_bytes(*sc) - 1)) { return -EINVAL; }
 
     old_pa     = __PAGE_ADDR(table[idx]);
     pg_flags   = get_pte_flags(new_prot) | (sc != VM_SC_4K ? __PG_PDE_PAGE_SIZE : 0);
@@ -572,6 +601,11 @@ int vm_can_map(virt_addr_t va, phys_addr_t pa, vm_sizeclass_t sc) {
     if (sc >= VM_SC_CLASS_COUNT) { BUG(); }
     bytes = vm_sc_bytes(sc);
     return !((va & (bytes - 1)) || (pa & (bytes - 1)));
+}
+
+int vm_copy_kernel(pgd_t *dst) {
+    for (int i = 0; i < 256; i++) { dst[KERNEL_PML4_FIRST_IDX + i] = kernel_pdpts[i]; }
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -844,10 +878,6 @@ int vm_can_map(virt_addr_t va, phys_addr_t pa, vm_sizeclass_t sc) {
 //     return 0;
 // }
 
-int vm_copy_kernel(pgd_t *dst, pgd_t *src) {
-    memcpy(&dst[256], &src[256], 256 * 8);
-    return 0;
-}
 
 int vm_copy_user(pgd_t *dst, pgd_t *src, int flags) {
     pgd_t      *dpml4t = dst;
@@ -901,7 +931,6 @@ int vm_copy_user(pgd_t *dst, pgd_t *src, int flags) {
 int vm_copy(pgd_t *dst, pgd_t *src, int flags) {
     int res;
 
-    if ((res = vm_copy_kernel(dst, src)) != 0) { return res; }
     return vm_copy_user(dst, src, flags);
 }
 
