@@ -3,6 +3,7 @@
 #include <mm/mm_types.h>
 #include <mm/mmzone.h>
 #include <mm/physmem.h>
+#include <nyx/kernel.h>
 #include <nyx/linkage.h>
 #include <nyx/list.h>
 #include <nyx/string.h>
@@ -12,12 +13,7 @@
 
 #define pr_fmt(fmt) "pmm: " fmt
 
-#ifdef CONFIG_PHYSMEM_DEV_PRINT
-#define physmem_pr_dev(fmt, ...) printk(pr_fmt(fmt), ##__VA_ARGS__)
-#else
-#define physmem_pr_dev(fmt, ...) /* void */
-#endif
-
+DEFINE_SUBSYS_LOG(physmem_log, "physmem", CONFIG_PHYSMEM_LOG_LEVEL);
 
 void __init init_page_alloc() { /* void */ }
 
@@ -118,10 +114,11 @@ struct page *pm_alloc_pages(int gfp_mask, unsigned long order) {
         zone = zlist->zones[i];
         page = __rm_block(zone, order);
         if (page) {
-            physmem_pr_dev("allocating block of order %d from zone %s at %#p\n",
-                           order,
-                           zlist->zones[i]->name,
-                           page_to_phys(page));
+            pr_debug(physmem_log,
+                     "allocating block of order %d from zone %s at %#p\n",
+                     order,
+                     zlist->zones[i]->name,
+                     page_to_phys(page));
             goto found_page;
         }
     }
@@ -159,10 +156,7 @@ phys_addr_t __pm_get_free_pages(int gfp_mask, unsigned long order) {
     return INVALID_PHYS_ADDR;
 }
 
-void __pm_free_pages(struct page *page, unsigned long order) {
-    BUG_ON(order >= MAX_ORDER);
-    BUG_ON(!page);
-    BUG_ON(refcount_get(&page->pg_refcnt));
+void __pm_add_free_page(struct page *page, unsigned long order) {
 #ifdef __DEBUG
     bool page_real = false;
     for (int i = 0; i < MAX_NR_ZONES; ++i) {
@@ -173,10 +167,18 @@ void __pm_free_pages(struct page *page, unsigned long order) {
     }
     BUG_ON(!page_real);
 #endif
-    physmem_pr_dev("freeing block at %#p at order %d\n", page_to_phys(page), order);
-    ClearPageHead(page);
+    pr_debug(physmem_log, "freeing block at %#p at order %d\n", page_to_phys(page), order);
     zone_t *zone = &pgdata->zones[page->pg_zone_id];
     __add_block(page, zone, order);
+}
+
+void __pm_free_pages(struct page *page, unsigned long order) {
+    BUG_ON(order >= MAX_ORDER);
+    BUG_ON(!page);
+    BUG_ON(refcount_get(&page->pg_refcnt));
+    BUG_ON(!PageHead(page));
+    ClearPageHead(page);
+    __pm_add_free_page(page, order);
 }
 
 void pm_free_pages(phys_addr_t addr, unsigned long order) {

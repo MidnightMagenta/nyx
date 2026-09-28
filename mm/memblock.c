@@ -304,7 +304,7 @@ static inline void __init memblock_free_pages_core(pfn_t lo, pfn_t hi) {
     while (lo < hi) {
         BUG_ON(PageReserved(pfn_to_page(lo)));
         order = get_max_order(lo, hi);
-        pm_free_pages(lo << PAGE_SHIFT, order);
+        __pm_add_free_page(phys_to_page(lo << PAGE_SHIFT), order);
         lo += 1ul << order;
     }
 }
