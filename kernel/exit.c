@@ -141,7 +141,9 @@ int do_wait(struct thread *t, pid_t pid, int *stat_loc, register_t *retval, int 
 
     pr_debug(wait_log, "pid %d: waited on [pid: %d] with exit status %d\n", pr->p_pid, child->p_pid, child->p_xstatus);
 
-    if (copyout(stat_loc, (char *) &child->p_xstatus, sizeof(int))) { return -EFAULT; }
+    if (stat_loc) {
+        if (copyout(stat_loc, (char *) &child->p_xstatus, sizeof(int))) { return -EFAULT; }
+    }
     *retval = child->p_pid;
     list_del(&child->p_siblings);
 
