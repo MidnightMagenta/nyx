@@ -35,12 +35,6 @@ fail:
     return res;
 }
 
-int vm_remap(pgd_t *pgd, phys_addr_t pa, virt_addr_t va, size_t len, unsigned long prot, int gfp_flags) {
-    BUG();
-    __unreachable;
-    // unimplemented
-}
-
 typedef int (*vm_page_op)(pgd_t *pgd, virt_addr_t va, void *arg, vm_sizeclass_t *sc);
 
 struct set_prot_arg {
@@ -82,6 +76,7 @@ static int unmap_op(pgd_t *pgd, virt_addr_t va, void *arg, vm_sizeclass_t *sc) {
 }
 
 static int release_op(pgd_t *pgd, virt_addr_t va, void *arg, vm_sizeclass_t *sc) {
+    (void) arg;
     struct vm_pginfo info;
     struct page     *pg;
     int              res = vm_query_page(pgd, va, &info);

@@ -44,21 +44,7 @@ int vm_unmap(pgd_t *pgd, virt_addr_t va, size_t len);
 int vm_copy_kernel(pgd_t *dst);
 struct page *vm_alloc_page(int gfp_flags);
 void         vm_put_page(struct page *pg);
-
-// int         vm_map_raw(pgd_t *pgd, phys_addr_t phys, virt_addr_t virt, size_t len, unsigned long flags, int
-// gfp_flags); int         vm_umap(pgd_t *pgd, virt_addr_t virt, size_t len);
-int         vm_copy(pgd_t *dst, pgd_t *src, int flags);
-int         vm_copy_user(pgd_t *dst, pgd_t *src, int flags);
-void        vm_free_user(pgd_t *pgd);
-void        vm_activate(pgd_t *pgd);
-phys_addr_t vm_getphys(pgd_t *pgd, virt_addr_t virt);
-int         vm_copyout(pgd_t *pgd, virt_addr_t dst_virt, char *src, size_t len);
-int         vm_copyin(pgd_t *pgd, char *dst, virt_addr_t src_virt, size_t len);
-int         vm_copyinstr(pgd_t *pgd, void *dst, virt_addr_t srcva, size_t len, size_t *done);
-int         vm_access_ok(pgd_t *pgd, virt_addr_t virt, size_t len);
-
-static inline void *vm_getva(pgd_t *pgd, virt_addr_t virt) {
-    return __va(vm_getphys(pgd, virt));
-}
+bool         vm_is_addr_user(virt_addr_t va);
+void         vm_activate(pgd_t *pgd);
 
 #endif

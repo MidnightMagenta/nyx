@@ -5,8 +5,11 @@
 #include <mm/virtmem.h>
 #include <nyx/atomic.h>
 #include <nyx/current.h>
+#include <nyx/errno.h>
 #include <nyx/proc.h>
 #include <uapi/posix_types.h>
+
+#include <asi/access_user.h>
 
 struct vnode;
 
@@ -40,16 +43,18 @@ int kern_mmap(struct process *pr,
               virt_addr_t    *pa);
 int kern_munmap(struct process *pr, virt_addr_t addr, size_t len);
 
-static inline int copyout(const void *uaddr, void *kaddr, size_t len) {
-    return vm_copyout(current()->t_proc->p_mm->v_pgd, (virt_addr_t) uaddr, kaddr, len);
+bool access_ok(const void *uptr, size_t len);
+
+static inline int copyout(void *uaddr, const void *kaddr, size_t len) {
+    if (!access_ok(uaddr, len)) { return -EFAULT; }
+    return __copy_user(uaddr, kaddr, len);
 }
 
 static inline int copyin(void *kaddr, const void *uaddr, size_t len) {
-    return vm_copyin(current()->t_proc->p_mm->v_pgd, kaddr, (virt_addr_t) uaddr, len);
+    if (!access_ok(uaddr, len)) { return -EFAULT; }
+    return __copy_user(kaddr, uaddr, len);
 }
 
-static inline int copyinstr(void *kaddr, const void *uaddr, size_t len, size_t *done) {
-    return vm_copyinstr(current()->t_proc->p_mm->v_pgd, kaddr, (virt_addr_t) uaddr, len, done);
-}
+int copyinstr(void *kaddr, const void *uaddr, size_t len, size_t *done);
 
 #endif

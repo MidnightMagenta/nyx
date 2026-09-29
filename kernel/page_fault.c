@@ -18,15 +18,7 @@
 
 DEFINE_SUBSYS_LOG(pgflt_log, "pgflt", CONFIG_PGFLT_LOG_LEVEL);
 
-static struct vm_map_entry *find_faulting_vma(struct process *p, virt_addr_t va) {
-    struct vm_map_entry *vma;
-
-    list_for_each_entry(vma, &p->p_mm->v_vmmap, vm_list) {
-        if (vma->vm_start <= va && vma->vm_end > va) { return vma; }
-    }
-
-    return NULL;
-}
+extern struct vm_map_entry *find_vma(struct process *p, virt_addr_t va);
 
 static inline unsigned long get_vm_flags(struct vm_map_entry *vma) {
     unsigned long flags = 0;
@@ -36,10 +28,10 @@ static inline unsigned long get_vm_flags(struct vm_map_entry *vma) {
     return flags;
 }
 
-static int handle_cow_page_fault(struct vmspace         *vms,
-                                 struct pgflt_info      *pfi,
-                                 struct vm_map_entry    *vme,
-                                 const struct vm_pginfo *pginfo) {
+static pgflt_result_t handle_cow_page_fault(struct vmspace         *vms,
+                                            struct pgflt_info      *pfi,
+                                            struct vm_map_entry    *vme,
+                                            const struct vm_pginfo *pginfo) {
     virt_addr_t    va = PG_ALIGN_DN(pfi->pf_addr);
     vm_sizeclass_t sc;
     struct page   *old, *new;
@@ -49,21 +41,26 @@ static int handle_cow_page_fault(struct vmspace         *vms,
     if (refcount_get(&old->pg_refcnt) == 1) { return vm_set_page_prot(vms->v_pgd, va, vme->vm_prot, &sc); }
 
     new = vm_alloc_page(M_SLEEPOK);
-    if (!new) { panic("oom"); }
+    if (!new) { return PGFLT_OOM; }
 
     memcpy(page_address(new), page_address(old), PAGE_SIZE);
 
     res = vm_remap_page(vms->v_pgd, page_to_phys(new), va, vme->vm_prot);
     if (res) {
         vm_put_page(new);
-        return -EFAULT;
+        if (res == -ENOENT) {
+            return PGFLT_RETRY;
+        } else if (res == -ENOMEM) {
+            return PGFLT_OOM;
+        }
+        return PGFLT_SIGSEGV;
     }
 
     vm_put_page(old);
-    return 0;
+    return PGFLT_NORMAL;
 }
 
-static int handle_anon_page_fault(struct vmspace *vms, struct pgflt_info *pfi, struct vm_map_entry *vma) {
+static pgflt_result_t handle_anon_page_fault(struct vmspace *vms, struct pgflt_info *pfi, struct vm_map_entry *vma) {
     virt_addr_t  va = PG_ALIGN_DN(pfi->pf_addr);
     struct page *pg;
     int          res;
@@ -71,6 +68,7 @@ static int handle_anon_page_fault(struct vmspace *vms, struct pgflt_info *pfi, s
     pr_debug(pgflt_log, "    handling anonymous page fault\n");
 
     pg = vm_alloc_page(M_SLEEPOK);
+    if (!pg) { return PGFLT_OOM; }
 
     if ((res = vm_map_page(vms->v_pgd,
                            page_to_phys(pg),
@@ -79,15 +77,18 @@ static int handle_anon_page_fault(struct vmspace *vms, struct pgflt_info *pfi, s
                            vm_sc_for_bytes(PAGE_SIZE),
                            M_SLEEPOK))) {
         vm_put_page(pg);
-        return res;
+        if (res == -ENOMEM) { return PGFLT_OOM; }
+        return PGFLT_SIGSEGV;
     }
 
     pr_debug(pgflt_log, "    mapped new page %#lx to va %#lx with prot %#lx\n", page_to_phys(pg), va, vma->vm_prot);
 
-    return 0;
+    return PGFLT_NORMAL;
 }
 
-static int handle_file_backed_page_fault(struct vmspace *vms, struct pgflt_info *pfi, struct vm_map_entry *vma) {
+static pgflt_result_t handle_file_backed_page_fault(struct vmspace      *vms,
+                                                    struct pgflt_info   *pfi,
+                                                    struct vm_map_entry *vma) {
     struct vattr attr;
     off_t        file_off;
     size_t       rem, to_read;
@@ -100,22 +101,22 @@ static int handle_file_backed_page_fault(struct vmspace *vms, struct pgflt_info 
 
     res = VOP_GETATTR(vma->vm_vn, &attr);
     if (res) {
-        return res; // SIGBUS
+        return PGFLT_SIGBUS; // SIGBUS
     }
 
-    if (attr.va_type != VREG) { return -EBADF; }
+    if (attr.va_type != VREG) { return PGFLT_SIGSEGV; }
 
     file_off = vma->vm_foff + PG_ALIGN_DN(pfi->pf_addr - vma->vm_start);
     rem      = (file_off < attr.va_size) ? (attr.va_size - file_off) : 0;
     to_read  = MIN(rem, PAGE_SIZE);
 
     pg = vm_alloc_page(M_SLEEPOK);
-    if (!pg) { panic("oom"); }
+    if (!pg) { return PGFLT_OOM; }
 
     frame = page_address(pg);
     if (to_read > 0) {
         res = vn_rdwr(UIO_READ, vma->vm_vn, frame, to_read, file_off, NULL);
-        if (res) { return res; }
+        if (res) { return PGFLT_SIGSEGV; }
     }
 
     if (to_read < PAGE_SIZE) { memset((char *) frame + to_read, 0, PAGE_SIZE - to_read); }
@@ -126,16 +127,17 @@ static int handle_file_backed_page_fault(struct vmspace *vms, struct pgflt_info 
                            get_vm_flags(vma) | VM_USER,
                            vm_sc_for_bytes(PAGE_SIZE),
                            M_SLEEPOK))) {
-        pm_free_page(page_to_phys(pg));
-        return res;
+        vm_put_page(pg);
+        if (res == -ENOMEM) { return PGFLT_OOM; }
+        return PGFLT_SIGSEGV;
     }
 
     pr_debug(pgflt_log, "    mapped new page %#lx to va %#lx with prot %#lx\n", page_to_phys(pg), va, vma->vm_prot);
 
-    return 0;
+    return PGFLT_NORMAL;
 }
 
-static int handle_user_page_fault(struct thread *t, struct pgflt_info *pfi) {
+static pgflt_result_t handle_user_page_fault(struct thread *t, struct pgflt_info *pfi) {
     struct process      *p = t->t_proc;
     struct vm_map_entry *vma;
     struct vm_pginfo     pginfo;
@@ -145,21 +147,17 @@ static int handle_user_page_fault(struct thread *t, struct pgflt_info *pfi) {
         panic("Attempted to access page with reserved bit set at address %#p", pfi->pf_addr);
     }
 
-    vma = find_faulting_vma(p, pfi->pf_addr);
+    vma = find_vma(p, pfi->pf_addr);
     if (!vma) {
-        return -EFAULT;
-    } // TODO: deliver SIGSEGV
-    else if (pfi->pf_write && !(vma->vm_prot & PROT_WRITE)) {
-        return -EFAULT;
-    } // TODO: deliver SIGSEGV
-    else if (pfi->pf_exec && !(vma->vm_prot & PROT_EXEC)) {
-        return -EFAULT;
-    } // TODO: deliver SIGSEGV
-    else if (!(vma->vm_prot & PROT_READ)) {
-        return -EFAULT;
-    } // TODO: deliver SIGSEGV
-    else if (vma->vm_prot & PROT_NONE) {
-        return -EFAULT;
+        return PGFLT_SIGSEGV;
+    } else if (pfi->pf_write && !(vma->vm_prot & PROT_WRITE)) {
+        return PGFLT_SIGSEGV;
+    } else if (pfi->pf_exec && !(vma->vm_prot & PROT_EXEC)) {
+        return PGFLT_SIGSEGV;
+    } else if (!(vma->vm_prot & PROT_READ)) {
+        return PGFLT_SIGSEGV;
+    } else if (vma->vm_prot & PROT_NONE) {
+        return PGFLT_SIGSEGV;
     }
 
     res = vm_query_page(p->p_mm->v_pgd, pfi->pf_addr, &pginfo);
@@ -175,16 +173,32 @@ static int handle_user_page_fault(struct thread *t, struct pgflt_info *pfi) {
             return handle_cow_page_fault(p->p_mm, pfi, vma, &pginfo);
         }
     } else {
-        return -EFAULT; // TODO: deliver SIGSEGV
+        return PGFLT_SIGSEGV;
     }
 
     panic("unhandled page fault at %#p", pfi->pf_addr);
 }
 
-int handle_page_fault(struct thread *t, struct pgflt_info *pfi) {
-    if (pfi->pf_user) {
-        return handle_user_page_fault(t, pfi);
-    } else {
-        panic("kernel page fault at address %#p", pfi->pf_addr);
+pgflt_result_t handle_page_fault(struct thread *t, struct pgflt_info *pfi) {
+    int res;
+
+    if (vm_is_addr_user(pfi->pf_addr)) {
+        res = handle_user_page_fault(t, pfi);
+        if (res == PGFLT_NORMAL) { return PGFLT_NORMAL; }
+
+        if (!pfi->pf_user) {
+            return PGFLT_TRY_FIXUP;
+        } else {
+            return PGFLT_SIGSEGV;
+        }
+
+        return res;
     }
+
+    if (pfi->pf_user) {
+        return PGFLT_SIGSEGV; // SIGSEGV
+    }
+
+    // handle kernel space fault
+    return PGFLT_KERNEL_BUG;
 }

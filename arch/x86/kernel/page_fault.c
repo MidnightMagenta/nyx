@@ -29,7 +29,8 @@ static inline u64 read_cr2() {
     return cr2;
 }
 
-extern int handle_page_fault(struct thread *, struct pgflt_info *);
+extern pgflt_result_t handle_page_fault(struct thread *, struct pgflt_info *);
+extern int            try_fixup_exception(struct trap_frame *tf);
 
 void page_fault_handler(struct trap_frame *frame) {
     struct pgflt_info pfi = {
@@ -49,7 +50,13 @@ void page_fault_handler(struct trap_frame *frame) {
              frame->ecode & FAULT_INSTR_FETCH ? "IF" : "AC",
              frame->ecode & FAULT_RESERVED_BIT ? "RB" : "NRB");
 
-    int res = handle_page_fault(current(), &pfi);
+    pgflt_result_t res = handle_page_fault(current(), &pfi);
 
-    if (res) { panic("Page fault not handled %d\n", res); }
+    if (res == PGFLT_NORMAL || res == PGFLT_RETRY) {
+        return;
+    } else if (res == PGFLT_TRY_FIXUP) {
+        if (!try_fixup_exception(frame)) { return; }
+    }
+
+    panic("Page fault not handled %d\n", res);
 }

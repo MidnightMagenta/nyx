@@ -99,6 +99,16 @@ static inline struct vm_map_entry *vm_map_clone_vme(struct vm_map_entry *e) {
     return new_vme;
 }
 
+struct vm_map_entry *find_vma(struct process *p, virt_addr_t va) {
+    struct vm_map_entry *vma;
+
+    list_for_each_entry(vma, &p->p_mm->v_vmmap, vm_list) {
+        if (vma->vm_start <= va && vma->vm_end > va) { return vma; }
+    }
+
+    return NULL;
+}
+
 struct vmspace *vmspace_fork(struct process *p) {
     struct vmspace      *newvm = vmspace_new(p);
     struct vm_map_entry *parent_vme, *new_vme;
@@ -331,4 +341,24 @@ int kern_munmap(struct process *pr, virt_addr_t addr, size_t len);
 
 int sys_mmap(struct thread *t, struct syscall_args *args, register_t *retval) {
     return kern_mmap(t->t_proc, args->arg1, args->arg2, args->arg3, args->arg4, args->arg5, args->arg6, retval);
+}
+
+bool access_ok(const void *uptr, size_t len) {
+    virt_addr_t u = (virt_addr_t) uptr;
+    if (u <= ARCH_USER_START && u + len >= ARCH_USER_END) { return false; }
+    return true;
+}
+
+int copyinstr(void *kaddr, const void *uaddr, size_t len, size_t *done) {
+    virt_addr_t u = (virt_addr_t) uaddr;
+
+    if (u >= ARCH_USER_END) { return -EFAULT; }
+
+    size_t  room = ARCH_USER_END - u;
+    size_t  n    = len > room ? room : len;
+    ssize_t r    = __copyinstr(kaddr, uaddr, n);
+    if (r < 0) { return r; }
+    if (r == 0) { return len > room ? -EFAULT : -ENAMETOOLONG; }
+    if (done) { *done = r; }
+    return 0;
 }

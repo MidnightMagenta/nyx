@@ -2,7 +2,8 @@ O_OBJS := head.o setup.o early_serial.o early_panic.o \
 		  idt.o i8253.o i8259.o irq.o traps.o timer.o \
 		  switch_to.o context_switch.o percpu.o fork.o \
 		  kthread_trampoline.o syscall.o tss.o gdt.o \
-		  cpu.o sched.o page_fault.o cpufeatures.o
+		  cpu.o sched.o page_fault.o cpufeatures.o \
+		  exception.o copy_user.o
 
 O_TARGET := kernelar.o
 

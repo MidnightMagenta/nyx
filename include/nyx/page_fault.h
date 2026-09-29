@@ -18,4 +18,14 @@ struct pgflt_info {
     bool              pf_exec;
 };
 
+typedef enum {
+    PGFLT_NORMAL = 0,
+    PGFLT_RETRY,
+    PGFLT_SIGSEGV,
+    PGFLT_SIGBUS,
+    PGFLT_TRY_FIXUP,
+    PGFLT_OOM,
+    PGFLT_KERNEL_BUG,
+} pgflt_result_t;
+
 #endif
