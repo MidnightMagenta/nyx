@@ -295,6 +295,10 @@ int vms_mmap(struct vmspace *vs,
     pr_debug(vmspace_log, "mmap(%#p, %#lx, %ld, %#x, %#x, %#p, %ld)\n", vs, addr, len, prot, flags, vp, off);
 
     if (len == 0) { return -EINVAL; }
+    if (off & (PAGE_SIZE - 1)) { return -EINVAL; }
+    if (flags & MAP_FIXED && (addr & (PAGE_SIZE - 1))) { return -EINVAL; }
+
+    if (len > SIZE_MAX - (PAGE_SIZE - 1)) { return -EINVAL; }
     addr = PG_ALIGN_DN(addr);
     len  = PG_ALIGN_UP(len);
 
@@ -314,6 +318,19 @@ int vms_mmap(struct vmspace *vs,
 }
 
 int vms_munmap(struct vmspace *vs, virt_addr_t addr, size_t len) {
+    int res;
+
+    if (addr & (PAGE_SIZE - 1)) { return -EINVAL; }
+    if (len == 0) { return -EINVAL; }
+
+    if (len > SIZE_MAX - (PAGE_SIZE - 1)) { return -EINVAL; }
+    len = PG_ALIGN_UP(len);
+
+    if (addr >= ARCH_USER_END || len > ARCH_USER_END - addr) { return -EINVAL; }
+
+    if ((res = clear_range(vs, addr, len))) { return res; }
+    vm_release(vs, addr, len);
+
     return 0;
 }
 
@@ -337,10 +354,17 @@ int kern_mmap(struct process *pr,
     return vms_mmap(pr->p_mm, addr, len, prot, flags, f ? getvnode(f) : NULL, off, pa);
 }
 
-int kern_munmap(struct process *pr, virt_addr_t addr, size_t len);
+int kern_munmap(struct process *pr, virt_addr_t addr, size_t len) {
+    return vms_munmap(pr->p_mm, addr, len);
+}
 
 int sys_mmap(struct thread *t, struct syscall_args *args, register_t *retval) {
     return kern_mmap(t->t_proc, args->arg1, args->arg2, args->arg3, args->arg4, args->arg5, args->arg6, retval);
+}
+
+int sys_munmap(struct thread *t, struct syscall_args *args, register_t *retval) {
+    (void) retval;
+    return kern_munmap(t->t_proc, args->arg1, args->arg2);
 }
 
 bool access_ok(const void *uptr, size_t len) {
