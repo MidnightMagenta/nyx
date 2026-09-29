@@ -20,4 +20,4 @@ EOF
 mkdir -p tmp/initcpio/dev
 
 cd tmp/initcpio
-find . | cpio -o -H newc >../../initramfs
+find . | cpio -o -H newc >../../build/initramfs

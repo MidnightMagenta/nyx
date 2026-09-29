@@ -1,3 +1,5 @@
+SRCDIR := $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
+
 TOOL_DIRS := pgdmp
 
 .PHONY: all tools
@@ -5,7 +7,7 @@ TOOL_DIRS := pgdmp
 all: tools
 
 tools:
-	$(Q)set -e; for i in $(TOOL_DIRS); do $(MAKE) -C $$i; done
-
-clean:
-	$(Q)set -e; for i in $(TOOL_DIRS); do $(MAKE) -C $$i clean; done
+	$(Q)set -e; for i in $(TOOL_DIRS); do \
+		mkdir -p $$i; \
+		$(MAKE) -C $$i -f $(SRCDIR)/$$i/Makefile; \
+	done

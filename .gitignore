@@ -13,7 +13,7 @@
 
 # directories
 .cache/
-out/
+build/
 isodir/
 **/tmp/
 **/generated/

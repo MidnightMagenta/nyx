@@ -1,4 +1,10 @@
-SYSTEM := $(TOPDIR)/vmnyx
+SRCDIR := $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
+
+vpath %.c  $(SRCDIR)
+vpath %.S  $(SRCDIR)
+vpath %.ld $(SRCDIR)
+
+SYSTEM := $(OBJ)/vmnyx
 I_OBJS := printb.o boot_utils.o region_alloc.o vmnyx.o
 
 ifdef CONFIG_MULTIBOOT2
@@ -8,7 +14,7 @@ endif
 
 I_OBJS += $(P_OBJ)
 
-.PHONY: image clean
+.PHONY: image FORCE
 
 image: boot_link.lds $(I_OBJS)
 	$(Q)echo -e "LD nyxos"
@@ -21,12 +27,12 @@ vmnyx.o: $(SYSTEM)
 	$(Q)$(OBJCOPY) -I binary -O elf64-x86-64 \
 		--rename-section .data=.kernel_blob,alloc,load,readonly,data,contents $< $@
 
-$(P_OBJ):
-	$(Q)$(MAKE) -C $(P_DIR)
+# FORCE: the sub-make decides what actually needs rebuilding
+$(P_OBJ): FORCE
+	$(Q)mkdir -p $(P_DIR)
+	$(Q)$(MAKE) -C $(P_DIR) -f $(SRCDIR)/$(P_DIR)/Makefile
 
-clean:
-	$(MAKE) -C $(P_DIR) clean
-	rm -f image vmnyx.o boot_link.lds
+FORCE:
 
 %.o: %.c
 	@echo -e "CC $@"
@@ -38,7 +44,7 @@ clean:
 
 %.lds: %.ld
 	@echo -e "CPP $@"
-	$(Q)$(CPP) -P -x assembler-with-cpp -include $(TOPDIR)/include/generated/autoconf.h $^ -o $@
+	$(Q)$(CPP) -P -x assembler-with-cpp -include $(GENDIR)/generated/autoconf.h $< -o $@
 
 -include $(I_OBJS:.o=.d)
 

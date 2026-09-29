@@ -10,34 +10,36 @@ CFLAGS += -m64 -m80387 -mno-sse -mno-sse2 -mno-mmx \
           -mno-avx512f -msoft-float -mcmodel=kernel \
           -mno-red-zone -fno-tree-vectorize
 ASFLAGS += -m64
-ARCH_LINK := $(TOPDIR)/arch/$(ARCH)/X86_64_link.lds
+ARCH_LINK := $(OBJ)/arch/$(ARCH)/X86_64_link.lds
 
-PHONY += image archclean archtargets
+PHONY += image archtargets
 
-MAKEBOOT := $(MAKE) -C arch/$(ARCH)/boot
+MAKEBOOT := $(MAKE) -C $(OBJ)/arch/$(ARCH)/boot -f $(TOPDIR)/arch/$(ARCH)/boot/Makefile
 
 image: vmnyx
+	$(Q)mkdir -p $(OBJ)/arch/$(ARCH)/boot
 	$(Q)$(MAKEBOOT) image
-	$(Q)cp arch/$(ARCH)/boot/image image
+	$(Q)cp $(OBJ)/arch/$(ARCH)/boot/image $(OBJ)/image
+
+ASM_OFFSETS_S := $(OBJ)/arch/$(ARCH)/kernel/asm-offsets.s
+ASM_OFFSETS_H := $(GENDIR)/asi/generated/asm-offsets.h
 
 # special targets that arch needs to be built before the kernel
-archtargets: $(TOPDIR)/arch/$(ARCH)/include/asi/generated/asm-offsets.h
+archtargets: $(ASM_OFFSETS_H)
 
-archclean:
-	rm -f arch/$(ARCH)/X86_64_link.lds
-	$(MAKEBOOT) clean
-
-%.lds: %.ld include/generated/autoconf.h
+$(ARCH_LINK): $(TOPDIR)/arch/$(ARCH)/X86_64_link.ld $(GENDIR)/generated/autoconf.h
 	@echo -e "CPP $@"
-	$(Q)$(CPP) -P -x assembler-with-cpp -include include/generated/autoconf.h $< -o $@
+	$(Q)mkdir -p $(@D)
+	$(Q)$(CPP) -P -x assembler-with-cpp -include $(GENDIR)/generated/autoconf.h $< -o $@
 
-$(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.s: $(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.c include/generated/autoconf.h
+$(ASM_OFFSETS_S): $(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.c $(GENDIR)/generated/autoconf.h
 	@echo "CC $@"
+	$(Q)mkdir -p $(@D)
 	$(Q)$(CC) $(CFLAGS) -MMD -MP -S $< -o $@
 
-$(TOPDIR)/arch/$(ARCH)/include/asi/generated/asm-offsets.h: $(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.s
+$(ASM_OFFSETS_H): $(ASM_OFFSETS_S)
 	@echo "SED $@"
 	@mkdir -p $(@D)
 	$(Q)grep "^->" $< | sed 's/^->\([^ ]*\) \$$\?\(.*\)/#define \1 \2/' > $@
 
--include $(TOPDIR)/arch/$(ARCH)/kernel/asm-offsets.d
+-include $(ASM_OFFSETS_S:.s=.d)

@@ -1,22 +1,17 @@
-.PHONY: all clean 
+SRCDIR := $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
+
+vpath %.c $(SRCDIR)
+
+.PHONY: all
 
 all: pgdmp_x86
 
-pgdmp_x86: pgdmp_x86.o 
+pgdmp_x86: pgdmp_x86.o
 	@echo -e "LD $@"
 	@$(HOSTCC) -o $@ $^
 
-clean:
-	@find ./ -name "*.o" -type f -delete
-	@rm -f compile_commands.json
-	@rm -rf .cache
-	@rm -f $(TARGET)
-	@rm -f $(obj-lib:.o=.d)
-	@rm -f $(obj:.o=.d)
-
 %.o: %.c
 	@echo -e "CC $@"
-	@$(HOSTCC) $(HOSTCFLAGS) -c -o $@ $<
+	@$(HOSTCC) $(HOSTCFLAGS) -MMD -MP -c -o $@ $<
 
--include $(obj:.o=.d)
-
+-include pgdmp_x86.d

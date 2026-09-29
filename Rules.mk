@@ -8,10 +8,16 @@ unexport EXTRA_LDFLAGS
 unexport EXTRA_ARFLAGS
 unexport SUB_DIRS
 
+MKFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
+SRCDIR := $(patsubst %/,%,$(dir $(MKFILE)))
+
+vpath %.c $(SRCDIR)
+vpath %.S $(SRCDIR)
+
 .PHONY: first_rule all_targets sub_dirs
 
 first_rule: sub_dirs
-	$(Q)$(MAKE) all_targets
+	$(Q)$(MAKE) -f $(MKFILE) all_targets
 
 all_targets: $(O_TARGET) $(L_TARGET)
 
@@ -57,7 +63,10 @@ endif
 
 ifdef SUB_DIRS
 sub_dirs:
-	$(Q)set -e; for i in $(SUB_DIRS); do $(MAKE) -C $$i; done
+	$(Q)set -e; for i in $(SUB_DIRS); do \
+		mkdir -p $$i; \
+		$(MAKE) -C $$i -f $(SRCDIR)/$$i/Makefile; \
+	done
 else
 sub_dirs:
 endif
