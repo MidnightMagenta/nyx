@@ -16,7 +16,7 @@ PHONY += image archtargets
 
 MAKEBOOT := $(MAKE) -C $(OBJ)/arch/$(ARCH)/boot -f $(TOPDIR)/arch/$(ARCH)/boot/Makefile
 
-image: vmnyx
+kimage: vmnyx
 	$(Q)mkdir -p $(OBJ)/arch/$(ARCH)/boot
 	$(Q)$(MAKEBOOT) image
 	$(Q)cp $(OBJ)/arch/$(ARCH)/boot/image $(OBJ)/image

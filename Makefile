@@ -119,7 +119,7 @@ include arch/$(ARCH)/Makefile
 # General rules for building the kernel
 # --------------------------------
 
-PHONY += vmnyx nyxsubdirs tools
+PHONY += vmnyx nyxsubdirs tools user initramfs
 
 vmnyx: nyxsubdirs $(ARCH_LINK)
 	@echo -e "LD $@"
@@ -128,6 +128,15 @@ vmnyx: nyxsubdirs $(ARCH_LINK)
 		$(addprefix $(OBJ)/,$(ARCHIVES)) \
 		$(LIBS) \
 		-o $(OBJ)/vmnyx
+
+user:
+	$(Q)mkdir -p $(OBJ)/user
+	$(Q)$(MAKE) -C $(OBJ)/user -f $(TOPDIR)/user/Makefile
+
+initramfs: user
+	$(Q)rm -rf $(OBJ)/rootfs && mkdir -p $(OBJ)/rootfs/bin
+	$(Q)$(MAKE) -C $(OBJ)/user -f $(TOPDIR)/user/Makefile install DESTDIR=$(OBJ)/rootfs
+	$(Q)cd $(OBJ)/rootfs && find . | cpio -o -H newc --owner=0:0 > $(OBJ)/initramfs
 
 nyxsubdirs: $(GENDIR)/generated/autoconf.h $(GENDIR)/generated/version.h archtargets
 	$(Q)set -e; for i in $(SUBDIRS); do \
