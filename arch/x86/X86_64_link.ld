@@ -18,6 +18,7 @@ SECTIONS {
     .text BLOCK(0x1000) : {
         __text_start = .;
         *(.text*)
+        KEEP(*.text.fixup*)
         __text_end = .;
     } :text
 
@@ -40,11 +41,17 @@ SECTIONS {
         __data_end = .;
     } :data
  
+    .ex_table : {
+        __ex_table_start = .;
+        KEEP(*(.ex_table))
+        __ex_table_stop = .;
+    } :data
+
     .subsys_logs : {
         __subsys_logs_start = .;
         KEEP(*(.subsys_logs))
         __subsys_logs_stop = .;
-    }
+    } :data
 
     __kernel_end = .;
 
