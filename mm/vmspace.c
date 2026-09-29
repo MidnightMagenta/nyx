@@ -18,7 +18,7 @@
 #include <asi/memory.h>
 #include <asi/page.h>
 
-DEFINE_SUBSYS_LOG(vmspace_log, "vmspace", CONFIG_VIRTMEM_LOG_LEVEL);
+DEFINE_SUBSYS_LOG(vmspace_log, "vmspace", CONFIG_VMSPACE_LOG_LEVEL);
 
 kmem_cache_t *vmspace_cache;
 kmem_cache_t *vmmap_cache;
@@ -320,6 +320,8 @@ int vms_mmap(struct vmspace *vs,
 int vms_munmap(struct vmspace *vs, virt_addr_t addr, size_t len) {
     int res;
 
+    pr_debug(vmspace_log, "munmap(%#p, %#lx, %#lx)\n", vs, addr, len);
+
     if (addr & (PAGE_SIZE - 1)) { return -EINVAL; }
     if (len == 0) { return -EINVAL; }
 
@@ -359,11 +361,13 @@ int kern_munmap(struct process *pr, virt_addr_t addr, size_t len) {
 }
 
 int sys_mmap(struct thread *t, struct syscall_args *args, register_t *retval) {
+    pr_debug(vmspace_log, "mmap syscall from (pid: %d, name: %s)\n", t->t_proc->p_pid, t->t_proc->p_name);
     return kern_mmap(t->t_proc, args->arg1, args->arg2, args->arg3, args->arg4, args->arg5, args->arg6, retval);
 }
 
 int sys_munmap(struct thread *t, struct syscall_args *args, register_t *retval) {
     (void) retval;
+    pr_debug(vmspace_log, "munmap syscall from (pid: %d, name: %s)\n", t->t_proc->p_pid, t->t_proc->p_name);
     return kern_munmap(t->t_proc, args->arg1, args->arg2);
 }
 
