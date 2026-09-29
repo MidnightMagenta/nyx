@@ -52,9 +52,6 @@ DECLARE_SUBSYS_LOG(virtmem_log);
 #define __PDT_IDX(a)   ((a >> __PAGE_PDT_SHIFT) & __PAGE_INDEX_MASK)
 #define __PTT_IDX(a)   ((a >> __PAGE_PTT_SHIFT) & __PAGE_INDEX_MASK)
 
-static inline unsigned int pml4_idx(virt_addr_t va) {
-    return __PML4T_IDX(va);
-}
 static inline unsigned int pdpt_idx(virt_addr_t va) {
     return __PDPT_IDX(va);
 }
