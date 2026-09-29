@@ -86,7 +86,7 @@ static int release_op(pgd_t *pgd, virt_addr_t va, void *arg, vm_sizeclass_t *sc)
     if (res) { return res; }
 
     pg = phys_to_page(info.pi_phys_base);
-    if (refcount_dec_and_test(&pg->pg_refcnt)) { __pm_free_pages(pg, pg->pg_head_order); }
+    vm_put_page(pg);
 
     return 0;
 }
@@ -127,6 +127,10 @@ int vm_copy_cow(pgd_t *dst, pgd_t *src, virt_addr_t va, size_t len) {
 
 int vm_unmap(pgd_t *pgd, virt_addr_t va, size_t len) {
     return vm_range_walk(pgd, va, len, unmap_op, NULL);
+}
+
+void vm_release(struct vmspace *vm, virt_addr_t va, size_t len) {
+    vm_range_walk(vm->v_pgd, va, len, release_op, NULL);
 }
 
 void vmspace_unmap_entry(struct vmspace *vm, struct vm_map_entry *vme) {
