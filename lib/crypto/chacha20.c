@@ -1,4 +1,4 @@
-#include <crypto/chacha20.h>
+#include <crypto/crypto.h>
 #include <nyx/types.h>
 
 #define ROTL(x, n) (((x) << (n)) | ((x) >> (32 - (n))))
