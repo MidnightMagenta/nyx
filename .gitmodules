@@ -1,0 +1,3 @@
+[submodule "tools/mbuild"]
+	path = tools/mbuild
+	url = git@github.com:MidnightMagenta/mbuild.git
