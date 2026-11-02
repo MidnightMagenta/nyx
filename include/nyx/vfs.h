@@ -265,6 +265,8 @@ int kern_read(struct process *p, int fd, const void *ubuf, size_t count, ssize_t
 int kern_write(struct process *p, int fd, const void *ubuf, size_t count, ssize_t *nwritten);
 int kern_dup(struct process *p, int oldfd, int *newfd);
 
+int kopen(const char *path, int flags, u16 mode, struct vnode **vnout);
+
 extern const struct fileops vnops;
 
 extern struct vnode    *rootvnode;

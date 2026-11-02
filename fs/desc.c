@@ -1,5 +1,6 @@
 #include <mm/kmalloc.h>
 #include <mm/mm_types.h>
+#include <nyx/current.h>
 #include <nyx/errno.h>
 #include <nyx/proc.h>
 #include <nyx/refcount.h>
@@ -374,6 +375,21 @@ int kern_dup(struct process *p, int oldfd, int *newfd) {
     p->p_fd->fd_files[fd].fe_file  = fp;
     p->p_fd->fd_files[fd].fe_flags = 0;
     *newfd                         = fd;
+    return 0;
+}
+
+int kopen(const char *path, int flags, u16 mode, struct vnode **vnout) {
+    struct nameidata nd = {
+            .ni_dirp   = path,
+            .ni_segflg = UIO_SYSSPACE,
+            .ni_op     = NAMEI_LOOKUP,
+            .ni_flags  = NAMEI_FOLLOW,
+            .ni_proc   = current()->t_proc,
+    };
+    int res = vn_open(&nd, flags, mode);
+    if (res) { return res; }
+
+    *vnout = nd.ni_vp;
     return 0;
 }
 
