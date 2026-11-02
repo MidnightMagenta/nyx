@@ -4,6 +4,7 @@
 #include <mm/vmspace.h>
 #include <nyx/compiler.h>
 #include <nyx/current.h>
+#include <nyx/exec.h>
 #include <nyx/kernel.h>
 #include <nyx/kthread.h>
 #include <nyx/linkage.h>
@@ -154,6 +155,6 @@ void fudge_exec() {
 
 void __init init_proc(void *arg) {
     (void) arg;
-    fudge_exec();
+    do_exec("/bin/init", NULL, NULL);
     return;
 }

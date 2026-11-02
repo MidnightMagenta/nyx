@@ -1,3 +1,3 @@
 void _start() {
-    return;
+    while (1) {}
 }
