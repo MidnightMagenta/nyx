@@ -64,7 +64,7 @@ CFLAGS := -nostartfiles \
 CPPFLAGS := -D__KERNEL__
 ASFLAGS :=
 ASPPFLAGS := -D__ASSEMBLY__
-LDFLAGS := -static -Bsymbolic -nostdlib
+LDFLAGS := -static -Bsymbolic -nostdlib -no-pie
 
 # --------------------------------
 
@@ -134,7 +134,7 @@ user:
 	$(Q)$(MAKE) -C $(OBJ)/user -f $(TOPDIR)/user/Makefile
 
 initramfs: user
-	$(Q)rm -rf $(OBJ)/rootfs && mkdir -p $(OBJ)/rootfs/bin
+	$(Q)rm -rf $(OBJ)/rootfs && mkdir -p $(OBJ)/rootfs/bin $(OBJ)/rootfs/dev
 	$(Q)$(MAKE) -C $(OBJ)/user -f $(TOPDIR)/user/Makefile install DESTDIR=$(OBJ)/rootfs
 	$(Q)cd $(OBJ)/rootfs && find . | cpio -o -H newc --owner=0:0 > $(OBJ)/initramfs
 

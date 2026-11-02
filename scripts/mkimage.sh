@@ -1,7 +1,7 @@
 #! /bin/sh
 set -euo pipefail
 
-./scripts/mkinitcpio.sh
+# ./scripts/mkinitcpio.sh
 
 grub-file --is-x86-multiboot2 ./build/image
 if [[ $? -eq 1 ]]; then
