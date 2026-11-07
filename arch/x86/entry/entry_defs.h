@@ -4,12 +4,7 @@
 #ifdef __ASSEMBLY__
 // clang-format off
 
-.macro __ENTRY name
-.global \name
-\name:
-.endm
-
-#define ENTRY(name) __ENTRY name
+#include <asi/asm_linkage.h>
 
 .macro IDT_DATA_ENTRY vector segment ist type dpl handler
 .extern \handler

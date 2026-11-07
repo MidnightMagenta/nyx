@@ -1,7 +1,6 @@
 #ifndef _BOOT_UTILS_H
 #define _BOOT_UTILS_H
 
-#include "printb.h"
 #include <nyx/stddef.h>
 
 #define hcf()                                                                                                          \
@@ -26,5 +25,6 @@ int   memcmpb(const void *a, const void *b, size_t c);
 void *memsetb(void *p, int v, size_t c);
 void *memmoveb(void *dest, const void *src, size_t len);
 void *memcpyb(void *dest, const void *src, size_t len);
+int   strcmpb(const char *a, const char *b);
 
 #endif

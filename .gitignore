@@ -13,7 +13,7 @@
 
 # directories
 .cache/
-out/
+build/
 isodir/
 **/tmp/
 **/generated/
@@ -22,6 +22,11 @@ isodir/
 compile_commands.json
 .config
 .config.old
+.arch
+.arch.tmp
+.cross_compile
+.cross_compile.tmp
 vmnyx
 image
 nyxos.iso
+initramfs

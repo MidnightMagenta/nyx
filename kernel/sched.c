@@ -1,20 +1,17 @@
-#include <mm/physmem.h>
-#include <mm/slab.h>
-#include <nyx/bitmap.h>
-#include <nyx/compiler.h>
 #include <nyx/current.h>
-#include <nyx/kernel.h>
 #include <nyx/linkage.h>
 #include <nyx/list.h>
+#include <nyx/percpu.h>
 #include <nyx/proc.h>
 #include <nyx/sched.h>
+#include <nyx/sched_percpu.h>
 #include <nyx/string.h>
 #include <nyx/types.h>
-#include <uapi/posix_types.h>
 
-#include <asi/address.h>
 #include <asi/bug.h>
+#include <asi/cpu.h>
 #include <asi/irq.h>
+#include <asi/page.h>
 
 extern struct thread *context_switch(struct thread *prev, struct thread *next);
 
@@ -40,7 +37,7 @@ static struct thread *pick_next(struct sched_percpu *schedc) {
     struct thread *next = NULL;
 
     if (!list_is_empty(&schedc->runq)) {
-        next = list_first_entry(&schedc->runq, struct thread, qnode);
+        next = list_first_entry(&schedc->runq, struct thread, t_qnode);
         rmrunqueue(next);
     }
 
@@ -49,18 +46,16 @@ static struct thread *pick_next(struct sched_percpu *schedc) {
 
 void schedule_tail(struct thread *prev, struct thread *next) {
     arch_schedule_tail(prev, next);
-    get_pcpu()->rsp0 = (u64) next->kstack + PAGE_SIZE;
-    if (prev->state == TS_ZOMBIE) { exit_tail(prev); }
+    get_pcpu()->rsp0 = (u64) next->t_kstack + PAGE_SIZE;
+    if (prev->t_state == TS_ZOMBIE) { exit_tail(prev); }
 }
-
-#include <asi/msr.h>
 
 void schedule() {
     struct sched_percpu *schedc = &get_pcpu()->scheds;
     struct thread       *prev, *next;
     flags_t              flags;
 
-    if (list_is_empty(&schedc->runq) && current()->state == TS_RUNNING) { return; }
+    if (list_is_empty(&schedc->runq) && current()->t_state == TS_RUNNING) { return; }
 
     flags = arch_irq_save();
 
@@ -69,18 +64,18 @@ void schedule() {
 
     schedc->flags &= ~SCHED_NEED_RESCHED;
 
-    if (next == schedc->cpu_idle_proc && prev->state == TS_RUNNING) {
+    if (next == schedc->cpu_idle_proc && prev->t_state == TS_RUNNING) {
         arch_irq_restore(flags);
         return;
     }
 
-    if (prev->state == TS_RUNNING) {
-        prev->state = TS_RUNNABLE;
-        if (prev != schedc->cpu_idle_proc) { setrunqueue(prev->cpu, prev); }
+    if (prev->t_state == TS_RUNNING) {
+        prev->t_state = TS_RUNNABLE;
+        if (prev != schedc->cpu_idle_proc) { setrunqueue(prev->t_cpu, prev); }
     }
 
     get_pcpu()->current_task = next;
-    next->state              = TS_RUNNING;
+    next->t_state            = TS_RUNNING;
 
     prev = context_switch(prev, next);
 
@@ -100,18 +95,18 @@ void setrunqueue(struct cpu_info *cpu, struct thread *t) {
     struct sched_percpu *schedc;
     flags_t              flags;
 
-    BUG_ON(!list_is_empty(&t->qnode));
+    BUG_ON(!list_is_empty(&t->t_qnode));
 
     if (cpu == NULL) { cpu = sched_pickcpu(t); }
 
     flags = arch_irq_save();
 
-    t->cpu   = cpu;
-    t->state = TS_RUNNABLE;
+    t->t_cpu   = cpu;
+    t->t_state = TS_RUNNABLE;
 
-    schedc = &t->cpu->percpu->scheds;
+    schedc = &t->t_cpu->percpu->scheds;
     schedc->nr_run++;
-    list_add_tail(&t->qnode, &schedc->runq);
+    list_add_tail(&t->t_qnode, &schedc->runq);
 
     arch_irq_restore(flags);
 }
@@ -122,9 +117,9 @@ void rmrunqueue(struct thread *t) {
 
     flags = arch_irq_save();
 
-    schedc = &t->cpu->percpu->scheds;
+    schedc = &t->t_cpu->percpu->scheds;
     schedc->nr_run--;
-    list_del(&t->qnode);
+    list_del(&t->t_qnode);
 
     arch_irq_restore(flags);
 }

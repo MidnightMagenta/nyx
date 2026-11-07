@@ -7,23 +7,32 @@ Q := @
 endif
 
 MAKEFLAGS += --no-print-directory --no-builtin-rules
+SHELL := bash
 
 ARCH := x86
 # HACK: minor, build - CROSS_COMPILE should be empty (set as enviromental variable). Left filled for convenience right now
 CROSS_COMPILE := x86_64-elf-
 TOPDIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
+O   ?= build
+OBJ := $(abspath $(O))
+
+ifeq ($(OBJ),$(TOPDIR))
+$(error O must not be the source directory)
+endif
+
 # --------------------------------
 # toolchain
 # --------------------------------
 
 INCDIR := $(TOPDIR)/include
+GENDIR := $(OBJ)/include
 
 HOSTCC  := gcc
 HOSTCXX := g++
 HOSTAR  := ar
 
-CC  := $(CROSS_COMPILE)gcc -I$(INCDIR)
+CC  := $(CROSS_COMPILE)gcc -I$(GENDIR) -I$(INCDIR)
 CPP := $(CC) -E
 AS  := $(CROSS_COMPILE)as
 AR  := $(CROSS_COMPILE)ar
@@ -50,19 +59,21 @@ CFLAGS := -nostartfiles \
 		  -fno-builtin \
 		  -fno-pic -fno-pie \
 		  -std=gnu23 \
+		  -fmacro-prefix-map=$(TOPDIR)/= \
 		  -Wall -Wextra
 CPPFLAGS := -D__KERNEL__
 ASFLAGS :=
 ASPPFLAGS := -D__ASSEMBLY__
-LDFLAGS := -static -Bsymbolic -nostdlib
+LDFLAGS := -static -Bsymbolic -nostdlib -no-pie
 
 # --------------------------------
 
 ARCHIVES := init/initar.o kernel/kernelar.o \
-			mm/mmar.o lib/nyxliba.o
+			mm/mmar.o lib/nyxliba.o fs/fsar.o \
+			dev/drvar.o
 LIBS     :=
 
-SUBDIRS := init kernel mm lib
+SUBDIRS := init kernel mm lib fs dev
 
 PHONY := all do-all vmnyx nyxsubdirs clean distclean symlinks menuconfig config docs tools
 
@@ -99,8 +110,8 @@ ifdef CONFIG_WARNINGS_AS_ERRORS
 CFLAGS += -Werror
 endif
 
-CFLAGS += -include $(TOPDIR)/include/generated/autoconf.h
-CFLAGS += -include $(TOPDIR)/include/generated/version.h
+CFLAGS += -include $(GENDIR)/generated/autoconf.h
+CFLAGS += -include $(GENDIR)/generated/version.h
 
 include arch/$(ARCH)/Makefile
 
@@ -108,21 +119,34 @@ include arch/$(ARCH)/Makefile
 # General rules for building the kernel
 # --------------------------------
 
-PHONY += vmnyx nyxsubdirs tools
+PHONY += vmnyx nyxsubdirs tools user initramfs
 
 vmnyx: nyxsubdirs $(ARCH_LINK)
 	@echo -e "LD $@"
 	$(Q)$(LD) $(LDFLAGS) \
 		-T $(ARCH_LINK) \
-		$(ARCHIVES) \
+		$(addprefix $(OBJ)/,$(ARCHIVES)) \
 		$(LIBS) \
-		-o $@
+		-o $(OBJ)/vmnyx
 
-nyxsubdirs: include/generated/autoconf.h include/generated/version.h archtargets
-	$(Q)set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i; done
+user:
+	$(Q)mkdir -p $(OBJ)/user
+	$(Q)$(MAKE) -C $(OBJ)/user -f $(TOPDIR)/user/Makefile
+
+initramfs: user
+	$(Q)rm -rf $(OBJ)/rootfs && mkdir -p $(OBJ)/rootfs/bin $(OBJ)/rootfs/dev
+	$(Q)$(MAKE) -C $(OBJ)/user -f $(TOPDIR)/user/Makefile install DESTDIR=$(OBJ)/rootfs
+	$(Q)cd $(OBJ)/rootfs && find . | cpio -o -H newc --owner=0:0 > $(OBJ)/initramfs
+
+nyxsubdirs: $(GENDIR)/generated/autoconf.h $(GENDIR)/generated/version.h archtargets
+	$(Q)set -e; for i in $(SUBDIRS); do \
+		mkdir -p $(OBJ)/$$i; \
+		$(MAKE) -C $(OBJ)/$$i -f $(TOPDIR)/$$i/Makefile; \
+	done
 
 tools:
-	$(Q)$(MAKE) -C tools
+	$(Q)mkdir -p $(OBJ)/tools
+	$(Q)$(MAKE) -C $(OBJ)/tools -f $(TOPDIR)/tools/Makefile
 
 # --------------------------------
 # Cleanup rules
@@ -130,14 +154,19 @@ tools:
 
 PHONY += clean distclean
 
-clean: archclean
-	find . -type f ! -path './scripts/*' -name '*.[oasd]' -delete
-	find . -type d -name "generated" -prune -exec rm -rf {} +
+clean:
+	rm -rf $(OBJ)
 	rm -rf isodir
-	rm -f vmnyx image nyxos.iso
+	rm -f nyxos.iso
+
+PHONY += srcclean
+srcclean:
+	find . -type f ! -path './scripts/*' ! -path './.git/*' -name '*.[oasd]' -delete
+	find . -type d ! -path './.git/*' -name "generated" -prune -exec rm -rf {} +
+	rm -f arch/$(ARCH)/X86_64_link.lds arch/$(ARCH)/boot/boot_link.lds
+	rm -f vmnyx image
 
 distclean: clean
-	$(Q)$(MAKE) -C tools clean
 	find . -type d -name "tmp" -prune -exec rm -rf {} +
 	rm -f .config .config.old include/asi
 	rm -rf .cache out scripts/Kconfig/__pycache__
@@ -146,16 +175,17 @@ distclean: clean
 # Rules for setting up the project
 # --------------------------------
 
-include/generated/version.h: include/generated/version.h.tmp
+$(GENDIR)/generated/version.h: $(GENDIR)/generated/version.h.tmp
 	@if ! cmp -s $< $@; then cp $< $@; fi
 
-include/generated/version.h.tmp: FORCE
-	$(Q)rm -f include/generated/version.h.tmp
-	$(Q)$(SH) ./scripts/mkversion.sh include/generated/version.h.tmp
+$(GENDIR)/generated/version.h.tmp: FORCE
+	$(Q)mkdir -p $(@D)
+	$(Q)rm -f $@
+	$(Q)$(SH) ./scripts/mkversion.sh $@
 
-include/generated/autoconf.h: .config
-	$(Q)mkdir -p include/generated
-	$(Q)$(PYTHON) ./scripts/Kconfig/genconfig.py --header-path include/generated/autoconf.h
+$(GENDIR)/generated/autoconf.h: .config
+	$(Q)mkdir -p $(@D)
+	$(Q)$(PYTHON) ./scripts/Kconfig/genconfig.py --header-path $@
 
 PHONY += symlinks menuconfig config docs
 

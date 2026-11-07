@@ -24,6 +24,9 @@ typedef __ATOMIC(unsigned long long) atomic_ullong_t;
 
 typedef atomic_int_t atomic_t;
 
+#define atomic_test_and_set(aptr, memorder) __atomic_test_and_set(&(aptr)->__val, memorder)
+#define atomic_clear(aptr, memorder)        __atomic_clear(&(aptr)->__val, memorder)
+
 #define atomic_load_explicit(aptr, memorder)     __atomic_load_n(&(aptr)->__val, (memorder))
 #define atomic_load(aptr)                        atomic_load_explicit(aptr, ATOMIC_ACQUIRE)
 #define atomic_store_explicit(aptr, v, memorder) __atomic_store_n(&(aptr)->__val, (v), (memorder))
@@ -42,6 +45,9 @@ typedef atomic_int_t atomic_t;
 #define atomic_dec_e(aptr, memorder) atomic_fetch_sub(aptr, 1, memorder)
 
 #define atomic_thread_fence(memorder) __atomic_thread_fence(memorder)
+#define barrier()                                                                                                      \
+    asm volatile("" ::                                                                                                 \
+                         : "memory")
 
 #define refcnt_inc(aptr) atomic_inc_e(aptr, ATOMIC_RELAXED)
 #define refcnt_dec(aptr) atomic_dec_e(aptr, ATOMIC_ACQ_REL)

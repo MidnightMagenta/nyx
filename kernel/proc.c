@@ -1,9 +1,10 @@
+#include <mm/mm_types.h>
 #include <mm/slab.h>
-#include <mm/vmspace.h>
 #include <nyx/linkage.h>
 #include <nyx/list.h>
 #include <nyx/proc.h>
 #include <nyx/string.h>
+#include <uapi/posix_types.h>
 
 static kmem_cache_t *proc_struct_cache;
 static kmem_cache_t *thread_struct_cache;
@@ -27,16 +28,16 @@ struct thread *alloc_thread(int gfp_flags) {
 }
 
 void free_proc(struct process *pr) {
-    put_pid(pr->pid);
-    list_del(&pr->child_node);
-    list_del(&pr->gproc_node);
+    put_pid(pr->p_pid);
+    list_del(&pr->p_siblings);
+    list_del(&pr->p_gproc_node);
     kmem_cache_free(proc_struct_cache, pr);
 }
 
 void free_thread(struct thread *thrd) {
-    put_tid(thrd->tid);
-    list_del(&thrd->thrd_node);
-    list_del(&thrd->gthrd_node);
+    put_tid(thrd->t_tid);
+    list_del(&thrd->t_thrd_node);
+    list_del(&thrd->t_gthrd_node);
     kmem_cache_free(thread_struct_cache, thrd);
 }
 

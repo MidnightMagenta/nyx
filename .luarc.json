@@ -1,0 +1,7 @@
+{
+    "workspace.library": [
+        "./tools/mbuild/meta",
+        "./tools/mbuild/llib"
+    ],
+    "runtime.version": "Lua 5.5"
+}

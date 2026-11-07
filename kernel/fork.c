@@ -1,16 +1,23 @@
+#include <mm/mm_types.h>
 #include <mm/physmem.h>
 #include <mm/vmspace.h>
 #include <nyx/atomic.h>
-#include <nyx/current.h>
 #include <nyx/errno.h>
+#include <nyx/kernel.h>
 #include <nyx/list.h>
+#include <nyx/printk.h>
 #include <nyx/proc.h>
+#include <nyx/refcount.h>
 #include <nyx/sched.h>
 #include <nyx/string.h>
-#include <nyx/syscall.h>
-#include <uapi/posix_types.h>
+#include <nyx/types.h>
+#include <nyx/vfs.h>
 
 #include <asi/address.h>
+
+DEFINE_SUBSYS_LOG(fork_log, "fork", CONFIG_FORK_LOG_LEVEL);
+
+struct syscall_args;
 
 extern void arch_fork(struct thread *t1, struct thread *t2, void (*func)(void *), void *arg);
 extern void child_return(void *arg);
@@ -30,25 +37,25 @@ static inline int new_process(struct process *parent, int flags, struct process 
 
     if (!pr) { return -ENOMEM; }
 
-    list_init(&pr->thrds_list);
-    list_init(&pr->children_head);
-    list_init(&pr->child_node);
+    list_init(&pr->p_thrds_list);
+    list_init(&pr->p_children);
+    list_init(&pr->p_siblings);
 
-    atomic_store_explicit(&pr->flags, 0, ATOMIC_RELAXED);
-    pr->parent  = parent;
-    pr->state   = PS_NEW;
-    pr->pid     = get_pid();
-    pr->xstatus = 0;
-    refcount_init(&pr->live_thrd_cnt, 1);
+    atomic_store_explicit(&pr->p_flags, 0, ATOMIC_RELAXED);
+    pr->p_parent  = parent;
+    pr->p_state   = PS_NEW;
+    pr->p_pid     = get_pid();
+    pr->p_xstatus = 0;
+    refcount_init(&pr->p_live_thrd_cnt, 1);
 
-    memcpy(pr->name, parent->name, PROC_NAME_LEN);
+    memcpy(pr->p_name, parent->p_name, PROC_NAME_LEN);
 
-    if (flags & FORK_NOZOMBIE) { atomic_fetch_or(&pr->flags, PF_NOZOMBIE, ATOMIC_RELAXED); }
+    if (flags & FORK_NOZOMBIE) { atomic_fetch_or(&pr->p_flags, PF_NOZOMBIE, ATOMIC_RELAXED); }
 
-    atomic_fetch_or(&pr->flags, PF_EMBRYO, ATOMIC_RELAXED);
+    atomic_fetch_or(&pr->p_flags, PF_EMBRYO, ATOMIC_RELAXED);
 
-    list_add_tail(&pr->child_node, &parent->children_head);
-    list_add_tail(&pr->gproc_node, &proc_list);
+    list_add_tail(&pr->p_siblings, &parent->p_children);
+    list_add_tail(&pr->p_gproc_node, &proc_list);
 
     *newpr = pr;
     return 0;
@@ -60,26 +67,26 @@ static inline int new_thread(struct process *parent, struct thread **newt) {
 
     if (!t) { return -ENOMEM; }
 
-    atomic_store_explicit(&t->flags, 0, ATOMIC_RELAXED);
-    t->state = TS_NEW;
+    atomic_store_explicit(&t->t_flags, 0, ATOMIC_RELAXED);
+    t->t_state = TS_NEW;
 
-    t->tid   = get_tid();
-    t->proc  = parent;
-    t->wchan = NULL;
-    t->wmesg = NULL;
-    list_init(&t->qnode);
-    list_init(&t->thrd_node);
-    list_init(&t->gthrd_node);
+    t->t_tid   = get_tid();
+    t->t_proc  = parent;
+    t->t_wchan = NULL;
+    t->t_wmesg = NULL;
+    list_init(&t->t_qnode);
+    list_init(&t->t_thrd_node);
+    list_init(&t->t_gthrd_node);
 
     kstack_phys = pm_get_zeroed_page(M_SLEEPOK);
     if (kstack_phys == INVALID_PHYS_ADDR) {
         free_thread(t);
         return -ENOMEM;
     }
-    t->kstack = __va(kstack_phys);
+    t->t_kstack = __va(kstack_phys);
 
-    list_add_tail(&t->thrd_node, &parent->thrds_list);
-    list_add_tail(&t->gthrd_node, &thread_list);
+    list_add_tail(&t->t_thrd_node, &parent->p_thrds_list);
+    list_add_tail(&t->t_gthrd_node, &thread_list);
 
     *newt = t;
     return 0;
@@ -87,12 +94,21 @@ static inline int new_thread(struct process *parent, struct thread **newt) {
 
 static inline int fork_vmspace(struct process *parent, struct process *pr, int flags) {
     if (flags & FORK_SHAREVM) {
-        pr->mm = vmspace_share(parent);
-        if (!pr->mm) { return -ENOSPC; }
+        pr->p_mm = vmspace_share(parent);
+        if (!pr->p_mm) { return -ENOSPC; }
     } else {
-        pr->mm = vmspace_fork(parent);
-        if (!pr->mm) { return -ENOMEM; }
+        pr->p_mm = vmspace_fork(parent);
+        if (!pr->p_mm) { return -ENOMEM; }
     }
+
+    return 0;
+}
+
+static inline int fork_files(struct process *parent, struct process *pr, int flags) {
+    (void) flags;
+
+    pr->p_fd = fdcopy(parent->p_fd);
+    if (!pr->p_fd) { return -ENOMEM; }
 
     return 0;
 }
@@ -108,30 +124,34 @@ int do_fork(struct thread  *curp,
             register_t     *retval,
             struct thread **newproc) {
     int             err;
-    struct process *curpr = curp->proc;
+    struct process *curpr = curp->t_proc;
     struct process *newpr;
     struct thread  *newthrd;
 
     if ((err = new_process(curpr, flags, &newpr))) { goto fail0; }
     if ((err = fork_vmspace(curpr, newpr, flags))) { goto fail1; }
-
-    if ((err = new_thread(newpr, &newthrd))) { goto fail2; }
+    if ((err = fork_files(curpr, newpr, flags))) { goto fail2; }
+    if ((err = new_thread(newpr, &newthrd))) { goto fail3; }
 
     arch_fork(curp, newthrd, func, arg ? arg : curp);
 
     if (newproc) { *newproc = newthrd; }
-    if (retval) { *retval = newpr->pid; }
+    if (retval) { *retval = newpr->p_pid; }
 
-    newpr->state = PS_NORMAL;
+    pr_debug(fork_log, "forked process [pid: %d] from process [pid: %d]\n", newpr->p_pid, curp->t_proc->p_pid);
 
-    atomic_fetch_and(&newpr->flags, ~PF_EMBRYO, ATOMIC_RELEASE);
+    newpr->p_state = PS_NORMAL;
+
+    atomic_fetch_and(&newpr->p_flags, ~PF_EMBRYO, ATOMIC_RELEASE);
 
     fork_start_thread(newthrd);
 
     return 0;
 
+fail3:
+    fdfree(newpr);
 fail2:
-    vmspace_put(newpr->mm);
+    vmspace_put(newpr->p_mm);
 fail1:
     free_proc(newpr);
 fail0:

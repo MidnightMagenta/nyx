@@ -1,12 +1,13 @@
-P_OBJS := head.o init.o region_alloc_init.o
+SRCDIR := $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
 
-.PHONY: clean
+vpath %.c $(SRCDIR)
+vpath %.S $(SRCDIR)
+
+P_OBJS := head.o init.o region_alloc_init.o
 
 mb2ar.o: $(P_OBJS)
 	@echo -e "LD $@"
 	$(Q)$(LD) -r -o $@ $^
-
-clean:
 
 %.o: %.c
 	@echo -e "CC $<"
@@ -15,9 +16,5 @@ clean:
 %.o: %.S
 	@echo -e "AS $@"
 	$(Q)$(CC) -x assembler-with-cpp $(ASFLAGS) -D__ASSEMBLY__ -MMD -MP -c $< -o $@
-
-%.lds: %.ld
-	@echo -e "CPP $@"
-	$(Q)$(CPP) -P -x assembler-with-cpp -include $(TOPDIR)/include/generated/autoconf.h $^ -o $@
 
 -include $(P_OBJS:.o=.d)

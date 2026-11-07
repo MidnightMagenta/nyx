@@ -2,20 +2,25 @@
 #include "entry_defs.h"
 
 .extern unhandled_exception_handler
+.extern page_fault_handler
 
 .section .text
 
-ENTRY(__div_zero_entry)
-    push    $0
-    push    $0
+ENTRY(__page_fault_entry)
+    push    $14
     cmpq    $0x08, 24(%rsp)
     je      1f
     swapgs
     lfence
 1:  PUSH_REGS
+    mov     %rsp, %rdi
+    call    page_fault_handler
+    jmp     leave_common
+
 unhandled_common:
     mov     %rsp, %rdi
     call    unhandled_exception_handler
+leave_common:
     POP_REGS
     add     $16, %rsp
     cmpq    $0x8, 8(%rsp)
@@ -29,13 +34,18 @@ unhandled_common:
 .global \name
 \name:
 .ifeq \ecode
-    push $0
+    push    $0
 .endif
-    push $\vector
-    PUSH_REGS
+    push    $\vector
+    cmpq    $0x08, 24(%rsp)
+    je      1f
+    swapgs
+    lfence
+1:  PUSH_REGS
     jmp unhandled_common
 .endm
 
+UNHANDLED_EXCEPTION __div_zero_entry 0 0
 UNHANDLED_EXCEPTION __debug_entry 1 0
 UNHANDLED_EXCEPTION __nmi_entry 2 0
 UNHANDLED_EXCEPTION __breakpoint_entry 3 0
@@ -49,7 +59,6 @@ UNHANDLED_EXCEPTION __ivalid_tss_entry 10 1
 UNHANDLED_EXCEPTION __segment_not_present_entry 11 1
 UNHANDLED_EXCEPTION __stack_segment_fault_entry 12 1
 UNHANDLED_EXCEPTION __general_prot_entry 13 1
-UNHANDLED_EXCEPTION __page_fault_entry 14 1
 UNHANDLED_EXCEPTION __x87_exception_entry 16 0
 UNHANDLED_EXCEPTION __alignment_check_entry 17 1
 UNHANDLED_EXCEPTION __machine_check_entry 18 0

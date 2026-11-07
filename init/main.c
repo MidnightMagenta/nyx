@@ -1,16 +1,27 @@
+#include <fs/cpio.h>
 #include <mm/mm_types.h>
+#include <mm/virtmem.h>
 #include <mm/vmspace.h>
+#include <nyx/compiler.h>
 #include <nyx/current.h>
+#include <nyx/exec.h>
 #include <nyx/kernel.h>
 #include <nyx/kthread.h>
+#include <nyx/linkage.h>
 #include <nyx/panic.h>
-#include <nyx/sched.h>
-#include <nyx/stddef.h>
+#include <nyx/printk.h>
+#include <nyx/proc.h>
 #include <nyx/string.h>
-#include <nyx/wait.h>
+#include <nyx/types.h>
+#include <nyx/uio.h>
+#include <nyx/vfs.h>
+#include <uapi/fcntl.h>
 
+#include <asi/address.h>
+#include <asi/bootparam.h>
 #include <asi/bug.h>
 #include <asi/irq.h>
+#include <asi/traps.h>
 
 #ifdef CONFIG_KERNEL_TESTS
 extern void __do_kernel_tests();
@@ -27,30 +38,68 @@ extern void init_memory();
 extern void init_irq();
 extern void init_timer();
 extern void init_sched();
+extern void init_vfs();
+extern void init_filesystems();
+extern void do_initcalls();
 extern void reaper(void *arg);
 void        init_proc(void *arg);
 
 extern struct thread proc0;
 struct thread       *initproc;
 
-static void start_init() {
+static __init void mount_root() {
+    struct cpio_args args = {
+            .base = __va(get_initramfs()),
+            .len  = get_initramfs_len(),
+    };
+    BUG_ON(vfs_mountroot("cpio", &args));
+}
+
+static void __init mount_devfs() {
+    struct nameidata nd = {
+            .ni_dirp   = "/dev",
+            .ni_segflg = UIO_SYSSPACE,
+            .ni_op     = NAMEI_LOOKUP,
+            .ni_flags  = 0,
+            .ni_proc   = current()->t_proc,
+    };
+
+    BUG_ON(namei(&nd));
+    BUG_ON(do_mount("devfs", nd.ni_vp, NULL, NULL));
+}
+
+static __init void start_init() {
+    int stdinfd, stdoutfd, stderrfd;
     if (do_fork(&proc0, FORK_NOZOMBIE | FORK_SHAREVM, &init_proc, NULL, NULL, &initproc) != 0) {
         panic("failed to start init");
     }
-    strncpy(initproc->proc->name, "init", PROC_NAME_LEN);
+
+    BUG_ON(initproc->t_proc->p_pid != 1);
+    strncpy(initproc->t_proc->p_name, "init", PROC_NAME_LEN);
+
+    BUG_ON(vfs_open(initproc->t_proc, "/dev/console", UIO_SYSSPACE, O_RDWR, 0, &stdinfd));
+    BUG_ON(kern_dup(initproc->t_proc, stdinfd, &stdoutfd));
+    BUG_ON(kern_dup(initproc->t_proc, stdinfd, &stderrfd));
+    BUG_ON(stdinfd != 0 || stdoutfd != 1 || stderrfd != 2);
 }
 
-void start_kernel() {
-    pr_info("kernel build ID: %s\n", NYX_BUILD_ID);
+void __init start_kernel() {
+    pr_info(log_generic, "kernel build ID: %s\n", NYX_BUILD_ID);
+
     setup_arch();
     init_memory();
     init_irq();
+    init_vfs();
+    init_filesystems();
+    mount_root();
     init_timer();
     init_sched();
+    mount_devfs();
+    do_initcalls();
 
     __do_kernel_tests();
 
-    pr_dbg("finish\n");
+    pr_info(log_generic, "finish\n");
 
     start_init();
     kthread_create(reaper, NULL, "procreaper");
@@ -67,7 +116,7 @@ void start_kernel() {
 
 void fudge_exec() {
     struct thread  *t  = current();
-    struct process *pr = t->proc;
+    struct process *pr = t->t_proc;
     struct vmspace *mm = vmspace_new(pr);
     struct vmspace *oldmm;
     flags_t         flags;
@@ -78,20 +127,34 @@ void fudge_exec() {
     tf->frame.ss          = USER_DATA_SEGMENT;
     tf->frame.rflags      = 0x202;
 
-    vmspace_mapcopy(mm, 0x10000, init_fudgeasm_bin, init_fudgeasm_bin_len, VM_EXEC | VM_READ | VM_USER, M_SLEEPOK);
+    vmspace_mapcopy(mm,
+                    0x10000,
+                    init_fudgeasm_bin,
+                    init_fudgeasm_bin_len,
+                    VM_EXEC | VM_READ | VM_WRITE | VM_USER,
+                    M_SLEEPOK);
 
-    oldmm = pr->mm;
+    vms_mmap(mm,
+             0x10000,
+             init_fudgeasm_bin_len,
+             VM_EXEC | VM_READ | VM_WRITE,
+             MAP_ANON | MAP_PRIVATE | MAP_FIXED,
+             NULL,
+             0,
+             NULL);
+
+    oldmm = pr->p_mm;
 
     flags = arch_irq_save();
     vmspace_activate(mm);
-    pr->mm = mm;
+    pr->p_mm = mm;
     arch_irq_restore(flags);
 
     vmspace_put(oldmm);
 }
 
-void init_proc(void *arg) {
+void __init init_proc(void *arg) {
     (void) arg;
-    fudge_exec();
+    do_exec("/bin/init", NULL, NULL);
     return;
 }

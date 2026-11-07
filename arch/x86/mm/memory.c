@@ -1,4 +1,3 @@
-#include <mm/address.h>
 #include <mm/memblock.h>
 #include <mm/memory.h>
 #include <mm/mm_types.h>
@@ -13,12 +12,12 @@
 #include <nyx/string.h>
 #include <nyx/types.h>
 
-#include <asi/memory.h>
+#include <asi/address.h>
 #include <asi/mmap.h>
 #include <asi/page.h>
 #include <asi/setupdata.h>
 
-#define pr_fmt(fmt) "memory: " fmt
+DECLARE_SUBSYS_LOG(memory_log);
 
 extern pg_data_t contigmem_pagedata;
 
@@ -35,16 +34,17 @@ struct {
 #ifdef __DEBUG
 static void print_zones() {
     for (size_t i = 0; i < MAX_NR_ZONES; ++i) {
-        pr_dbg("zone %s:\n  "
-               "mem_map addr:  0x%lx\n  "
-               "start pfn:     %ld\n  "
-               "spanned pages: %ld\n  "
-               "present pages: %ld\n",
-               contigmem_pagedata.zones[i].name,
-               contigmem_pagedata.zones[i].zone_mem_map,
-               contigmem_pagedata.zones[i].zone_start_pfn,
-               contigmem_pagedata.zones[i].spanned_pages,
-               contigmem_pagedata.zones[i].present_pages);
+        pr_debug(memory_log,
+                 "zone %s:\n  "
+                 "mem_map addr:  0x%lx\n  "
+                 "start pfn:     %ld\n  "
+                 "spanned pages: %ld\n  "
+                 "present pages: %ld\n",
+                 contigmem_pagedata.zones[i].name,
+                 contigmem_pagedata.zones[i].zone_mem_map,
+                 contigmem_pagedata.zones[i].zone_start_pfn,
+                 contigmem_pagedata.zones[i].spanned_pages,
+                 contigmem_pagedata.zones[i].present_pages);
     }
 }
 #endif
@@ -75,8 +75,8 @@ static void __init init_zone_memmap(zone_t *zone, int zone_type) {
     for (idx = 0; idx < zone->spanned_pages; ++idx) {
         page = &zone->zone_mem_map[idx];
         SetPageReserved(page);
-        page->zone_id = zone_type;
-        page->list    = (struct list_head) LIST_HEAD_INIT(page->list);
+        page->pg_zone_id = zone_type;
+        page->pg_list    = (struct list_head) LIST_HEAD_INIT(page->pg_list);
     }
 
     idx = 0;

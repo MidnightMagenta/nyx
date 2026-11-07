@@ -1,0 +1,147 @@
+local mbl = require("mbuildlib")
+local mba = require("mbauxlib")
+local OrderedMap = require("ordered_map")
+local nyxbuild = require("scripts.build")
+
+Arch = nyxbuild.get_env_or_cached(mb.file(".arch"), "ARCH")
+local cross_compile = nyxbuild.get_env_or_cached(mb.file(".cross_compile"), "CROSS_COMPILE")
+
+G_toolchain = OrderedMap.new({
+	{ "cc", "${cross_compile}gcc" },
+	{ "cpp", "${cross_compile}gcc -E" },
+	{ "as", "${cross_compile}as" },
+	{ "ar", "${cross_compile}ar" },
+	{ "ld", "${cross_compile}ld" },
+	{ "objcopy", "${cross_compile}objcopy" },
+	{ "python", "python3" },
+	{ "sh", "bash" },
+})
+
+G_flags = OrderedMap.new({
+	{
+		"cflags",
+		{
+			"-nostartfiles",
+			"-nodefaultlibs",
+			"-nostdlib",
+			"-nostdinc",
+			"-ffreestanding",
+			"-fshort-wchar",
+			"-fno-omit-frame-pointer",
+			"-fno-stack-protector",
+			"-fno-builtin",
+			"-fno-pic",
+			"-fno-pie",
+			"-std=gnu23",
+			"-Wall",
+			mbl.incl("include"),
+			mbl.incl("build/include"),
+		},
+	},
+	{
+		"cppflags",
+		{
+			"-D__KERNEL__",
+		},
+	},
+	{
+		"asflags",
+		{},
+	},
+	{
+		"ascppflags",
+		{
+			"-D__ASSEMBLY__",
+		},
+	},
+	{
+		"ldflags",
+		{
+			"-static",
+			"-Bsymbolic",
+			"-nostdlib",
+			"-no-pie",
+		},
+	},
+})
+
+local extra_flags = require("scripts.extra_flags")
+
+G_cfg = mbl.rdcfg(".config")
+
+for k, v in pairs(extra_flags) do
+	local config, var = k:match("^(.-)%$(.*)$")
+	if G_cfg:get(config, "n") == "y" then
+		G_flags[var] = mba.merge(G_flags[var], v or {})
+	end
+end
+
+table.insert(G_flags.cflags, ("-O%s"):format(G_cfg:get("CONFIG_OPT", "2")))
+
+mb.var("arch", Arch)
+mb.var("cross_compile", cross_compile)
+mbl.write_vars(G_toolchain)
+mbl.write_vars(G_flags)
+
+G_kernel_prerequisites = mbl.files({
+	mbl.bpath("include/autoconf.h"),
+	mbl.bpath("include/version.h"),
+	mbl.bpath("include/asi/asm-offsets.h"),
+})
+
+--======================================
+-- Rules
+--======================================
+
+mb.rule("cc", {
+	command = "$cc $cflags $cppflags -MD -MF $out.d -c $in -o $out",
+	deps = "gcc",
+	depfile = "$out.d",
+	description = "CC $in",
+})
+
+mb.rule("as", {
+	command = "$as -x assembler-with-cpp $asflags $ascppflags -MD -MF $out.d -c $in -o $out",
+	deps = "gcc",
+	depfile = "$out.d",
+	description = "AS $in",
+})
+
+mb.rule("ld", {
+	command = "$ld -T $ldscript $ldflags $in -o $out ",
+	description = "LD $out",
+})
+
+mb.rule("gen_autoconf", {
+	command = ("$python %s --header-path $out"):format(mb.rel("scripts/Kconfig/genconfig.py")),
+	description = "PY autoconf.h",
+})
+
+mb.rule("gen_version", {
+	command = ("$sh %s $out.tmp && (cmp -s $out.tmp $out || cp $out.tmp $out"):format(mb.rel("scripts/mkversion.sh")),
+	description = "SH version.h",
+	restat = "1",
+})
+
+--======================================
+-- Edges
+--======================================
+
+local force = mbl.bpath("FORCE")
+
+mb.build({
+	rule = "phony",
+	out = force,
+})
+
+mb.build({
+	rule = "gen_autoconf",
+	out = mb.file("build/include/autoconf.h"),
+	implicit = mb.file(".config"),
+})
+
+mb.build({
+	rule = "gen_version",
+	out = mb.file("build/include/version.h"),
+	implicit = force,
+})
