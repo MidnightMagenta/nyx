@@ -1,5 +1,5 @@
-#include <nyx/initcall.h>
-#include <nyx/linkage.h>
+#include <sys/initcall.h>
+#include <sys/linkage.h>
 
 extern initfn_t __initcalls_start[], __initcalls_end[];
 

@@ -1,4 +1,4 @@
-#include <nyx/tick.h>
+#include <sys/tick.h>
 
 volatile tick_t jiffies;
 

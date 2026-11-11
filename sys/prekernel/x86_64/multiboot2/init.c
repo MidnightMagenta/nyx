@@ -4,11 +4,11 @@
 #include "../region_alloc.h"
 #include "multiboot2.h"
 
-#include <nyx/align.h>
-#include <nyx/limits.h>
-#include <nyx/mem_units.h>
-#include <nyx/stddef.h>
-#include <nyx/types.h>
+#include <sys/align.h>
+#include <sys/limits.h>
+#include <sys/mem_units.h>
+#include <sys/stddef.h>
+#include <sys/types.h>
 
 #include <asi/bootparam.h>
 #include <asi/memory.h>

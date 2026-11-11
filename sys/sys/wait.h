@@ -1,7 +1,7 @@
 #ifndef _NYX_WAIT_H
 #define _NYX_WAIT_H
 
-#include <nyx/proc.h>
+#include <sys/proc.h>
 
 void unsleep(struct thread *t);
 void sleep_setup(const volatile void *ident, const char *wmesg);

@@ -1,7 +1,7 @@
 #ifndef _BOOT_REGION_ALLOC_H
 #define _BOOT_REGION_ALLOC_H
 
-#include <nyx/types.h>
+#include <sys/types.h>
 
 struct memregion {
     u64 base;

@@ -1,8 +1,8 @@
 #ifndef _ASI_ISR_CONTEXT_H
 #define _ASI_ISR_CONTEXT_H
 
-#include <nyx/compiler.h>
-#include <nyx/types.h>
+#include <sys/compiler.h>
+#include <sys/types.h>
 
 #include <asi/cpu.h>
 

@@ -1,8 +1,8 @@
 #ifndef _MM_SLAB_H
 #define _MM_SLAB_H
 
-#include <nyx/stddef.h>
-#include <nyx/types.h>
+#include <sys/stddef.h>
+#include <sys/types.h>
 
 typedef struct kmem_cache_s kmem_cache_t;
 

@@ -1,7 +1,7 @@
 #ifndef _BOOT_UTILS_H
 #define _BOOT_UTILS_H
 
-#include <nyx/stddef.h>
+#include <sys/stddef.h>
 
 #define hcf()                                                                                                          \
     while (1) { __asm__ volatile("hlt"); }

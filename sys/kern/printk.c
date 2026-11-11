@@ -1,4 +1,4 @@
-#include <nyx/printk.h>
+#include <sys/printk.h>
 
 extern int early_vprintk(const char *fmt, va_list args);
 static int (*vprintk_impl)(const char *, va_list) = early_vprintk;

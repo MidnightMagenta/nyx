@@ -1,4 +1,4 @@
-#include <nyx/percpu.h>
+#include <sys/percpu.h>
 
 #include <asi/cpu.h>
 

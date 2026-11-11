@@ -1,8 +1,8 @@
 #ifndef _CRYPTO_RANDOM_H
 #define _CRYPTO_RANDOM_H
 
-#include <nyx/stddef.h>
-#include <nyx/types.h>
+#include <sys/stddef.h>
+#include <sys/types.h>
 
 void rng_get_bytes(void *buf, size_t len);
 u64  rng_get_u64();

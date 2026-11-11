@@ -2,7 +2,7 @@
 #define _NYX_LINKAGE_H
 
 #include <asi/page.h>
-#include <nyx/compiler.h>
+#include <sys/compiler.h>
 
 #define __page_aligned_bss __section(".bss") __align(PAGE_SIZE)
 

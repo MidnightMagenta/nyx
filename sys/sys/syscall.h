@@ -1,10 +1,10 @@
 #ifndef _NYX_SYSCALL_H
 #define _NYX_SYSCALL_H
 
-#include <nyx/kernel.h>
-#include <nyx/proc.h>
-#include <nyx/stddef.h>
-#include <nyx/types.h>
+#include <sys/kernel.h>
+#include <sys/proc.h>
+#include <sys/stddef.h>
+#include <sys/types.h>
 
 struct syscall_args {
     unsigned long arg1, arg2, arg3, arg4, arg5, arg6;

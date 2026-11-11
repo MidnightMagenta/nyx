@@ -1,5 +1,5 @@
-#include <nyx/proc.h>
-#include <nyx/types.h>
+#include <sys/proc.h>
+#include <sys/types.h>
 
 #include <asi/page.h>
 #include <asi/tss.h>

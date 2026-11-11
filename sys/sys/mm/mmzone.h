@@ -2,10 +2,10 @@
 #define _MM_MMZONE_H
 
 #include <asi/page.h>
-#include <mm/mm_types.h>
-#include <nyx/list.h>
-#include <nyx/stddef.h>
-#include <nyx/types.h>
+#include <sys/mm/mm_types.h>
+#include <sys/list.h>
+#include <sys/stddef.h>
+#include <sys/types.h>
 
 /* represents the count of per order free lists, not the
  * maximum allocable block order */

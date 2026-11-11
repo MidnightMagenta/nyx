@@ -1,6 +1,6 @@
 #include <asi/exception.h>
 #include <asi/asm_linkage.h>
-#include <nyx/errno.h>
+#include <sys/errno.h>
 
 // TODO: clac/stac
 ENTRY(__copy_user)

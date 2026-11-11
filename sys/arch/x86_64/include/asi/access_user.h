@@ -2,9 +2,9 @@
 #define _X86_ASI_ACCESS_USER_H
 
 #include <asi/exception.h>
-#include <nyx/errno.h>
-#include <nyx/stddef.h>
-#include <nyx/types.h>
+#include <sys/errno.h>
+#include <sys/stddef.h>
+#include <sys/types.h>
 
 extern size_t  __copy_user(void *dst, const void *src, size_t len);
 extern ssize_t __copyinstr(char *dst, const char *usrc, size_t max);

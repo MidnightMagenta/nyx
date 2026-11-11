@@ -1,6 +1,6 @@
-#include <mm/vmspace.h>
-#include <nyx/string.h>
-#include <nyx/uio.h>
+#include <sys/mm/vmspace.h>
+#include <sys/string.h>
+#include <sys/uio.h>
 
 #include <asi/bug.h>
 

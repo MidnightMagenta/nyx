@@ -1,10 +1,10 @@
 #ifndef _NYX_FSNODE_H
 #define _NYX_FSNODE_H
 
-#include <nyx/list.h>
-#include <nyx/stddef.h>
-#include <nyx/types.h>
-#include <nyx/vfs.h>
+#include <sys/list.h>
+#include <sys/stddef.h>
+#include <sys/types.h>
+#include <sys/vfs.h>
 
 struct uio;
 

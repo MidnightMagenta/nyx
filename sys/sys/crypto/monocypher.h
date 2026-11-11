@@ -54,8 +54,8 @@
 #ifndef MONOCYPHER_H
 #define MONOCYPHER_H
 
-#include <nyx/stddef.h>
-#include <nyx/types.h>
+#include <sys/stddef.h>
+#include <sys/types.h>
 
 #ifdef MONOCYPHER_CPP_NAMESPACE
 namespace MONOCYPHER_CPP_NAMESPACE {

@@ -1,7 +1,7 @@
 #ifndef _ASI_X86_MSR_H
 #define _ASI_X86_MSR_H
 
-#include <nyx/types.h>
+#include <sys/types.h>
 
 #define MSR_EFER           0xC0000080
 #define MSR_KERNEL_GS_BASE 0xC0000102

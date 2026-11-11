@@ -1,9 +1,9 @@
 #ifndef _ASI_PAGE_H
 #define _ASI_PAGE_H
 
-#include <nyx/align.h>
-#include <nyx/limits.h>
-#include <nyx/types.h>
+#include <sys/align.h>
+#include <sys/limits.h>
+#include <sys/types.h>
 
 #define PAGE_SIZE  4096
 #define PAGE_SHIFT 12

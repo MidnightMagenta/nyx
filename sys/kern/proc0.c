@@ -1,10 +1,10 @@
-#include <mm/mm_types.h>
-#include <nyx/atomic.h>
-#include <nyx/list.h>
-#include <nyx/proc.h>
-#include <nyx/refcount.h>
-#include <nyx/stddef.h>
-#include <nyx/vfs.h>
+#include <sys/mm/mm_types.h>
+#include <sys/atomic.h>
+#include <sys/list.h>
+#include <sys/proc.h>
+#include <sys/refcount.h>
+#include <sys/stddef.h>
+#include <sys/vfs.h>
 
 extern char init_stack_top[];
 

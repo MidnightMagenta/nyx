@@ -1,4 +1,4 @@
-#include <nyx/string.h>
+#include <sys/string.h>
 
 const char *strchr(const char *s, int z) {
     while (*s != '\0') {

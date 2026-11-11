@@ -1,12 +1,12 @@
 #ifndef _NYX_VFS_H
 #define _NYX_VFS_H
 
-#include <nyx/list.h>
-#include <nyx/refcount.h>
-#include <nyx/spinlock.h>
-#include <nyx/stddef.h>
-#include <nyx/uio.h>
-#include <uapi/posix_types.h>
+#include <sys/list.h>
+#include <sys/refcount.h>
+#include <sys/spinlock.h>
+#include <sys/stddef.h>
+#include <sys/uio.h>
+#include <sys/uapi/posix_types.h>
 
 #define MAXPATH     4096
 #define NAME_MAX    255

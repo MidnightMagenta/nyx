@@ -1,7 +1,7 @@
 #ifndef _ASI_PAGE_DATA_H
 #define _ASI_PAGE_DATA_H
 
-#include <nyx/types.h>
+#include <sys/types.h>
 
 #include <asi/bitops.h>
 

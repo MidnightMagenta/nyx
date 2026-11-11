@@ -10,7 +10,10 @@ local c_srcs = mbl.files({
 
 local subdir_into = sdirt.new()
 subdir_into:add(
-	mbl.compile("cc", c_srcs, { order_only = G_kernel_prerequisites }),
+	mbl.compile("cc", c_srcs, {
+		order_only = G_kernel_prerequisites,
+		vars = { cppflags = "$cppflags -D__TESTING__" },
+	}),
 	G_cfg:get("CONFIG_KERNEL_TESTS", "n")
 )
 

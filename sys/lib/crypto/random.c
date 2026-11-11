@@ -1,7 +1,7 @@
 #include <asi/tsc.h>
-#include <crypto/monocypher.h>
-#include <crypto/random.h>
-#include <nyx/types.h>
+#include <sys/crypto/monocypher.h>
+#include <sys/crypto/random.h>
+#include <sys/types.h>
 
 static struct {
     crypto_blake2b_ctx pool;

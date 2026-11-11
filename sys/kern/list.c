@@ -1,4 +1,4 @@
-#include <nyx/list.h>
+#include <sys/list.h>
 
 static struct list_head *merge(void *priv, list_cmp_t cmp, struct list_head *a, struct list_head *b) {
     struct list_head head, *tail = &head;

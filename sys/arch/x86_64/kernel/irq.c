@@ -1,7 +1,7 @@
-#include <nyx/irq.h>
-#include <nyx/linkage.h>
-#include <nyx/list.h>
-#include <nyx/sched.h>
+#include <sys/irq.h>
+#include <sys/linkage.h>
+#include <sys/list.h>
+#include <sys/sched.h>
 
 #include <asi/i8259.h>
 #include <asi/irq.h>

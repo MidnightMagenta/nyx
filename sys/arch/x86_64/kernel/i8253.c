@@ -1,4 +1,4 @@
-#include <nyx/types.h>
+#include <sys/types.h>
 
 #include <asi/i8253.h>
 #include <asi/io.h>

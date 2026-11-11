@@ -1,8 +1,8 @@
 #ifndef _ASI_BOOT_H
 #define _ASI_BOOT_H
 
-#include <nyx/compiler.h>
-#include <nyx/types.h>
+#include <sys/compiler.h>
+#include <sys/types.h>
 
 #include <asi/address.h>
 #include <asi/mmap.h>

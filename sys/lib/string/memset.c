@@ -1,5 +1,5 @@
-#include <nyx/compiler.h>
-#include <nyx/string.h>
+#include <sys/compiler.h>
+#include <sys/string.h>
 
 void *__memset_generic(void *ptr, int v, size_t num) {
     unsigned char *strPtr = (unsigned char *) ptr;

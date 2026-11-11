@@ -1,7 +1,7 @@
 #ifndef _NYX_TICK_H
 #define _NYX_TICK_H
 
-#include <nyx/types.h>
+#include <sys/types.h>
 
 #define BASE_TICK_FRQ 250
 

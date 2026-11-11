@@ -1,7 +1,7 @@
-#include <nyx/irq.h>
-#include <nyx/linkage.h>
-#include <nyx/stddef.h>
-#include <nyx/tick.h>
+#include <sys/irq.h>
+#include <sys/linkage.h>
+#include <sys/stddef.h>
+#include <sys/tick.h>
 
 #include <asi/i8253.h>
 #include <asi/i8259.h>

@@ -1,10 +1,10 @@
-#include <mm/address.h>
-#include <mm/physmem.h>
-#include <mm/virtmem.h>
-#include <nyx/compiler.h>
-#include <nyx/errno.h>
-#include <nyx/kernel.h>
-#include <nyx/minmax.h>
+#include <sys/mm/address.h>
+#include <sys/mm/physmem.h>
+#include <sys/mm/virtmem.h>
+#include <sys/compiler.h>
+#include <sys/errno.h>
+#include <sys/kernel.h>
+#include <sys/minmax.h>
 
 #include <asi/bug.h>
 #include <asi/page.h>

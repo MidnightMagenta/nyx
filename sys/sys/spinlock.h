@@ -1,8 +1,8 @@
 #ifndef _NYX_SPINLOCK_H
 #define _NYX_SPINLOCK_H
 
-#include <nyx/atomic.h>
-#include <nyx/types.h>
+#include <sys/atomic.h>
+#include <sys/types.h>
 
 typedef struct spinlock {
     atomic_bool_t __locked;

@@ -1,8 +1,8 @@
 #ifndef _ASI_X86_TSS_H
 #define _ASI_X86_TSS_H
 
-#include <nyx/compiler.h>
-#include <nyx/types.h>
+#include <sys/compiler.h>
+#include <sys/types.h>
 
 struct tss {
     u32 reserved0;

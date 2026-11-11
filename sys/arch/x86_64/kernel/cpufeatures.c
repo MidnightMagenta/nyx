@@ -1,5 +1,5 @@
-#include <nyx/linkage.h>
-#include <nyx/types.h>
+#include <sys/linkage.h>
+#include <sys/types.h>
 
 #include <asi/cpufeatures.h>
 #include <asi/cpuid.h>

@@ -1,5 +1,5 @@
-#include <mm/slab.h>
-#include <nyx/testing.h>
+#include <sys/mm/slab.h>
+#include <sys/testing.h>
 
 #include <asi/page.h>
 

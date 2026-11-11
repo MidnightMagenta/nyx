@@ -2,7 +2,7 @@
 #define _ASI_ADDRESS_H
 
 #include <asi/memory.h>
-#include <nyx/types.h>
+#include <sys/types.h>
 
 #define virt_to_phys(v) (v - ARCH_DIRECT_MAP_BASE)
 #define phys_to_virt(p) (p + ARCH_DIRECT_MAP_BASE)

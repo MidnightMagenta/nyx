@@ -1,8 +1,8 @@
 #ifndef _NYX_LIST_H
 #define _NYX_LIST_H
 
-#include <nyx/kernel.h>
-#include <nyx/stddef.h>
+#include <sys/kernel.h>
+#include <sys/stddef.h>
 
 #define LIST_HEAD_INIT(name) {&(name), &(name)}
 

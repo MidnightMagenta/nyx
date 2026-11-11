@@ -1,10 +1,10 @@
-#include <mm/mm_types.h>
-#include <mm/slab.h>
-#include <nyx/linkage.h>
-#include <nyx/list.h>
-#include <nyx/proc.h>
-#include <nyx/string.h>
-#include <uapi/posix_types.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/slab.h>
+#include <sys/linkage.h>
+#include <sys/list.h>
+#include <sys/proc.h>
+#include <sys/string.h>
+#include <sys/uapi/posix_types.h>
 
 static kmem_cache_t *proc_struct_cache;
 static kmem_cache_t *thread_struct_cache;

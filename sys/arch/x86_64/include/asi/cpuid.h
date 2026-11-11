@@ -1,7 +1,7 @@
 #ifndef _ASI_CPUID_H
 #define _ASI_CPUID_H
 
-#include <nyx/types.h>
+#include <sys/types.h>
 
 #define CPUID_LEAF_MANUFACTURER_ID 0x00000000
 #define CPUID_LEAF_FEATURES        0x00000001

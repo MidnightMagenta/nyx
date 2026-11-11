@@ -17,8 +17,6 @@ local toolchain = OrderedMap.new({
 
 local autoconf_h_path = mbl.bpath("include/autoconf.h")
 local version_h_path = mbl.bpath("include/version.h")
--- HACK: headers live in sys/sys but are still included as <nyx/...>
-local nyx_link_path = mbl.bpath("include/nyx")
 
 local flags = OrderedMap.new({
 	{
@@ -39,7 +37,7 @@ local flags = OrderedMap.new({
 			"-Wall",
 			("-include %s"):format(mb.rel(autoconf_h_path)),
 			("-include %s"):format(mb.rel(version_h_path)),
-			mbl.incl(mb.file("sys")),
+			mbl.incl(mb.file(".")),
 			mbl.incl(mbl.bpath("include")),
 		},
 	},
@@ -57,7 +55,7 @@ local flags = OrderedMap.new({
 		"ascppflags",
 		{
 			"-D__ASSEMBLY__",
-			mbl.incl(mb.file("sys")),
+			mbl.incl(mb.file(".")),
 			mbl.incl(mbl.bpath("include")),
 		},
 	},
@@ -86,7 +84,6 @@ table.insert(flags.cflags, ("-O%s"):format(nyxbuild.cfg_string(G_cfg, "CONFIG_OP
 G_kernel_prerequisites = mbl.files({
 	version_h_path,
 	autoconf_h_path,
-	nyx_link_path,
 })
 
 local archinfo = mb.subdir(("arch/%s/info.lua"):format(Arch)) or {}
@@ -140,11 +137,6 @@ mb.rule("gen_ld_script", {
 	restat = "1",
 })
 
-mb.rule("symlink", {
-	command = "ln -sfn $target $out",
-	description = "LN $out",
-})
-
 mb.rule("gen_autoconf", {
 	command = ("ARCH=$arch srctree=%s KCONFIG_CONFIG=%s $python %s --header-path $out Kconfig"):format(
 		mb.rel(".."),
@@ -181,12 +173,6 @@ mb.build({
 })
 
 mb.build({
-	rule = "symlink",
-	out = nyx_link_path,
-	vars = { target = mb.abs(mb.file("sys")) },
-})
-
-mb.build({
 	rule = "gen_version",
 	out = mbl.bpath("include/version.h"),
 	implicit = force,
@@ -200,11 +186,8 @@ local subdirs = {
 	"kern",
 	"lib",
 	"mm",
+	"tests",
 }
-
-if G_cfg:get("CONFIG_KERNEL_TESTS") == "y" then
-	table.insert(subdirs, "tests")
-end
 
 local collected = sdirt.collect(subdirs)
 

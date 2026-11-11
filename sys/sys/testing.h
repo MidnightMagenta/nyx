@@ -3,7 +3,7 @@
 #ifndef _NYX_TESTING_H
 #define _NYX_TESTING_H
 
-#include <nyx/printk.h>
+#include <sys/printk.h>
 
 struct test_state {
     const char *test_name;

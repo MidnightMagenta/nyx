@@ -1,4 +1,4 @@
-#include <nyx/string.h>
+#include <sys/string.h>
 
 size_t strnlen(const char *s, size_t count) {
     const char *sc;

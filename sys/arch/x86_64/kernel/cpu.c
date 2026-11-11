@@ -1,5 +1,5 @@
-#include <nyx/percpu.h>
-#include <nyx/types.h>
+#include <sys/percpu.h>
+#include <sys/types.h>
 
 #include <asi/msr.h>
 

@@ -5,10 +5,10 @@
 #include <asi/memory.h>
 #include <asi/page.h>
 
-#include <mm/memory.h>
-#include <mm/mm_types.h>
-#include <mm/mmzone.h>
-#include <nyx/types.h>
+#include <sys/mm/memory.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/mmzone.h>
+#include <sys/types.h>
 
 static inline pfn_t page_to_pfn(struct page *page) {
     zone_t *zone = &pgdata->zones[page->pg_zone_id];

@@ -1,7 +1,7 @@
 #ifndef _NYX_IRQ_H
 #define _NYX_IRQ_H
 
-#include <nyx/list.h>
+#include <sys/list.h>
 
 struct irq_chip {
     void (*enable)();

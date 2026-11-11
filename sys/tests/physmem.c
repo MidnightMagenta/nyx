@@ -1,5 +1,5 @@
-#include <mm/physmem.h>
-#include <nyx/testing.h>
+#include <sys/mm/physmem.h>
+#include <sys/testing.h>
 
 KERNEL_TEST(physmem_round_trip) {
     struct page *first_page, *second_page;

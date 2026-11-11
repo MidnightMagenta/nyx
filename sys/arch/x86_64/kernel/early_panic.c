@@ -1,9 +1,9 @@
 #include <asi/system.h>
-#include <nyx/linkage.h>
-#include <nyx/panic.h>
-#include <nyx/printk.h>
-#include <nyx/stdarg.h>
-#include <nyx/stddef.h>
+#include <sys/linkage.h>
+#include <sys/panic.h>
+#include <sys/printk.h>
+#include <sys/stdarg.h>
+#include <sys/stddef.h>
 
 extern size_t early_vprintk(const char *fmt, va_list params);
 

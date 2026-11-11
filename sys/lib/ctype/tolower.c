@@ -1,4 +1,4 @@
-#include <nyx/ctype.h>
+#include <sys/ctype.h>
 
 int tolower(int ch) {
     if (isupper(ch)) { return ch | 32; }

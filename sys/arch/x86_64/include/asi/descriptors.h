@@ -3,8 +3,8 @@
 
 #ifndef __ASSEMBLY__
 
-#include <nyx/compiler.h>
-#include <nyx/types.h>
+#include <sys/compiler.h>
+#include <sys/types.h>
 
 struct desc_ptr {
     u16 size;

@@ -1,8 +1,8 @@
 #ifndef _ASI_X86_WCHAN_H
 #define _ASI_X86_WCHAN_H
 
-#include <nyx/list.h>
-#include <nyx/stddef.h>
+#include <sys/list.h>
+#include <sys/stddef.h>
 
 #define NR_SLEEP_BUCKETS 128
 

@@ -1,4 +1,4 @@
-#include <nyx/types.h>
+#include <sys/types.h>
 
 #include <asi/desc.h>
 #include <asi/descriptors.h>

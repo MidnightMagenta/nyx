@@ -1,11 +1,11 @@
-#include <mm/address.h>
-#include <mm/kmalloc.h>
-#include <mm/mm_types.h>
-#include <mm/physmem.h>
-#include <mm/slab.h>
-#include <nyx/linkage.h>
-#include <nyx/minmax.h>
-#include <nyx/string.h>
+#include <sys/mm/address.h>
+#include <sys/mm/kmalloc.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/physmem.h>
+#include <sys/mm/slab.h>
+#include <sys/linkage.h>
+#include <sys/minmax.h>
+#include <sys/string.h>
 
 #include <asi/bitops.h>
 #include <asi/page.h>

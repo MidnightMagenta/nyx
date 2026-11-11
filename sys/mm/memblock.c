@@ -1,15 +1,15 @@
-#include <mm/address.h>
-#include <mm/memblock.h>
-#include <mm/mm_types.h>
-#include <mm/mmzone.h>
-#include <mm/physmem.h>
-#include <nyx/align.h>
-#include <nyx/errno.h>
-#include <nyx/kernel.h>
-#include <nyx/linkage.h>
-#include <nyx/stddef.h>
-#include <nyx/string.h>
-#include <nyx/types.h>
+#include <sys/mm/address.h>
+#include <sys/mm/memblock.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/mmzone.h>
+#include <sys/mm/physmem.h>
+#include <sys/align.h>
+#include <sys/errno.h>
+#include <sys/kernel.h>
+#include <sys/linkage.h>
+#include <sys/stddef.h>
+#include <sys/string.h>
+#include <sys/types.h>
 
 #include <asi/bug.h>
 #include <asi/page.h>

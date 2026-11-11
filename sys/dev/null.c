@@ -1,6 +1,6 @@
-#include <nyx/initcall.h>
-#include <nyx/vfs.h>
-#include <uapi/posix_types.h>
+#include <sys/initcall.h>
+#include <sys/vfs.h>
+#include <sys/uapi/posix_types.h>
 
 struct uio;
 

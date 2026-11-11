@@ -1,7 +1,7 @@
-#include <nyx/current.h>
-#include <nyx/errno.h>
-#include <nyx/syscall.h>
-#include <nyx/types.h>
+#include <sys/current.h>
+#include <sys/errno.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
 
 #include <asi/cpu.h>
 #include <asi/gdt.h>

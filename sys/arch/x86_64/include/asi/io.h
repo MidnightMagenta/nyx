@@ -1,7 +1,7 @@
 #ifndef _ASI_IO_H
 #define _ASI_IO_H
 
-#include <nyx/types.h>
+#include <sys/types.h>
 
 #define outb(port, value)                                                                                              \
     __asm__ volatile("outb %b0, %w1" ::"a"(value), "Nd"(port)                                                          \

@@ -1,9 +1,9 @@
 #ifndef _NYX_SHED_PERCPU_H
 #define _NYX_SHED_PERCPU_H
 
-#include <nyx/list.h>
-#include <nyx/proc.h>
-#include <nyx/types.h>
+#include <sys/list.h>
+#include <sys/proc.h>
+#include <sys/types.h>
 
 #define SCHED_NEED_RESCHED (1 << 0)
 

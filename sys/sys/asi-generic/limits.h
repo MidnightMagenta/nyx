@@ -1,7 +1,7 @@
 #ifndef _ASI_GENERIC_LIMITS_H
 #define _ASI_GENERIC_LIMITS_H
 
-#include <nyx/types.h>
+#include <sys/types.h>
 
 #define __TYPE_MAX(t)        ((t) ~(t) 0)
 #define __TYPE_SIGNED_MAX(t) ((t) (__TYPE_MAX(t) >> 1))

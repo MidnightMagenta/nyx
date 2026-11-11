@@ -1,6 +1,6 @@
 #ifndef _ASI_LIMITS_H
 #define _ASI_LIMITS_H
 
-#include <asi-generic/limits.h>
+#include <sys/asi-generic/limits.h>
 
 #endif

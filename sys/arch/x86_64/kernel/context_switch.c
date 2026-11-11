@@ -1,5 +1,5 @@
-#include <mm/vmspace.h>
-#include <nyx/proc.h>
+#include <sys/mm/vmspace.h>
+#include <sys/proc.h>
 
 extern struct thread *switch_to(struct thread *prev, struct thread *next);
 

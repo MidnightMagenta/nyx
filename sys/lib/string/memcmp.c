@@ -1,4 +1,4 @@
-#include <nyx/string.h>
+#include <sys/string.h>
 
 int memcmp(const void *a, const void *b, size_t len) {
     const unsigned char *ap, *bp;

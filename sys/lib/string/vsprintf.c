@@ -1,6 +1,6 @@
-#include <nyx/ctype.h>
-#include <nyx/stdarg.h>
-#include <nyx/string.h>
+#include <sys/ctype.h>
+#include <sys/stdarg.h>
+#include <sys/string.h>
 
 unsigned long simple_strtoul(const char *cp, char **endp, unsigned int base) {
     unsigned long res = 0, value;

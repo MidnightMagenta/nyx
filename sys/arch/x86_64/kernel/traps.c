@@ -1,7 +1,7 @@
-#include <nyx/compiler.h>
-#include <nyx/printk.h>
-#include <nyx/proc.h>
-#include <nyx/types.h>
+#include <sys/compiler.h>
+#include <sys/printk.h>
+#include <sys/proc.h>
+#include <sys/types.h>
 
 #include <asi/cpu.h>
 #include <asi/irq.h>

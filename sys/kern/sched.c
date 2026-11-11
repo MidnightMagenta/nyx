@@ -1,12 +1,12 @@
-#include <nyx/current.h>
-#include <nyx/linkage.h>
-#include <nyx/list.h>
-#include <nyx/percpu.h>
-#include <nyx/proc.h>
-#include <nyx/sched.h>
-#include <nyx/sched_percpu.h>
-#include <nyx/string.h>
-#include <nyx/types.h>
+#include <sys/current.h>
+#include <sys/linkage.h>
+#include <sys/list.h>
+#include <sys/percpu.h>
+#include <sys/proc.h>
+#include <sys/sched.h>
+#include <sys/sched_percpu.h>
+#include <sys/string.h>
+#include <sys/types.h>
 
 #include <asi/bug.h>
 #include <asi/cpu.h>

@@ -1,8 +1,8 @@
 #ifndef _ASI_PROC_H
 #define _ASI_PROC_H
 
-#include <nyx/compiler.h>
-#include <nyx/types.h>
+#include <sys/compiler.h>
+#include <sys/types.h>
 
 #include <asi/traps.h>
 

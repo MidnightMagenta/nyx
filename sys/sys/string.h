@@ -1,9 +1,9 @@
 #ifndef _STRING_H
 #define _STRING_H
 
-#include <nyx/compiler.h>
-#include <nyx/stdarg.h>
-#include <nyx/stddef.h>
+#include <sys/compiler.h>
+#include <sys/stdarg.h>
+#include <sys/stddef.h>
 
 // int    memcmp(const void *a, const void *b, size_t num);
 void       *memcpy(void *restrict dest, const void *restrict src, size_t len);

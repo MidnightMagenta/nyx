@@ -1,17 +1,17 @@
-#include <mm/mm_types.h>
-#include <mm/physmem.h>
-#include <mm/vmspace.h>
-#include <nyx/atomic.h>
-#include <nyx/errno.h>
-#include <nyx/kernel.h>
-#include <nyx/list.h>
-#include <nyx/printk.h>
-#include <nyx/proc.h>
-#include <nyx/refcount.h>
-#include <nyx/sched.h>
-#include <nyx/string.h>
-#include <nyx/types.h>
-#include <nyx/vfs.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/physmem.h>
+#include <sys/mm/vmspace.h>
+#include <sys/atomic.h>
+#include <sys/errno.h>
+#include <sys/kernel.h>
+#include <sys/list.h>
+#include <sys/printk.h>
+#include <sys/proc.h>
+#include <sys/refcount.h>
+#include <sys/sched.h>
+#include <sys/string.h>
+#include <sys/types.h>
+#include <sys/vfs.h>
 
 #include <asi/address.h>
 

@@ -1,5 +1,5 @@
 #include <asi/elf.h>
-#include <uapi/nyx/elf.h>
+#include <sys/uapi/nyx/elf.h>
 
 #if ELFCLASS == ELFCLASS64
 

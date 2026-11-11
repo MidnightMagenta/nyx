@@ -1,7 +1,7 @@
 #ifndef _NYX_PAGE_FAULT_H
 #define _NYX_PAGE_FAULT_H
 
-#include <nyx/types.h>
+#include <sys/types.h>
 
 enum pgflt_reason {
     PGFLT_NOT_PRESENT,

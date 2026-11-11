@@ -7,7 +7,7 @@
 
 #define container_of(ptr, type, member) ((type *) ((char *) (ptr) - offsetof(type, member)))
 
-#include <nyx/printk.h>
+#include <sys/printk.h>
 
 enum {
     LOG_NONE  = 0,

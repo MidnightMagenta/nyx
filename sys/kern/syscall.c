@@ -1,8 +1,8 @@
-#include <nyx/kernel.h>
-#include <nyx/stddef.h>
-#include <nyx/syscall.h>
-#include <nyx/types.h>
-#include <uapi/syscall.h>
+#include <sys/kernel.h>
+#include <sys/stddef.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/uapi/syscall.h>
 
 struct thread;
 

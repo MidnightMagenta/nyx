@@ -1,13 +1,13 @@
-#include <mm/memblock.h>
-#include <mm/memory.h>
-#include <mm/mm_types.h>
-#include <mm/mmzone.h>
-#include <mm/virtmem.h>
-#include <nyx/align.h>
-#include <nyx/linkage.h>
-#include <nyx/panic.h>
-#include <nyx/proc.h>
-#include <nyx/types.h>
+#include <sys/mm/memblock.h>
+#include <sys/mm/memory.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/mmzone.h>
+#include <sys/mm/virtmem.h>
+#include <sys/align.h>
+#include <sys/linkage.h>
+#include <sys/panic.h>
+#include <sys/proc.h>
+#include <sys/types.h>
 
 #include <asi/bootparam.h>
 #include <asi/link_symbols.h>

@@ -1,9 +1,9 @@
-#include <nyx/early_serial.h>
-#include <nyx/initcall.h>
-#include <nyx/stddef.h>
-#include <nyx/uio.h>
-#include <nyx/vfs.h>
-#include <uapi/posix_types.h>
+#include <sys/early_serial.h>
+#include <sys/initcall.h>
+#include <sys/stddef.h>
+#include <sys/uio.h>
+#include <sys/vfs.h>
+#include <sys/uapi/posix_types.h>
 
 #define CONSOLE_RDEV makedev(5, 1)
 

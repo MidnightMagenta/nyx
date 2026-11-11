@@ -1,7 +1,7 @@
 #ifndef _X86_ASI_TSC_H
 #define _X86_ASI_TSC_H
 
-#include <nyx/types.h>
+#include <sys/types.h>
 
 static inline u64 read_tsc() {
     u32 tsc_lo, tsc_hi;

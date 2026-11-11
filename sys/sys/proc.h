@@ -1,10 +1,10 @@
 #ifndef _NYX_PROC_H
 #define _NYX_PROC_H
 
-#include <mm/mm_types.h>
-#include <nyx/atomic.h>
-#include <nyx/vfs.h>
-#include <uapi/posix_types.h>
+#include <sys/mm/mm_types.h>
+#include <sys/atomic.h>
+#include <sys/vfs.h>
+#include <sys/uapi/posix_types.h>
 
 #include <asi/cpu.h>
 #include <asi/page.h>

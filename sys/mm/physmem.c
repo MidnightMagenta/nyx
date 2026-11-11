@@ -1,13 +1,13 @@
-#include <mm/address.h>
-#include <mm/memory.h>
-#include <mm/mm_types.h>
-#include <mm/mmzone.h>
-#include <mm/physmem.h>
-#include <nyx/kernel.h>
-#include <nyx/linkage.h>
-#include <nyx/list.h>
-#include <nyx/string.h>
-#include <nyx/types.h>
+#include <sys/mm/address.h>
+#include <sys/mm/memory.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/mmzone.h>
+#include <sys/mm/physmem.h>
+#include <sys/kernel.h>
+#include <sys/linkage.h>
+#include <sys/list.h>
+#include <sys/string.h>
+#include <sys/types.h>
 
 #include <asi/bug.h>
 

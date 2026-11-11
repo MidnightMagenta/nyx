@@ -1,6 +1,6 @@
-#include <nyx/percpu.h>
-#include <nyx/proc.h>
-#include <nyx/stddef.h>
+#include <sys/percpu.h>
+#include <sys/proc.h>
+#include <sys/stddef.h>
 
 #include <asi/proc.h>
 

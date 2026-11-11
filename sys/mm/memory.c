@@ -1,7 +1,7 @@
-#include <mm/memblock.h>
-#include <mm/mmzone.h>
-#include <nyx/kernel.h>
-#include <nyx/linkage.h>
+#include <sys/mm/memblock.h>
+#include <sys/mm/mmzone.h>
+#include <sys/kernel.h>
+#include <sys/linkage.h>
 
 DEFINE_SUBSYS_LOG(memory_log, "memory", CONFIG_MEMORY_LOG_LEVEL);
 

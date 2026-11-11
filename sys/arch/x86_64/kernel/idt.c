@@ -1,4 +1,4 @@
-#include <nyx/linkage.h>
+#include <sys/linkage.h>
 
 #include <asi/desc.h>
 #include <asi/descriptors.h>

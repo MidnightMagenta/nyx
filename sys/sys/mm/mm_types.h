@@ -1,14 +1,14 @@
 #ifndef _MM_MM_TYPES_H
 #define _MM_MM_TYPES_H
 
-#include <nyx/atomic.h>
-#include <nyx/list.h>
-#include <nyx/refcount.h>
-#include <nyx/types.h>
-#include <nyx/vfs.h>
-#include <uapi/posix_types.h>
+#include <sys/atomic.h>
+#include <sys/list.h>
+#include <sys/refcount.h>
+#include <sys/types.h>
+#include <sys/vfs.h>
+#include <sys/uapi/posix_types.h>
 
-#include <uapi/mman.h>
+#include <sys/uapi/mman.h>
 
 #include <asi/bitops.h>
 #include <asi/page_data.h>

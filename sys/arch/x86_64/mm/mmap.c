@@ -1,9 +1,9 @@
-#include <nyx/kernel.h>
-#include <nyx/linkage.h>
-#include <nyx/minmax.h>
-#include <nyx/printk.h>
-#include <nyx/string.h>
-#include <nyx/types.h>
+#include <sys/kernel.h>
+#include <sys/linkage.h>
+#include <sys/minmax.h>
+#include <sys/printk.h>
+#include <sys/string.h>
+#include <sys/types.h>
 
 #include <asi/bootparam.h>
 #include <asi/bug.h>

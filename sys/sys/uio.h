@@ -1,8 +1,8 @@
 #ifndef _NYX_UIO_H
 #define _NYX_UIO_H
 
-#include <nyx/stddef.h>
-#include <uapi/posix_types.h>
+#include <sys/stddef.h>
+#include <sys/uapi/posix_types.h>
 
 enum uio_rw { UIO_READ, UIO_WRITE };
 enum uio_seg { UIO_USERSPACE, UIO_SYSSPACE };

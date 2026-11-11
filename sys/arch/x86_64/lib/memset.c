@@ -1,5 +1,5 @@
-#include <nyx/stddef.h>
-#include <nyx/types.h>
+#include <sys/stddef.h>
+#include <sys/types.h>
 
 // TODO: minor, performance - rep stosq would likely be better later on
 void *memset(void *ptr, int v, size_t num) {

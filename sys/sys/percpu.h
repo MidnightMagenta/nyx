@@ -1,8 +1,8 @@
 #ifndef _NYX_PERCPU_H
 #define _NYX_PERCPU_H
 
-#include <nyx/sched_percpu.h>
-#include <nyx/types.h>
+#include <sys/sched_percpu.h>
+#include <sys/types.h>
 
 #include <asi/cpu.h>
 

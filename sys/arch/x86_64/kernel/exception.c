@@ -1,7 +1,7 @@
 #include <asi/exception.h>
 #include <asi/traps.h>
-#include <nyx/errno.h>
-#include <nyx/stddef.h>
+#include <sys/errno.h>
+#include <sys/stddef.h>
 
 extern struct exception_entry __ex_table_start[];
 extern struct exception_entry __ex_table_stop[];

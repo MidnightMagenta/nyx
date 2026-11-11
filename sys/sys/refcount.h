@@ -1,7 +1,7 @@
 #ifndef _NYX_REFCOUNT_H
 #define _NYX_REFCOUNT_H
 
-#include <nyx/atomic.h>
+#include <sys/atomic.h>
 
 struct refcount {
     atomic_int_t __count;

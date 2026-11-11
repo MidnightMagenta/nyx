@@ -1,9 +1,9 @@
 #ifndef _MM_PMM_H
 #define _MM_PMM_H
 
-#include <mm/mm_types.h>
-#include <nyx/limits.h>
-#include <nyx/types.h>
+#include <sys/mm/mm_types.h>
+#include <sys/limits.h>
+#include <sys/types.h>
 
 struct page;
 

@@ -1,4 +1,4 @@
-#include <nyx/string.h>
+#include <sys/string.h>
 
 void *memcpy(void *restrict dest, const void *restrict src, size_t len) {
     unsigned char       *dstPtr = (unsigned char *) dest;

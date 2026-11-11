@@ -1,18 +1,18 @@
-#include <mm/address.h>
-#include <mm/physmem.h>
-#include <mm/virtmem.h>
-#include <nyx/errno.h>
-#include <nyx/kernel.h>
-#include <nyx/minmax.h>
-#include <nyx/page_fault.h>
-#include <nyx/panic.h>
-#include <nyx/proc.h>
-#include <nyx/stddef.h>
-#include <nyx/string.h>
-#include <nyx/types.h>
-#include <nyx/vfs.h>
+#include <sys/mm/address.h>
+#include <sys/mm/physmem.h>
+#include <sys/mm/virtmem.h>
+#include <sys/errno.h>
+#include <sys/kernel.h>
+#include <sys/minmax.h>
+#include <sys/page_fault.h>
+#include <sys/panic.h>
+#include <sys/proc.h>
+#include <sys/stddef.h>
+#include <sys/string.h>
+#include <sys/types.h>
+#include <sys/vfs.h>
 
-#include <uapi/mman.h>
+#include <sys/uapi/mman.h>
 
 #include <asi/page.h>
 

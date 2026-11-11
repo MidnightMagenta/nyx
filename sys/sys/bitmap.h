@@ -1,8 +1,8 @@
 #ifndef _NYX_BITMAP_H
 #define _NYX_BITMAP_H
 
-#include <nyx/stddef.h>
-#include <nyx/types.h>
+#include <sys/stddef.h>
+#include <sys/types.h>
 
 typedef u64 bitmap_word_t;
 

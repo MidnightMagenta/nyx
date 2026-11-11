@@ -1,9 +1,9 @@
 #ifndef _MM_VIRTMEM_H
 #define _MM_VIRTMEM_H
 
-#include <mm/mm_types.h>
-#include <nyx/stddef.h>
-#include <nyx/types.h>
+#include <sys/mm/mm_types.h>
+#include <sys/stddef.h>
+#include <sys/types.h>
 
 #include <asi/address.h>
 #include <asi/page_data.h>

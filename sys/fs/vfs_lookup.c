@@ -1,11 +1,11 @@
-#include <mm/kmalloc.h>
-#include <mm/mm_types.h>
-#include <mm/vmspace.h>
-#include <nyx/errno.h>
-#include <nyx/proc.h>
-#include <nyx/string.h>
-#include <nyx/uio.h>
-#include <nyx/vfs.h>
+#include <sys/mm/kmalloc.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/vmspace.h>
+#include <sys/errno.h>
+#include <sys/proc.h>
+#include <sys/string.h>
+#include <sys/uio.h>
+#include <sys/vfs.h>
 
 static const char *next_component(struct componentname *cnp, const char *p) {
     while (*p == '/') { p++; }

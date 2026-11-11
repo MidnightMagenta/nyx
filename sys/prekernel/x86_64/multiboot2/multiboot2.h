@@ -44,7 +44,7 @@
 
 #ifndef __ASSEMBLY__
 
-#include <nyx/compiler.h>
+#include <sys/compiler.h>
 
 #define MB2_MMAP_AVAILABLE        1
 #define MB2_MMAP_RESERVED         2

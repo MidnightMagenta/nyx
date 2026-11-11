@@ -17,7 +17,7 @@
 
 #else
 
-#include <nyx/types.h>
+#include <sys/types.h>
 
 struct exception_entry {
     uintptr_t insn_addr;

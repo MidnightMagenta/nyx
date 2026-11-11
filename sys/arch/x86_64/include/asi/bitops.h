@@ -1,7 +1,7 @@
 #ifndef _ASI_BITOPS_H
 #define _ASI_BITOPS_H
 
-#include <nyx/stddef.h>
+#include <sys/stddef.h>
 
 static inline int test_bit(int nr, void *addr) {
     return ((1ull << (nr & 63)) & (((const unsigned long long *) addr)[nr >> 6])) != 0;

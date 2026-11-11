@@ -1,8 +1,8 @@
 #ifndef _ASI_SETUPDATA_H
 #define _ASI_SETUPDATA_H
 
-#include <nyx/compiler.h>
-#include <nyx/types.h>
+#include <sys/compiler.h>
+#include <sys/types.h>
 
 /* firmware memory maps usually have < 32 entries. 128 max entries
  * chosen conservatively */

@@ -1,7 +1,7 @@
-#include <nyx/printk.h>
-#include <nyx/stdarg.h>
-#include <nyx/string.h>
-#include <nyx/testing.h>
+#include <sys/printk.h>
+#include <sys/stdarg.h>
+#include <sys/string.h>
+#include <sys/testing.h>
 
 extern struct kernel_test __kernel_tests_start[];
 extern struct kernel_test __kernel_tests_end[];

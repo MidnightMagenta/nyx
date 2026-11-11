@@ -1,8 +1,8 @@
 #ifndef _ASI_ISR_H
 #define _ASI_ISR_H
 
-#include <nyx/irq.h>
-#include <nyx/types.h>
+#include <sys/irq.h>
+#include <sys/types.h>
 
 #include <asi/system.h>
 

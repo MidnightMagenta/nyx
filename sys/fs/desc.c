@@ -1,17 +1,17 @@
-#include <mm/kmalloc.h>
-#include <mm/mm_types.h>
-#include <nyx/current.h>
-#include <nyx/errno.h>
-#include <nyx/proc.h>
-#include <nyx/refcount.h>
-#include <nyx/spinlock.h>
-#include <nyx/string.h>
-#include <nyx/syscall.h>
-#include <nyx/types.h>
-#include <nyx/uio.h>
-#include <nyx/vfs.h>
-#include <uapi/fcntl.h>
-#include <uapi/posix_types.h>
+#include <sys/mm/kmalloc.h>
+#include <sys/mm/mm_types.h>
+#include <sys/current.h>
+#include <sys/errno.h>
+#include <sys/proc.h>
+#include <sys/refcount.h>
+#include <sys/spinlock.h>
+#include <sys/string.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <sys/vfs.h>
+#include <sys/uapi/fcntl.h>
+#include <sys/uapi/posix_types.h>
 
 #include <asi/bug.h>
 

@@ -1,6 +1,6 @@
-#include <nyx/kthread.h>
-#include <nyx/proc.h>
-#include <nyx/string.h>
+#include <sys/kthread.h>
+#include <sys/proc.h>
+#include <sys/string.h>
 
 #include <asi/bug.h>
 

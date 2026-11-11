@@ -1,12 +1,12 @@
-#include <mm/kmalloc.h>
-#include <mm/mm_types.h>
-#include <mm/slab.h>
-#include <nyx/errno.h>
-#include <nyx/linkage.h>
-#include <nyx/list.h>
-#include <nyx/refcount.h>
-#include <nyx/string.h>
-#include <nyx/vfs.h>
+#include <sys/mm/kmalloc.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/slab.h>
+#include <sys/errno.h>
+#include <sys/linkage.h>
+#include <sys/list.h>
+#include <sys/refcount.h>
+#include <sys/string.h>
+#include <sys/vfs.h>
 
 #include <asi/bug.h>
 

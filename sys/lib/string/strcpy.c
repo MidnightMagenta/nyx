@@ -1,4 +1,4 @@
-#include <nyx/string.h>
+#include <sys/string.h>
 
 char *strcpy(char *restrict dest, const char *restrict src) {
     int i = 0;

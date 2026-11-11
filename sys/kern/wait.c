@@ -1,10 +1,10 @@
-#include <nyx/current.h>
-#include <nyx/linkage.h>
-#include <nyx/list.h>
-#include <nyx/proc.h>
-#include <nyx/sched.h>
-#include <nyx/stddef.h>
-#include <nyx/types.h>
+#include <sys/current.h>
+#include <sys/linkage.h>
+#include <sys/list.h>
+#include <sys/proc.h>
+#include <sys/sched.h>
+#include <sys/stddef.h>
+#include <sys/types.h>
 
 #include <asi/bug.h>
 #include <asi/irq.h>

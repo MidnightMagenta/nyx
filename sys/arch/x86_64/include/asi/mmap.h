@@ -2,8 +2,8 @@
 #define _ASI_MMAP_H
 
 #include <asi/setupdata.h>
-#include <nyx/compiler.h>
-#include <nyx/types.h>
+#include <sys/compiler.h>
+#include <sys/types.h>
 
 #include <asi/page.h>
 

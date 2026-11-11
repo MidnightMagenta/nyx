@@ -1,5 +1,5 @@
-#include <nyx/ctype.h>
-#include <nyx/string.h>
+#include <sys/ctype.h>
+#include <sys/string.h>
 
 unsigned int strtou(const char *cp, char **endp, unsigned int base) {
     unsigned int res = 0, value;

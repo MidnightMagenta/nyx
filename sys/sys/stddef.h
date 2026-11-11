@@ -1,7 +1,7 @@
 #ifndef _STDDEF_H
 #define _STDDEF_H
 
-#include <nyx/types.h>
+#include <sys/types.h>
 
 #undef NULL
 #define NULL ((void *) 0)

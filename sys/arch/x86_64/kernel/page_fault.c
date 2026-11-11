@@ -1,9 +1,9 @@
-#include <nyx/current.h>
-#include <nyx/kernel.h>
-#include <nyx/page_fault.h>
-#include <nyx/panic.h>
-#include <nyx/printk.h>
-#include <nyx/proc.h>
+#include <sys/current.h>
+#include <sys/kernel.h>
+#include <sys/page_fault.h>
+#include <sys/panic.h>
+#include <sys/printk.h>
+#include <sys/proc.h>
 
 #include <asi/traps.h>
 

@@ -1,11 +1,11 @@
-#include <nyx/elf.h>
-#include <nyx/errno.h>
-#include <nyx/exec.h>
-#include <nyx/kernel.h>
-#include <nyx/string.h>
-#include <nyx/types.h>
-#include <nyx/vfs.h>
-#include <uapi/fcntl.h>
+#include <sys/elf.h>
+#include <sys/errno.h>
+#include <sys/exec.h>
+#include <sys/kernel.h>
+#include <sys/string.h>
+#include <sys/types.h>
+#include <sys/vfs.h>
+#include <sys/uapi/fcntl.h>
 
 #define hcf()                                                                                                          \
     while (1) { asm volatile("hlt"); }
