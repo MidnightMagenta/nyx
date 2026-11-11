@@ -1,0 +1,16 @@
+local mbl = require("mbuildlib")
+local sdirt = require("sdirtable")
+
+local c_srcs = mbl.files({})
+local asm_srcs = mbl.files({
+	"idt_data.S",
+	"irq_entries.S",
+	"syscall_entry.S",
+	"trap_entries.S",
+})
+
+local subdir_into = sdirt.new()
+subdir_into:add(mbl.compile("cc", c_srcs, { order_only = G_kernel_prerequisites }))
+subdir_into:add(mbl.compile("as", asm_srcs, { order_only = G_kernel_prerequisites }))
+
+return subdir_into

@@ -1,0 +1,68 @@
+package.path = package.path .. ";" .. mb.abs("tools/scripts/?.lua")
+local mbl = require("mbuildlib")
+local nyxbuild = require("build")
+
+Arch = nyxbuild.get_env_or_cached(mb.file(".arch"), "ARCH")
+Cross_compile = nyxbuild.get_env_or_cached(mb.file(".cross_compile"), "CROSS_COMPILE")
+G_cfg = mbl.rdcfg(".config")
+
+local sys = mb.subproject("sys", mb.abs(mbl.bpath("sys")))
+local sbin = mb.subproject("sbin", mb.abs(mbl.bpath("sbin")))
+
+mb.var("sh", "bash")
+
+--======================================
+-- Rules
+--======================================
+
+mb.rule("mkcpio", {
+	command = ("$sh %s $out $out.root $files"):format(mb.rel("tools/scripts/mkcpio.sh")),
+	description = "CPIO $out",
+})
+
+--======================================
+-- Edges
+--======================================
+
+local rootfs = {}
+
+local prog_names = {}
+for name in pairs(sbin.bins) do
+	prog_names[#prog_names + 1] = name
+end
+table.sort(prog_names)
+
+for _, name in ipairs(prog_names) do
+	rootfs[#rootfs + 1] = { sbin.bins[name], "/sbin/" .. name }
+end
+
+local rootfs_srcs, rootfs_files = {}, {}
+for _, f in ipairs(rootfs) do
+	rootfs_srcs[#rootfs_srcs + 1] = f[1]
+	rootfs_files[#rootfs_files + 1] = ("%s:%s"):format(mb.rel(f[1][1]), f[2])
+end
+
+local initramfs = mb.build({
+	rule = "mkcpio",
+	out = mbl.bpath("initramfs.cpio"),
+	inputs = rootfs_srcs,
+	implicit = mb.file("tools/scripts/mkcpio.sh"),
+	vars = { files = table.concat(rootfs_files, " ") },
+})
+
+local phonies = {
+	vmnyx = sys.vmnyx,
+	image = sys.image,
+	sbin = rootfs_srcs,
+	initramfs = initramfs,
+}
+
+for name, deps in pairs(phonies) do
+	mb.build({
+		rule = "phony",
+		out = mbl.bpath(name),
+		inputs = deps,
+	})
+end
+
+mb.default({ mbl.bpath("image"), mbl.bpath("initramfs") })

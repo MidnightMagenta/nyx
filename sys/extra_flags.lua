@@ -27,18 +27,18 @@ local extra_flags = {
 		"-Wconversion",
 		"-Wsign-conversion",
 		"-Wdouble-promotion",
-		"-Wenum-conversion", -- GCC 10+
+		"-Wenum-conversion",
 	},
 	["CONFIG_WARN_CONVERSION_ARITH$cflags"] = {
-		"-Warith-conversion", -- GCC 10+, only does something with -Wconversion
+		"-Warith-conversion",
 	},
 	["CONFIG_WARN_BAD_FUNCTION_CAST$cflags"] = {
 		"-Wbad-function-cast",
 	},
-	["CONFIG_WARN_TRADITIONAL_CONVERSION$cflags"] = { -- very noisy
+	["CONFIG_WARN_TRADITIONAL_CONVERSION$cflags"] = {
 		"-Wtraditional-conversion",
 	},
-	["CONFIG_WARN_UNSUFFIXED_FLOAT$cflags"] = { -- noisy
+	["CONFIG_WARN_UNSUFFIXED_FLOAT$cflags"] = {
 		"-Wunsuffixed-float-constants",
 	},
 
@@ -49,16 +49,16 @@ local extra_flags = {
 		"-Wcast-qual",
 		"-Wpointer-arith",
 	},
-	["CONFIG_WARN_CAST_ALIGN_STRICT$cflags"] = { -- noisy on strict-alignment-irrelevant targets (e.g. x86)
+	["CONFIG_WARN_CAST_ALIGN_STRICT$cflags"] = {
 		"-Wcast-align=strict",
 	},
-	["CONFIG_WARN_USELESS_CAST$cflags"] = { -- C support needs GCC 14+
+	["CONFIG_WARN_USELESS_CAST$cflags"] = {
 		"-Wuseless-cast",
 	},
-	["CONFIG_WARN_WRITE_STRINGS$cflags"] = { -- changes the type of string literals to const char[]
+	["CONFIG_WARN_WRITE_STRINGS$cflags"] = {
 		"-Wwrite-strings",
 	},
-	["CONFIG_WARN_STRICT_ALIASING_MAX$cflags"] = { -- many false positives
+	["CONFIG_WARN_STRICT_ALIASING_MAX$cflags"] = {
 		"-Wstrict-aliasing=1",
 	},
 
@@ -76,7 +76,7 @@ local extra_flags = {
 		"-Winit-self",
 		"-Wjump-misses-init",
 	},
-	["CONFIG_WARN_DECL_AFTER_STATEMENT$cflags"] = { -- style: enforces C89-style declarations
+	["CONFIG_WARN_DECL_AFTER_STATEMENT$cflags"] = {
 		"-Wdeclaration-after-statement",
 	},
 
@@ -86,7 +86,7 @@ local extra_flags = {
 	["CONFIG_WARN_PREPROCESSOR$cflags"] = {
 		"-Wundef",
 	},
-	["CONFIG_WARN_UNUSED_MACROS$cflags"] = { -- noisy in headers/shared macro files
+	["CONFIG_WARN_UNUSED_MACROS$cflags"] = {
 		"-Wunused-macros",
 	},
 
@@ -102,7 +102,7 @@ local extra_flags = {
 	["CONFIG_WARN_SWITCH_DEFAULT$cflags"] = {
 		"-Wswitch-default",
 	},
-	["CONFIG_WARN_SWITCH_ENUM$cflags"] = { -- noisy: every enum value must be listed even with default
+	["CONFIG_WARN_SWITCH_ENUM$cflags"] = {
 		"-Wswitch-enum",
 	},
 	["CONFIG_WARN_FLOAT_EQUAL$cflags"] = {
@@ -115,10 +115,10 @@ local extra_flags = {
 	["CONFIG_WARN_FORMAT$cflags"] = {
 		"-Wformat=2",
 	},
-	["CONFIG_WARN_FORMAT_SIGNEDNESS$cflags"] = { -- moderately noisy
+	["CONFIG_WARN_FORMAT_SIGNEDNESS$cflags"] = {
 		"-Wformat-signedness",
 	},
-	["CONFIG_WARN_FORMAT_OVERFLOW$cflags"] = { -- needs -O1+
+	["CONFIG_WARN_FORMAT_OVERFLOW$cflags"] = {
 		"-Wformat-overflow=2",
 		"-Wformat-truncation=2",
 	},
@@ -132,7 +132,7 @@ local extra_flags = {
 		"-Wstringop-overflow=4",
 		"-Wshift-overflow=2",
 	},
-	["CONFIG_WARN_STRICT_OVERFLOW$cflags"] = { -- very noisy at level 5
+	["CONFIG_WARN_STRICT_OVERFLOW$cflags"] = {
 		"-Wstrict-overflow=5",
 	},
 
@@ -143,10 +143,10 @@ local extra_flags = {
 		"-Walloca",
 		"-Wvla",
 	},
-	["CONFIG_WARN_STACK_PROTECTOR$cflags"] = { -- only meaningful with -fstack-protector*
+	["CONFIG_WARN_STACK_PROTECTOR$cflags"] = {
 		"-Wstack-protector",
 	},
-	["CONFIG_WARN_TRAMPOLINES$cflags"] = { -- only relevant if you use nested functions
+	["CONFIG_WARN_TRAMPOLINES$cflags"] = {
 		"-Wtrampolines",
 	},
 
@@ -156,14 +156,14 @@ local extra_flags = {
 	["CONFIG_WARN_PACKED$cflags"] = {
 		"-Wpacked",
 	},
-	["CONFIG_WARN_PADDED$cflags"] = { -- fires on nearly every struct
+	["CONFIG_WARN_PADDED$cflags"] = {
 		"-Wpadded",
 	},
 
 	-- ============================================================
 	-- Optimizer-related
 	-- ============================================================
-	["CONFIG_WARN_INLINE$cflags"] = { -- rarely useful
+	["CONFIG_WARN_INLINE$cflags"] = {
 		"-Winline",
 	},
 	["CONFIG_WARN_DISABLED_OPT$cflags"] = {
@@ -176,7 +176,7 @@ local extra_flags = {
 	-- ============================================================
 	-- C++ compatibility
 	-- ============================================================
-	["CONFIG_WARN_CXX_COMPAT$cflags"] = { -- flags valid C that wouldn't compile as C++
+	["CONFIG_WARN_CXX_COMPAT$cflags"] = {
 		"-Wc++-compat",
 	},
 

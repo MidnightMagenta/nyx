@@ -1,4 +1,4 @@
-#include "../boot_utils.h"
+#include "boot_utils.h"
 #include "../region_alloc.h"
 #include "multiboot2.h"
 #include <asi/page.h>

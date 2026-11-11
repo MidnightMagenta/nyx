@@ -1,0 +1,29 @@
+local mbl = require("mbuildlib")
+local sdirt = require("sdirtable")
+
+local c_srcs = mbl.files({
+	"early_printk.c",
+	"exec.c",
+	"exit.c",
+	"fork.c",
+	"irq.c",
+	"kthread.c",
+	"list.c",
+	"page_fault.c",
+	"percpu.c",
+	"printk.c",
+	"proc.c",
+	"proc0.c",
+	"refcount.c",
+	"sched.c",
+	"subsys_log_generic.c",
+	"syscall.c",
+	"tick.c",
+	"uio.c",
+	"wait.c",
+})
+
+local subdir_into = sdirt.new()
+subdir_into:add(mbl.compile("cc", c_srcs, { order_only = G_kernel_prerequisites }))
+
+return subdir_into

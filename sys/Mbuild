@@ -1,12 +1,10 @@
 local mbl = require("mbuildlib")
 local mba = require("mbauxlib")
 local OrderedMap = require("ordered_map")
-local nyxbuild = require("scripts.build")
+local nyxbuild = require("build")
+local sdirt = require("sdirtable")
 
-Arch = nyxbuild.get_env_or_cached(mb.file(".arch"), "ARCH")
-local cross_compile = nyxbuild.get_env_or_cached(mb.file(".cross_compile"), "CROSS_COMPILE")
-
-G_toolchain = OrderedMap.new({
+local toolchain = OrderedMap.new({
 	{ "cc", "${cross_compile}gcc" },
 	{ "cpp", "${cross_compile}gcc -E" },
 	{ "as", "${cross_compile}as" },
@@ -17,7 +15,12 @@ G_toolchain = OrderedMap.new({
 	{ "sh", "bash" },
 })
 
-G_flags = OrderedMap.new({
+local autoconf_h_path = mbl.bpath("include/autoconf.h")
+local version_h_path = mbl.bpath("include/version.h")
+-- HACK: headers live in sys/sys but are still included as <nyx/...>
+local nyx_link_path = mbl.bpath("include/nyx")
+
+local flags = OrderedMap.new({
 	{
 		"cflags",
 		{
@@ -34,8 +37,10 @@ G_flags = OrderedMap.new({
 			"-fno-pie",
 			"-std=gnu23",
 			"-Wall",
-			mbl.incl("include"),
-			mbl.incl("build/include"),
+			("-include %s"):format(mb.rel(autoconf_h_path)),
+			("-include %s"):format(mb.rel(version_h_path)),
+			mbl.incl(mb.file("sys")),
+			mbl.incl(mbl.bpath("include")),
 		},
 	},
 	{
@@ -52,6 +57,8 @@ G_flags = OrderedMap.new({
 		"ascppflags",
 		{
 			"-D__ASSEMBLY__",
+			mbl.incl(mb.file("sys")),
+			mbl.incl(mbl.bpath("include")),
 		},
 	},
 	{
@@ -65,29 +72,38 @@ G_flags = OrderedMap.new({
 	},
 })
 
-local extra_flags = require("scripts.extra_flags")
-
-G_cfg = mbl.rdcfg(".config")
+local extra_flags = require("extra_flags")
 
 for k, v in pairs(extra_flags) do
 	local config, var = k:match("^(.-)%$(.*)$")
 	if G_cfg:get(config, "n") == "y" then
-		G_flags[var] = mba.merge(G_flags[var], v or {})
+		flags[var] = mba.merge(flags[var], v or {})
 	end
 end
 
-table.insert(G_flags.cflags, ("-O%s"):format(G_cfg:get("CONFIG_OPT", "2")))
-
-mb.var("arch", Arch)
-mb.var("cross_compile", cross_compile)
-mbl.write_vars(G_toolchain)
-mbl.write_vars(G_flags)
+table.insert(flags.cflags, ("-O%s"):format(nyxbuild.cfg_string(G_cfg, "CONFIG_OPT", "2")))
 
 G_kernel_prerequisites = mbl.files({
-	mbl.bpath("include/autoconf.h"),
-	mbl.bpath("include/version.h"),
-	mbl.bpath("include/asi/asm-offsets.h"),
+	version_h_path,
+	autoconf_h_path,
+	nyx_link_path,
 })
+
+local archinfo = mb.subdir(("arch/%s/info.lua"):format(Arch)) or {}
+
+for k, v in pairs(archinfo.flags or {}) do
+	local f = flags[k] or {}
+	f = mba.merge(f, v)
+	flags[k] = f
+end
+
+G_kernel_prerequisites = mba.merge(G_kernel_prerequisites, mba.flatten(archinfo.arch_order_only or {}))
+
+mb.var("arch", Arch)
+mb.var("cross_compile", Cross_compile)
+mbl.write_vars(toolchain)
+mbl.write_vars(flags)
+mb.var("ldscript", mb.rel(archinfo.link))
 
 --======================================
 -- Rules
@@ -101,7 +117,7 @@ mb.rule("cc", {
 })
 
 mb.rule("as", {
-	command = "$as -x assembler-with-cpp $asflags $ascppflags -MD -MF $out.d -c $in -o $out",
+	command = "$cc -x assembler-with-cpp $asflags $ascppflags -MD -MF $out.d -c $in -o $out",
 	deps = "gcc",
 	depfile = "$out.d",
 	description = "AS $in",
@@ -112,13 +128,37 @@ mb.rule("ld", {
 	description = "LD $out",
 })
 
+mb.rule("objcopy_blob", {
+	command = "$objcopy -I binary -O $bfdname "
+		.. "--rename-section .data=.kernel_blob,alloc,load,readonly,data,contents $in $out",
+	description = "OBJCOPY $out",
+})
+
+mb.rule("gen_ld_script", {
+	command = ("$cpp -P -x assembler-with-cpp -include %s $in -o $out"):format(mb.rel(autoconf_h_path)),
+	description = "CPP $out",
+	restat = "1",
+})
+
+mb.rule("symlink", {
+	command = "ln -sfn $target $out",
+	description = "LN $out",
+})
+
 mb.rule("gen_autoconf", {
-	command = ("$python %s --header-path $out"):format(mb.rel("scripts/Kconfig/genconfig.py")),
+	command = ("ARCH=$arch srctree=%s KCONFIG_CONFIG=%s $python %s --header-path $out Kconfig"):format(
+		mb.rel(".."),
+		mb.rel("../.config"),
+		mb.rel("../contrib/kconfiglib/genconfig.py")
+	),
 	description = "PY autoconf.h",
+	restat = "1",
 })
 
 mb.rule("gen_version", {
-	command = ("$sh %s $out.tmp && (cmp -s $out.tmp $out || cp $out.tmp $out"):format(mb.rel("scripts/mkversion.sh")),
+	command = ("$sh %s $out.tmp && (cmp -s $out.tmp $out || cp $out.tmp $out)"):format(
+		mb.rel("../tools/scripts/mkversion.sh")
+	),
 	description = "SH version.h",
 	restat = "1",
 })
@@ -136,12 +176,68 @@ mb.build({
 
 mb.build({
 	rule = "gen_autoconf",
-	out = mb.file("build/include/autoconf.h"),
-	implicit = mb.file(".config"),
+	out = mbl.bpath("include/autoconf.h"),
+	implicit = mb.file("../.config"),
+})
+
+mb.build({
+	rule = "symlink",
+	out = nyx_link_path,
+	vars = { target = mb.abs(mb.file("sys")) },
 })
 
 mb.build({
 	rule = "gen_version",
-	out = mb.file("build/include/version.h"),
+	out = mbl.bpath("include/version.h"),
 	implicit = force,
 })
+
+local subdirs = {
+	("arch/%s"):format(Arch),
+	"dev",
+	"fs",
+	"init",
+	"kern",
+	"lib",
+	"mm",
+}
+
+if G_cfg:get("CONFIG_KERNEL_TESTS") == "y" then
+	table.insert(subdirs, "tests")
+end
+
+local collected = sdirt.collect(subdirs)
+
+local kernel_vmbin = mb.build({
+	rule = "ld",
+	out = mbl.bpath("vmnyx"),
+	inputs = collected.objs.y,
+	implicit = archinfo.link,
+})
+
+print(kernel_vmbin)
+
+local prekernel = mb.subdir("prekernel")
+
+local kernel_blob = mb.build({
+	rule = "objcopy_blob",
+	out = mbl.bpath("prekernel/vmnyx.o"),
+	inputs = kernel_vmbin,
+	vars = { bfdname = prekernel.bfdname },
+})
+
+local image = mb.build({
+	rule = "ld",
+	out = mbl.bpath("image"),
+	inputs = { prekernel.objs, kernel_blob },
+	implicit = prekernel.link,
+	vars = { ldscript = mb.rel(prekernel.link) },
+})
+
+-- cleanup globals
+G_kernel_prerequisites = nil
+
+return {
+	vmnyx = kernel_vmbin,
+	image = image,
+}

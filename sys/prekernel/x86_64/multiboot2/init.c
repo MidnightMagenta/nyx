@@ -1,5 +1,5 @@
-#include "../boot_utils.h"
-#include "../elf.h"
+#include "boot_utils.h"
+#include "elf.h"
 #include "../printb.h"
 #include "../region_alloc.h"
 #include "multiboot2.h"

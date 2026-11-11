@@ -1,0 +1,105 @@
+local mbl = require("mbuildlib")
+local mba = require("mbauxlib")
+local OrderedMap = require("ordered_map")
+local nyxbuild = require("build")
+
+local toolchain = OrderedMap.new({
+	{ "cc", "${cross_compile}gcc" },
+	{ "ld", "${cross_compile}ld" },
+})
+
+local flags = OrderedMap.new({
+	{
+		"cflags",
+		{
+			"-std=gnu23",
+			"-ffreestanding",
+			"-fno-pic",
+			"-fno-pie",
+			"-fno-stack-protector",
+			"-Wall",
+			"-Wextra",
+			mbl.incl(mb.file("../sys/sys/uapi")),
+			mbl.incl(mb.file(("../sys/arch/%s/include/uapi"):format(Arch))),
+		},
+	},
+	{
+		"asflags",
+		{},
+	},
+	{
+		"ldflags",
+		{
+			"-static",
+			"-nostdlib",
+		},
+	},
+})
+
+table.insert(flags.cflags, ("-O%s"):format(nyxbuild.cfg_string(G_cfg, "CONFIG_OPT", "2")))
+
+local archinfo = mb.subdir(("arch/%s/info.lua"):format(Arch)) or {}
+
+for k, v in pairs(archinfo.flags or {}) do
+	flags[k] = mba.merge(flags[k] or {}, v)
+end
+
+mb.var("arch", Arch)
+mb.var("cross_compile", Cross_compile)
+mbl.write_vars(toolchain)
+mbl.write_vars(flags)
+mb.var("ldscript", mb.rel(archinfo.link))
+
+--======================================
+-- Rules
+--======================================
+
+mb.rule("cc", {
+	command = "$cc $cflags -MD -MF $out.d -c $in -o $out",
+	deps = "gcc",
+	depfile = "$out.d",
+	description = "UCC $in",
+})
+
+mb.rule("as", {
+	command = "$cc -x assembler-with-cpp $cflags $asflags -D__ASSEMBLY__ -MD -MF $out.d -c $in -o $out",
+	deps = "gcc",
+	depfile = "$out.d",
+	description = "UAS $in",
+})
+
+mb.rule("ld", {
+	command = "$ld -T $ldscript $ldflags $in -o $out",
+	description = "ULD $out",
+})
+
+--======================================
+-- Edges
+--======================================
+
+local progs = {
+	"init",
+}
+
+G_sbin_opts = {
+	objdir = mbl.bpath("obj"),
+}
+
+-- program name -> built binary
+local bins = {}
+for _, p in ipairs(progs) do
+	local info = mb.subdir(p)
+	bins[p] = mb.build({
+		rule = "ld",
+		out = mbl.bpath(p),
+		inputs = info.objs.y,
+		implicit = archinfo.link,
+	})
+end
+
+-- cleanup globals
+G_sbin_opts = nil
+
+return {
+	bins = bins,
+}

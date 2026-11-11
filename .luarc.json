@@ -1,7 +1,14 @@
 {
+    "runtime.path": [
+        "?.lua",
+        "?/init.lua",
+        "tools/scripts/?.lua",
+        "tools/scripts/?/init.lua"
+    ],
     "workspace.library": [
         "./tools/mbuild/meta",
-        "./tools/mbuild/llib"
+        "./tools/mbuild/llib",
+        "./scripts"
     ],
     "runtime.version": "Lua 5.5"
 }
