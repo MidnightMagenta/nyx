@@ -50,11 +50,36 @@ local initramfs = mb.build({
 	vars = { files = table.concat(rootfs_files, " ") },
 })
 
+local package_script =
+	mb.file(("tools/scripts/package/%s-%s.sh"):format(Arch, nyxbuild.cfg_string(G_cfg, "CONFIG_BOOT_PROTOCOL")))
+
+local f = io.open(package_script)
+if f then
+	f:close()
+	mb.rule("package", {
+		command = ("PACKAGE_OUT=$out $sh %s $in"):format(mb.rel(package_script)),
+		description = "PKG $out",
+	})
+else
+	mb.rule("package", {
+		command = ("echo 'error: no packaging script %s' >&2; exit 1"):format(package_script),
+		description = "PKG $out",
+	})
+end
+
+local package = mb.build({
+	rule = "package",
+	out = mbl.bpath("nyxos.iso"),
+	inputs = { sys.image, initramfs },
+	implicit = f and package_script or nil,
+})
+
 local phonies = {
 	vmnyx = sys.vmnyx,
 	image = sys.image,
 	sbin = rootfs_srcs,
 	initramfs = initramfs,
+	package = package,
 }
 
 for name, deps in pairs(phonies) do
@@ -65,4 +90,8 @@ for name, deps in pairs(phonies) do
 	})
 end
 
-mb.default({ mbl.bpath("image"), mbl.bpath("initramfs") })
+local defaults = { mbl.bpath("image"), mbl.bpath("initramfs") }
+if f then
+	defaults[#defaults + 1] = mbl.bpath("package")
+end
+mb.default(defaults)

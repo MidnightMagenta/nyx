@@ -1,11 +1,11 @@
-#include <sys/mm/address.h>
-#include <sys/mm/mm_types.h>
-#include <sys/mm/physmem.h>
-#include <sys/mm/virtmem.h>
 #include <sys/atomic.h>
 #include <sys/errno.h>
 #include <sys/kernel.h>
 #include <sys/linkage.h>
+#include <sys/mm/address.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/physmem.h>
+#include <sys/mm/virtmem.h>
 #include <sys/panic.h>
 #include <sys/refcount.h>
 #include <sys/string.h>
@@ -121,10 +121,6 @@ struct {
         {true, __PAGE_2M_SIZE, 100},
 };
 
-/*
- * struct page's refcnt_private field is used to count the number of
- * active entries in the page table, if PG_pgtable is set.
- */
 static inline void set_pgtable_refcount(pgd_t *pgd, int rc) {
     struct page *page = virt_to_page(pgd);
     BUG_ON(!PagePgtable(page));

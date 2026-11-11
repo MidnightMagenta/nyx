@@ -60,5 +60,3 @@ if ! log=$("$grub_mkrescue" -o "$out" "$isodir" 2>&1); then
     echo "error: $grub_mkrescue failed" >&2
     exit 1
 fi
-
-echo "PKG $out"
