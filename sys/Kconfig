@@ -1,28 +1,25 @@
-mainmenu "NyxOS Kernel Configuration"
+rsource "arch/$(ARCH)/Kconfig"
 
-menu "Build settings"
+rsource "prekernel/Kconfig"
+rsource "mm/Kconfig"
+rsource "kern/Kconfig"
 
-config DEBUG
-    bool "Enable debug build"
-    default n
+menu "Kernel hacking"
 
 config KERNEL_TESTS
-    bool "Enable kernel unit tests"
+    bool "Kernel unit tests"
     default n
-
-config EXTRA_WARNINGS
-    bool "Enable extra warnings"
-    default n
-
-config WARNINGS_AS_ERRORS
-    bool "Treat warnings as errors"
-    default n
+    help
+        Build the in-kernel unit tests in sys/tests and run them at boot.
 
 config PRINTK_VERBOSITY
-    int "Printk message verbosity levels"
+    int "Global printk verbosity"
     range 0 4
     default 2
     help
+        Upper bound for all kernel messages. Per-subsystem log levels
+        (under each subsystem's "Log levels" menu) are capped by this.
+
         0 = none
         1 = errors only
         2 = errors and warnings
@@ -30,7 +27,3 @@ config PRINTK_VERBOSITY
         4 = errors, warnings, info, and verbose info
 
 endmenu
-
-source "arch/$(ARCH)/Kconfig"
-source "mm/Kconfig"
-source "kernel/Kconfig"

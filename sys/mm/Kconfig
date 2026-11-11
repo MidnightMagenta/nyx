@@ -1,69 +1,41 @@
-menu "Memory configuration"
+menu "Memory management"
 
-menu "Memblock"
-
-endmenu
-
-menu "Physmem allocator"
-
-endmenu
-
-menu "Debug"
+menu "Log levels"
 
 config MEMBLOCK_LOG_LEVEL
-    int "Memblock message verbosity levels"
+    int "Memblock"
     range 0 4
     default 2
     help
-        0 = none
-        1 = errors only
-        2 = errors and warnings
-        3 = errors, warnings, and info
-        4 = errors, warnings, info, and verbose info
+        Verbosity of memblock messages, see PRINTK_VERBOSITY for the levels.
 
 config PHYSMEM_LOG_LEVEL
-    int "Physmem message verbosity levels"
+    int "Physmem allocator"
     range 0 4
     default 2
     help
-        0 = none
-        1 = errors only
-        2 = errors and warnings
-        3 = errors, warnings, and info
-        4 = errors, warnings, info, and verbose info
+        Verbosity of physical memory allocator messages, see PRINTK_VERBOSITY for the levels.
 
 config VIRTMEM_LOG_LEVEL
-    int "Virtmem message verbosity levels"
+    int "Virtmem"
     range 0 4
     default 2
     help
-        0 = none
-        1 = errors only
-        2 = errors and warnings
-        3 = errors, warnings, and info
-        4 = errors, warnings, info, and verbose info
+        Verbosity of virtual memory messages, see PRINTK_VERBOSITY for the levels.
 
 config VMSPACE_LOG_LEVEL
-    int "VmSpace message verbosity levels"
+    int "VM spaces"
     range 0 4
     default 2
     help
-        0 = none
-        1 = errors only
-        2 = errors and warnings
-        3 = errors, warnings, and info
-        4 = errors, warnings, info, and verbose info
+        Verbosity of VM space messages, see PRINTK_VERBOSITY for the levels.
 
 config MEMORY_LOG_LEVEL
-    int "Memory message verbosity levels"
+    int "Memory (general)"
     range 0 4
     default 2
     help
-        0 = none
-        1 = errors only
-        2 = errors and warnings
-        3 = errors, warnings, and info
-        4 = errors, warnings, info, and verbose info
+        Verbosity of general memory messages, see PRINTK_VERBOSITY for the levels.
 
 endmenu
 

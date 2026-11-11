@@ -1,12 +1,14 @@
-menu "Boot options"
-
 choice
     prompt "Boot protocol"
     default MULTIBOOT2
+    help
+        Protocol the prekernel shim is built for.
 
 config MULTIBOOT2
     bool "Multiboot 2"
 
 endchoice
 
-endmenu
+config BOOT_PROTOCOL
+    string
+    default "multiboot2" if MULTIBOOT2

@@ -1,69 +1,41 @@
-menu "kernel"
+menu "Core kernel"
 
-menu "debug"
+menu "Log levels"
 
 config PGFLT_LOG_LEVEL
-    int "Page fault message verbosity levels"
+    int "Page faults"
     range 0 4
     default 2
     help
-        0 = none
-        1 = errors only
-        2 = errors and warnings
-        3 = errors, warnings, and info
-        4 = errors, warnings, info, and verbose info
-
-endmenu
-
-menu "syscalls"
-
-menu "debug"
+        Verbosity of page fault messages, see PRINTK_VERBOSITY for the levels.
 
 config FORK_LOG_LEVEL
-    int "Fork message verbosity levels"
+    int "fork()"
     range 0 4
     default 2
     help
-        0 = none
-        1 = errors only
-        2 = errors and warnings
-        3 = errors, warnings, and info
-        4 = errors, warnings, info, and verbose info
+        Verbosity of fork messages, see PRINTK_VERBOSITY for the levels.
 
 config EXIT_LOG_LEVEL
-    int "Exit message verbosity levels"
+    int "exit()"
     range 0 4
     default 2
     help
-        0 = none
-        1 = errors only
-        2 = errors and warnings
-        3 = errors, warnings, and info
-        4 = errors, warnings, info, and verbose info
+        Verbosity of exit messages, see PRINTK_VERBOSITY for the levels.
 
 config WAIT_LOG_LEVEL
-    int "Wait message verbosity levels"
+    int "wait()"
     range 0 4
     default 2
     help
-        0 = none
-        1 = errors only
-        2 = errors and warnings
-        3 = errors, warnings, and info
-        4 = errors, warnings, info, and verbose info
+        Verbosity of wait messages, see PRINTK_VERBOSITY for the levels.
 
 config EXEC_LOG_LEVEL
-    int "Wait message verbosity levels"
+    int "exec()"
     range 0 4
     default 2
     help
-        0 = none
-        1 = errors only
-        2 = errors and warnings
-        3 = errors, warnings, and info
-        4 = errors, warnings, info, and verbose info
-
-endmenu
+        Verbosity of exec messages, see PRINTK_VERBOSITY for the levels.
 
 endmenu
 
