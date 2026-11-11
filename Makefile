@@ -27,7 +27,8 @@ ifeq ($(abspath $(BUILD)),$(TOPDIR))
 $(error BUILD must not be the source directory)
 endif
 
-.PHONY: all build mbuild config menuconfig package clean distclean check-arch FORCE $(NINJA_TARGETS)
+.PHONY: all build mbuild config menuconfig package clean distclean check-arch FORCE $(NINJA_TARGETS) \
+	ninjaclean compdb
 
 all: build
 
@@ -48,12 +49,17 @@ menuconfig: check-arch
 	@echo "error: no .config found, run 'make config' or 'make menuconfig' first" >&2
 	@exit 1
 
+compile_commands.json: $(BUILD)/build.ninja
+	$(NINJA) -C $(BUILD) -t compdb > $@
+
+compdb: compile_commands.json
+
 # --------------------------------
 # build
 # --------------------------------
 
 $(MBUILD): FORCE
-	$(MAKE) -C $(MBUILD_DIR) all
+	$(MAKE) -s -C $(MBUILD_DIR) all
 
 mbuild: $(MBUILD)
 
@@ -80,10 +86,13 @@ package: $(BUILD)/build.ninja | check-arch
 # cleanup
 # --------------------------------
 
+ninjaclean: $(BUILD)/build.ninja
+	$(NINJA) -C $(BUILD) -t clean
+
 clean:
 	rm -rf $(BUILD)
 
 distclean: clean
-	rm -f .config .config.old .arch .cross_compile
+	rm -f .config .config.old .arch .cross_compile compile_commands.json
 
 FORCE:
