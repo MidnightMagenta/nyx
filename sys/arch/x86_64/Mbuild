@@ -1,0 +1,13 @@
+local sdirt = require("sdirtable")
+
+local subdirs = {
+	"entry",
+	"kernel",
+	"lib",
+	"mm",
+}
+
+local subdir_info = sdirt.new()
+subdir_info = sdirt.merge(subdir_info, sdirt.collect(subdirs))
+
+return subdir_info

@@ -1,209 +1,83 @@
-.EXPORT_ALL_VARIABLES:
-
-ifeq ($(V),y)
-Q := 
-else
-Q := @
-endif
-
 MAKEFLAGS += --no-print-directory --no-builtin-rules
-SHELL := bash
 
-ARCH := x86
-# HACK: minor, build - CROSS_COMPILE should be empty (set as enviromental variable). Left filled for convenience right now
-CROSS_COMPILE := x86_64-elf-
 TOPDIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
-O   ?= build
-OBJ := $(abspath $(O))
+BUILD     ?= build
+PYTHON    ?= python3
+NINJA     ?= ninja
+NINJAARGS ?=
 
-ifeq ($(OBJ),$(TOPDIR))
-$(error O must not be the source directory)
+MBUILD_DIR := tools/mbuild
+MBUILD     := $(MBUILD_DIR)/mbuild
+KCONFIGLIB := contrib/kconfiglib
+
+ARCH          ?= $(shell cat .arch 2>/dev/null)
+CROSS_COMPILE ?= $(shell cat .cross_compile 2>/dev/null)
+export ARCH CROSS_COMPILE
+
+NINJA_TARGETS := vmnyx image initramfs sbin package
+
+ifeq ($(abspath $(BUILD)),$(TOPDIR))
+$(error BUILD must not be the source directory)
 endif
 
-# --------------------------------
-# toolchain
-# --------------------------------
+.PHONY: all build mbuild config menuconfig package clean distclean check-arch FORCE $(NINJA_TARGETS) \
+	ninjaclean compdb
 
-INCDIR := $(TOPDIR)/include
-GENDIR := $(OBJ)/include
+all: build
 
-HOSTCC  := gcc
-HOSTCXX := g++
-HOSTAR  := ar
-
-CC  := $(CROSS_COMPILE)gcc -I$(GENDIR) -I$(INCDIR)
-CPP := $(CC) -E
-AS  := $(CROSS_COMPILE)as
-AR  := $(CROSS_COMPILE)ar
-LD  := $(CROSS_COMPILE)ld
-OBJCOPY := $(CROSS_COMPILE)objcopy
-PYTHON := python3
-SH := bash
+check-arch:
+	@test -n "$(ARCH)" || { echo "error: ARCH is not set and no .arch cache found" >&2; exit 1; }
 
 # --------------------------------
-# flags
+# configuration
 # --------------------------------
 
-HOSTCFLAGS= -O2 -g
-HOSTCXXFLAGS= -O2 -g
+config: check-arch
+	$(PYTHON) $(KCONFIGLIB)/oldconfig.py Kconfig
 
-CFLAGS := -nostartfiles \
-		  -nodefaultlibs \
-		  -nostdlib \
-		  -nostdinc \
-		  -ffreestanding \
-		  -fshort-wchar \
-		  -fno-omit-frame-pointer \
-		  -fno-stack-protector \
-		  -fno-builtin \
-		  -fno-pic -fno-pie \
-		  -std=gnu23 \
-		  -fmacro-prefix-map=$(TOPDIR)/= \
-		  -Wall -Wextra
-CPPFLAGS := -D__KERNEL__
-ASFLAGS :=
-ASPPFLAGS := -D__ASSEMBLY__
-LDFLAGS := -static -Bsymbolic -nostdlib -no-pie
+menuconfig: check-arch
+	$(PYTHON) $(KCONFIGLIB)/menuconfig.py Kconfig
+
+.config:
+	@echo "error: no .config found, run 'make config' or 'make menuconfig' first" >&2
+	@exit 1
+
+compile_commands.json: $(BUILD)/build.ninja
+	$(NINJA) -C $(BUILD) -t compdb > $@
+
+compdb: compile_commands.json
 
 # --------------------------------
-
-ARCHIVES := init/initar.o kernel/kernelar.o \
-			mm/mmar.o lib/nyxliba.o fs/fsar.o \
-			dev/drvar.o
-LIBS     :=
-
-SUBDIRS := init kernel mm lib fs dev
-
-PHONY := all do-all vmnyx nyxsubdirs clean distclean symlinks menuconfig config docs tools
-
-all: do-all
-
-ifeq (.config,$(wildcard .config))
-include .config
-do-all: vmnyx
-else
-do-all: config
-endif
-
-# --------------------------------
-# Configuration
+# build
 # --------------------------------
 
-ifdef CONFIG_DEBUG
-CFLAGS += -O0 -g -D__DEBUG
-else
-CFLAGS += -O2
-endif
+$(MBUILD): FORCE
+	$(MAKE) -s -C $(MBUILD_DIR) all
 
-ifdef CONFIG_KERNEL_TESTS
-SUBDIRS += tests
-ARCHIVES += tests/kerneltestsar.o
-endif
+mbuild: $(MBUILD)
 
-ifdef CONFIG_EXTRA_WARNINGS
-CFLAGS += -Wconversion -Wsign-conversion -Wundef -Wcast-align \
-          -Wshift-overflow -Wdouble-promotion -Wpedantic
-endif
+$(BUILD)/build.ninja: $(MBUILD) .config | check-arch
+	@mkdir -p $(BUILD)
+	$(MBUILD) -C $(BUILD) $(TOPDIR)/Mbuild
 
-ifdef CONFIG_WARNINGS_AS_ERRORS
-CFLAGS += -Werror
-endif
+build: $(BUILD)/build.ninja
+	$(NINJA) -C $(BUILD) $(NINJAARGS)
 
-CFLAGS += -include $(GENDIR)/generated/autoconf.h
-CFLAGS += -include $(GENDIR)/generated/version.h
-
-include arch/$(ARCH)/Makefile
+$(NINJA_TARGETS): $(BUILD)/build.ninja
+	$(NINJA) -C $(BUILD) $(NINJAARGS) $@
 
 # --------------------------------
-# General rules for building the kernel
+# cleanup
 # --------------------------------
 
-PHONY += vmnyx nyxsubdirs tools user initramfs
-
-vmnyx: nyxsubdirs $(ARCH_LINK)
-	@echo -e "LD $@"
-	$(Q)$(LD) $(LDFLAGS) \
-		-T $(ARCH_LINK) \
-		$(addprefix $(OBJ)/,$(ARCHIVES)) \
-		$(LIBS) \
-		-o $(OBJ)/vmnyx
-
-user:
-	$(Q)mkdir -p $(OBJ)/user
-	$(Q)$(MAKE) -C $(OBJ)/user -f $(TOPDIR)/user/Makefile
-
-initramfs: user
-	$(Q)rm -rf $(OBJ)/rootfs && mkdir -p $(OBJ)/rootfs/bin $(OBJ)/rootfs/dev
-	$(Q)$(MAKE) -C $(OBJ)/user -f $(TOPDIR)/user/Makefile install DESTDIR=$(OBJ)/rootfs
-	$(Q)cd $(OBJ)/rootfs && find . | cpio -o -H newc --owner=0:0 > $(OBJ)/initramfs
-
-nyxsubdirs: $(GENDIR)/generated/autoconf.h $(GENDIR)/generated/version.h archtargets
-	$(Q)set -e; for i in $(SUBDIRS); do \
-		mkdir -p $(OBJ)/$$i; \
-		$(MAKE) -C $(OBJ)/$$i -f $(TOPDIR)/$$i/Makefile; \
-	done
-
-tools:
-	$(Q)mkdir -p $(OBJ)/tools
-	$(Q)$(MAKE) -C $(OBJ)/tools -f $(TOPDIR)/tools/Makefile
-
-# --------------------------------
-# Cleanup rules
-# --------------------------------
-
-PHONY += clean distclean
+ninjaclean: $(BUILD)/build.ninja
+	$(NINJA) -C $(BUILD) -t clean
 
 clean:
-	rm -rf $(OBJ)
-	rm -rf isodir
-	rm -f nyxos.iso
-
-PHONY += srcclean
-srcclean:
-	find . -type f ! -path './scripts/*' ! -path './.git/*' -name '*.[oasd]' -delete
-	find . -type d ! -path './.git/*' -name "generated" -prune -exec rm -rf {} +
-	rm -f arch/$(ARCH)/X86_64_link.lds arch/$(ARCH)/boot/boot_link.lds
-	rm -f vmnyx image
+	rm -rf $(BUILD)
 
 distclean: clean
-	find . -type d -name "tmp" -prune -exec rm -rf {} +
-	rm -f .config .config.old include/asi
-	rm -rf .cache out scripts/Kconfig/__pycache__
-
-# --------------------------------
-# Rules for setting up the project
-# --------------------------------
-
-$(GENDIR)/generated/version.h: $(GENDIR)/generated/version.h.tmp
-	@if ! cmp -s $< $@; then cp $< $@; fi
-
-$(GENDIR)/generated/version.h.tmp: FORCE
-	$(Q)mkdir -p $(@D)
-	$(Q)rm -f $@
-	$(Q)$(SH) ./scripts/mkversion.sh $@
-
-$(GENDIR)/generated/autoconf.h: .config
-	$(Q)mkdir -p $(@D)
-	$(Q)$(PYTHON) ./scripts/Kconfig/genconfig.py --header-path $@
-
-PHONY += symlinks menuconfig config docs
-
-symlinks:
-	rm -f include/asi include/uapi/asi
-	( cd include ; ln -s ../arch/$(ARCH)/include/asi asi ; \
-		cd uapi ; ln -s ../../arch/$(ARCH)/include/uapi/asi asi )
-
-menuconfig: symlinks
-	$(Q)$(PYTHON) ./scripts/Kconfig/menuconfig.py
-
-config: symlinks
-	$(Q)$(PYTHON) ./scripts/Kconfig/oldconfig.py
-
-docs:
-	$(Q)mkdir -p out/docs
-	$(Q)doxygen
+	rm -f .config .config.old .arch .cross_compile compile_commands.json
 
 FORCE:
-
-.PHONY: $(PHONY)

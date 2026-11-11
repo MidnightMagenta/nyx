@@ -1,0 +1,47 @@
+local mbl = require("mbuildlib")
+local sdirt = require("sdirtable")
+local nyxbuild = require("build")
+
+local protocol = nyxbuild.cfg_string(G_cfg, "CONFIG_BOOT_PROTOCOL")
+if protocol == "" then
+	error("prekernel: CONFIG_BOOT_PROTOCOL is not set")
+end
+
+local pkinfo = mb.subdir(("%s/info.lua"):format(Arch))
+
+local incl = mbl.incl(mb.file("include"))
+local pkflags = pkinfo.flags or {}
+
+G_prekernel_opts = {
+	order_only = G_kernel_prerequisites,
+	vars = {
+		cflags = table.concat({ incl, "$cflags", table.unpack(pkflags.cflags or {}) }, " "),
+		asflags = table.concat({ incl, "$asflags", table.unpack(pkflags.asflags or {}) }, " "),
+	},
+}
+
+local subdirs = {
+	"common",
+	("protocol/%s"):format(protocol),
+	Arch,
+	("%s/%s"):format(Arch, protocol),
+}
+
+for _, d in ipairs(subdirs) do
+	local f = io.open(mb.file(d .. "/Mbuild"))
+	if not f then
+		error(("prekernel: protocol '%s' is not supported on '%s' (missing %s)"):format(protocol, Arch, mb.file(d)))
+	end
+	f:close()
+end
+
+local collected = sdirt.collect(subdirs)
+
+-- cleanup globals
+G_prekernel_opts = nil
+
+return {
+	objs = collected.objs.y,
+	link = pkinfo.link,
+	bfdname = pkinfo.bfdname,
+}

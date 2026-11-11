@@ -1,0 +1,20 @@
+local mbl = require("mbuildlib")
+local sdirt = require("sdirtable")
+
+local subdirs = {
+	"cpio",
+	"devfs",
+}
+
+local c_srcs = mbl.files({
+	"desc.c",
+	"fsnode.c",
+	"vfs.c",
+	"vfs_lookup.c",
+})
+
+local subdir_into = sdirt.new()
+subdir_into:add(mbl.compile("cc", c_srcs, { order_only = G_kernel_prerequisites }))
+subdir_into = sdirt.merge(subdir_into, sdirt.collect(subdirs))
+
+return subdir_into

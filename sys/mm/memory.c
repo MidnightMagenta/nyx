@@ -1,0 +1,27 @@
+#include <sys/mm/memblock.h>
+#include <sys/mm/mmzone.h>
+#include <sys/kernel.h>
+#include <sys/linkage.h>
+
+DEFINE_SUBSYS_LOG(memory_log, "memory", CONFIG_MEMORY_LOG_LEVEL);
+
+struct pg_data_s  contigmem_pagedata;
+struct pg_data_s *pgdata = &contigmem_pagedata;
+
+extern void init_page_alloc();
+extern void arch_init_memory();
+extern void kmem_cache_init();
+extern void kmalloc_init();
+extern void virtmem_init();
+extern void vmspace_init();
+
+void __init init_memory() {
+    arch_init_memory();
+    init_page_alloc();
+    memblock_print_regions();
+    memblock_free_all();
+    kmem_cache_init();
+    kmalloc_init();
+    virtmem_init();
+    vmspace_init();
+}

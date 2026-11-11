@@ -1,0 +1,21 @@
+local mbl = require("mbuildlib")
+local sdirt = require("sdirtable")
+
+local c_srcs = mbl.files({
+	"memcmp.c",
+	"memcpy.c",
+	"memmove.c",
+	"memset.c",
+	"strchr.c",
+	"strcmp.c",
+	"strcpy.c",
+	"strlen.c",
+	"strnlen.c",
+	"strtox.c",
+	"vsprintf.c",
+})
+
+local subdir_into = sdirt.new()
+subdir_into:add(mbl.compile("cc", c_srcs, { order_only = G_kernel_prerequisites }))
+
+return subdir_into

@@ -1,0 +1,42 @@
+menu "Core kernel"
+
+menu "Log levels"
+
+config PGFLT_LOG_LEVEL
+    int "Page faults"
+    range 0 4
+    default 2
+    help
+        Verbosity of page fault messages, see PRINTK_VERBOSITY for the levels.
+
+config FORK_LOG_LEVEL
+    int "fork()"
+    range 0 4
+    default 2
+    help
+        Verbosity of fork messages, see PRINTK_VERBOSITY for the levels.
+
+config EXIT_LOG_LEVEL
+    int "exit()"
+    range 0 4
+    default 2
+    help
+        Verbosity of exit messages, see PRINTK_VERBOSITY for the levels.
+
+config WAIT_LOG_LEVEL
+    int "wait()"
+    range 0 4
+    default 2
+    help
+        Verbosity of wait messages, see PRINTK_VERBOSITY for the levels.
+
+config EXEC_LOG_LEVEL
+    int "exec()"
+    range 0 4
+    default 2
+    help
+        Verbosity of exec messages, see PRINTK_VERBOSITY for the levels.
+
+endmenu
+
+endmenu

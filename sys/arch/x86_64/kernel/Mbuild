@@ -1,0 +1,38 @@
+local mbl = require("mbuildlib")
+local sdirt = require("sdirtable")
+
+local c_srcs = mbl.files({
+	"context_switch.c",
+	"cpu.c",
+	"cpufeatures.c",
+	"early_panic.c",
+	"early_serial.c",
+	"exception.c",
+	"exec.c",
+	"fork.c",
+	"gdt.c",
+	"i8253.c",
+	"i8259.c",
+	"idt.c",
+	"irq.c",
+	"page_fault.c",
+	"percpu.c",
+	"sched.c",
+	"setup.c",
+	"syscall.c",
+	"timer.c",
+	"traps.c",
+	"tss.c",
+})
+local asm_srcs = mbl.files({
+	"copy_user.S",
+	"head.S",
+	"kthread_trampoline.S",
+	"switch_to.S",
+})
+
+local subdir_into = sdirt.new()
+subdir_into:add(mbl.compile("cc", c_srcs, { order_only = G_kernel_prerequisites }))
+subdir_into:add(mbl.compile("as", asm_srcs, { order_only = G_kernel_prerequisites }))
+
+return subdir_into

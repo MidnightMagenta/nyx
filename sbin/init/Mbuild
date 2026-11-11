@@ -1,0 +1,14 @@
+local mbl = require("mbuildlib")
+local sdirt = require("sdirtable")
+local objtree = require("objtree")
+
+local c_srcs = mbl.files({
+	"init.c",
+})
+local asm_srcs = mbl.files({})
+
+local subdir_info = sdirt.new()
+subdir_info:add(objtree.compile("cc", c_srcs, G_sbin_opts))
+subdir_info:add(objtree.compile("as", asm_srcs, G_sbin_opts))
+
+return subdir_info

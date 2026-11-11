@@ -1,0 +1,16 @@
+local mbl = require("mbuildlib")
+local sdirt = require("sdirtable")
+
+local c_srcs = mbl.files({
+	"isdigit.c",
+	"isxdigit.c",
+	"islower.c",
+	"isupper.c",
+	"tolower.c",
+	"toupper.c",
+})
+
+local subdir_into = sdirt.new()
+subdir_into:add(mbl.compile("cc", c_srcs, { order_only = G_kernel_prerequisites }))
+
+return subdir_into

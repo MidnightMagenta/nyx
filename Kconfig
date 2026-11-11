@@ -1,36 +1,332 @@
-mainmenu "NyxOS Kernel Configuration"
+mainmenu "Nyx Configuration"
 
-menu "Build settings"
+menu "Build options"
+
+choice
+    prompt "Optimization level"
+    default OPT_O0 if DEBUG
+    default OPT_O2
+    help
+        Optimization level passed to the compiler as -O<level>, for both
+        the kernel and userspace programs.
+
+config OPT_O0
+    bool "-O0 (no optimization)"
+
+config OPT_OG
+    bool "-Og (optimize for debugging)"
+
+config OPT_O1
+    bool "-O1"
+
+config OPT_O2
+    bool "-O2"
+
+config OPT_O3
+    bool "-O3"
+
+config OPT_OS
+    bool "-Os (optimize for size)"
+
+endchoice
+
+config OPT
+    string
+    default "0" if OPT_O0
+    default "g" if OPT_OG
+    default "1" if OPT_O1
+    default "2" if OPT_O2
+    default "3" if OPT_O3
+    default "s" if OPT_OS
 
 config DEBUG
-    bool "Enable debug build"
+    bool "Debug build"
     default n
+    help
+        Build with debug info (-g) and define DEBUG. Also makes -O0 the
+        default optimization level.
 
-config KERNEL_TESTS
-    bool "Enable kernel unit tests"
-    default n
+menu "Compiler warnings"
 
-config EXTRA_WARNINGS
-    bool "Enable extra warnings"
-    default n
+comment "Kernel compiler warnings; -Wall is always enabled"
 
 config WARNINGS_AS_ERRORS
     bool "Treat warnings as errors"
     default n
-
-config PRINTK_VERBOSITY
-    int "Printk message verbosity levels"
-    range 0 4
-    default 2
     help
-        0 = none
-        1 = errors only
-        2 = errors and warnings
-        3 = errors, warnings, and info
-        4 = errors, warnings, info, and verbose info
+        -Werror
+
+config WARN_EXTRA
+    bool "Extra warnings"
+    default n
+    help
+        -Wextra
+
+config WARN_PEDANTIC
+    bool "Pedantic ISO C warnings"
+    default n
+    help
+        -Wpedantic
+
+menu "Conversions"
+
+config WARN_CONVERSION
+    bool "Implicit conversions"
+    default n
+    help
+        -Wconversion -Wsign-conversion -Wdouble-promotion -Wenum-conversion
+
+config WARN_CONVERSION_ARITH
+    bool "Conversions in arithmetic"
+    depends on WARN_CONVERSION
+    default n
+    help
+        -Warith-conversion
+
+config WARN_BAD_FUNCTION_CAST
+    bool "Casts of function calls to non-matching types"
+    default n
+    help
+        -Wbad-function-cast
+
+config WARN_TRADITIONAL_CONVERSION
+    bool "Prototype conversions (very noisy)"
+    default n
+    help
+        -Wtraditional-conversion
+
+config WARN_UNSUFFIXED_FLOAT
+    bool "Unsuffixed float constants (noisy)"
+    default n
+    help
+        -Wunsuffixed-float-constants
 
 endmenu
 
-source "arch/$(ARCH)/Kconfig"
-source "mm/Kconfig"
-source "kernel/Kconfig"
+menu "Casts, pointers and qualifiers"
+
+config WARN_CASTS
+    bool "Qualifier-dropping casts and pointer arithmetic"
+    default n
+    help
+        -Wcast-qual -Wpointer-arith
+
+config WARN_CAST_ALIGN_STRICT
+    bool "Alignment-increasing casts (noisy)"
+    default n
+    help
+        -Wcast-align=strict
+
+        Warns even on targets where unaligned access is allowed, like x86.
+
+config WARN_USELESS_CAST
+    bool "Casts to the same type"
+    default n
+    help
+        -Wuseless-cast (needs GCC 14 or newer for C)
+
+config WARN_WRITE_STRINGS
+    bool "Treat string literals as const"
+    default n
+    help
+        -Wwrite-strings
+
+        Changes the type of string literals to const char[].
+
+config WARN_STRICT_ALIASING_MAX
+    bool "Strictest aliasing checks (many false positives)"
+    default n
+    help
+        -Wstrict-aliasing=1
+
+endmenu
+
+menu "Declarations, prototypes and scope"
+
+config WARN_DECLARATIONS
+    bool "Declaration and prototype hygiene"
+    default n
+    help
+        -Wshadow -Wredundant-decls -Wmissing-declarations
+        -Wmissing-prototypes -Wstrict-prototypes -Wold-style-definition
+        -Wnested-externs -Winit-self -Wjump-misses-init
+
+config WARN_DECL_AFTER_STATEMENT
+    bool "Declarations after statements (C89 style)"
+    default n
+    help
+        -Wdeclaration-after-statement
+
+endmenu
+
+menu "Preprocessor"
+
+config WARN_PREPROCESSOR
+    bool "Undefined identifiers in #if"
+    default n
+    help
+        -Wundef
+
+config WARN_UNUSED_MACROS
+    bool "Unused macros (noisy in headers)"
+    default n
+    help
+        -Wunused-macros
+
+endmenu
+
+menu "Control flow and logic"
+
+config WARN_CONTROL_FLOW
+    bool "Duplicated conditions/branches, suspicious logic, fallthrough"
+    default n
+    help
+        -Wduplicated-cond -Wduplicated-branches -Wlogical-op
+        -Wimplicit-fallthrough=5
+
+config WARN_SWITCH_DEFAULT
+    bool "Switches without a default case"
+    default n
+    help
+        -Wswitch-default
+
+config WARN_SWITCH_ENUM
+    bool "Unhandled enum values even with a default case (noisy)"
+    default n
+    help
+        -Wswitch-enum
+
+config WARN_FLOAT_EQUAL
+    bool "Floating point equality comparisons"
+    default n
+    help
+        -Wfloat-equal
+
+endmenu
+
+menu "Format strings"
+
+config WARN_FORMAT
+    bool "Stricter format string checks"
+    default n
+    help
+        -Wformat=2
+
+config WARN_FORMAT_SIGNEDNESS
+    bool "Format argument signedness (moderately noisy)"
+    default n
+    help
+        -Wformat-signedness
+
+config WARN_FORMAT_OVERFLOW
+    bool "Format output overflow and truncation"
+    default n
+    help
+        -Wformat-overflow=2 -Wformat-truncation=2
+
+        Needs at least -O1 to be effective.
+
+endmenu
+
+menu "Bounds and overflow analysis"
+
+comment "These need at least -O1, ideally -O2, to be effective"
+
+config WARN_BOUNDS
+    bool "Null dereferences, array bounds and buffer overflows"
+    default n
+    help
+        -Wnull-dereference -Warray-bounds=2 -Wstringop-overflow=4
+        -Wshift-overflow=2
+
+config WARN_STRICT_OVERFLOW
+    bool "Optimizations assuming no signed overflow (very noisy)"
+    default n
+    help
+        -Wstrict-overflow=5
+
+endmenu
+
+menu "Security"
+
+config WARN_SECURITY
+    bool "alloca and variable length arrays"
+    default n
+    help
+        -Walloca -Wvla
+
+config WARN_STACK_PROTECTOR
+    bool "Functions not protected by the stack protector"
+    default n
+    help
+        -Wstack-protector
+
+        Only meaningful with -fstack-protector*, which the kernel does not use.
+
+config WARN_TRAMPOLINES
+    bool "Trampolines for nested functions"
+    default n
+    help
+        -Wtrampolines
+
+endmenu
+
+menu "Struct layout"
+
+config WARN_PACKED
+    bool "Ineffective packed attributes"
+    default n
+    help
+        -Wpacked
+
+config WARN_PADDED
+    bool "Struct padding (fires on nearly every struct)"
+    default n
+    help
+        -Wpadded
+
+endmenu
+
+menu "Optimizer"
+
+config WARN_INLINE
+    bool "Functions declared inline that cannot be inlined"
+    default n
+    help
+        -Winline
+
+config WARN_DISABLED_OPT
+    bool "Disabled optimization passes"
+    default n
+    help
+        -Wdisabled-optimization
+
+config WARN_UNSAFE_LOOP_OPT
+    bool "Loops that cannot be optimized"
+    default n
+    help
+        -Wunsafe-loop-optimizations
+
+endmenu
+
+menu "Miscellaneous"
+
+config WARN_CXX_COMPAT
+    bool "Valid C that is invalid C++"
+    default n
+    help
+        -Wc++-compat
+
+config WARN_BUILD_HYGIENE
+    bool "Build environment hygiene"
+    default n
+    help
+        -Wmissing-include-dirs -Wdate-time -Winvalid-pch
+
+endmenu
+
+endmenu # Compiler warnings
+
+endmenu # Build options
+
+source "sys/Kconfig"

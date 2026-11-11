@@ -1,0 +1,42 @@
+menu "Memory management"
+
+menu "Log levels"
+
+config MEMBLOCK_LOG_LEVEL
+    int "Memblock"
+    range 0 4
+    default 2
+    help
+        Verbosity of memblock messages, see PRINTK_VERBOSITY for the levels.
+
+config PHYSMEM_LOG_LEVEL
+    int "Physmem allocator"
+    range 0 4
+    default 2
+    help
+        Verbosity of physical memory allocator messages, see PRINTK_VERBOSITY for the levels.
+
+config VIRTMEM_LOG_LEVEL
+    int "Virtmem"
+    range 0 4
+    default 2
+    help
+        Verbosity of virtual memory messages, see PRINTK_VERBOSITY for the levels.
+
+config VMSPACE_LOG_LEVEL
+    int "VM spaces"
+    range 0 4
+    default 2
+    help
+        Verbosity of VM space messages, see PRINTK_VERBOSITY for the levels.
+
+config MEMORY_LOG_LEVEL
+    int "Memory (general)"
+    range 0 4
+    default 2
+    help
+        Verbosity of general memory messages, see PRINTK_VERBOSITY for the levels.
+
+endmenu
+
+endmenu

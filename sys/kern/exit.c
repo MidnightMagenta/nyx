@@ -1,0 +1,186 @@
+#include <sys/mm/physmem.h>
+#include <sys/mm/vmspace.h>
+#include <sys/atomic.h>
+#include <sys/compiler.h>
+#include <sys/errno.h>
+#include <sys/kernel.h>
+#include <sys/list.h>
+#include <sys/panic.h>
+#include <sys/printk.h>
+#include <sys/proc.h>
+#include <sys/refcount.h>
+#include <sys/sched.h>
+#include <sys/stddef.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/vfs.h>
+#include <sys/wait.h>
+#include <sys/uapi/posix_types.h>
+
+#include <asi/address.h>
+#include <asi/bug.h>
+#include <asi/system.h>
+
+static LIST_HEAD(deadqueue);
+
+DEFINE_SUBSYS_LOG(exit_log, "exit", CONFIG_EXIT_LOG_LEVEL);
+DEFINE_SUBSYS_LOG(wait_log, "wait", CONFIG_WAIT_LOG_LEVEL);
+
+void proc_zap(struct process *pr);
+
+int __noreturn sys_exit(struct thread *t, struct syscall_args *args, register_t *retval) {
+    (void) retval;
+    (void) t;
+    do_exit(t, args->arg1, EXIT_NORMAL);
+
+    __unreachable;
+    hcf();
+}
+
+static void reparent_children(struct process *pr) {
+    struct list_head *cur, *n;
+    struct process   *child;
+
+    list_for_each_safe(cur, n, &pr->p_children) {
+        child = list_entry(cur, struct process, p_siblings);
+
+        list_move_tail(&child->p_siblings, &initproc->t_proc->p_children);
+        child->p_parent = initproc->t_proc;
+    }
+}
+
+// TODO: major - assumes single threaded
+void __noreturn do_exit(struct thread *t, int code, int flags) {
+    struct process *pr;
+    (void) flags;
+
+    pr = t->t_proc;
+    if (t->t_proc->p_pid == 1) { panic("init exiting with %d", code); }
+
+    atomic_fetch_or(&t->t_flags, TF_EXITING, ATOMIC_ACQ_REL);
+
+    pr_debug(exit_log, "process (pid: %d, name: %s) exiting with %d\n", pr->p_pid, pr->p_name, code);
+
+    BUG_ON(refcount_get(&pr->p_live_thrd_cnt) != 1); // unimplemented
+    atomic_fetch_or(&pr->p_flags, PF_EXITING, ATOMIC_ACQ_REL);
+
+    pr->p_state = PS_ZOMBIE;
+    t->t_state  = TS_ZOMBIE;
+
+    fdfree(t->t_proc);
+
+    pr->p_xstatus = code;
+
+    reparent_children(pr);
+    schedule();
+
+    __unreachable;
+    hcf();
+}
+
+void exit_tail(struct thread *t) {
+    BUG_ON(!list_is_empty(&t->t_qnode));
+    list_add_tail(&t->t_qnode, &deadqueue);
+    wakeup(&deadqueue);
+}
+
+int sys_wait3(struct thread *t, struct syscall_args *args, register_t *retval) {
+    int flags = 0;
+
+    if (args->arg3 & WAIT_NOHANG) { flags |= WAIT_NOHANG; }
+
+    return do_wait(t, args->arg1, (int *) args->arg2, retval, flags);
+}
+
+static inline struct process *find_child(struct process *pr, pid_t pid, int flags) {
+    struct process   *child;
+    struct list_head *cur;
+    (void) flags;
+
+again:
+    sleep_setup(pr, "wait");
+
+    list_for_each(cur, &pr->p_children) {
+        child = list_entry(cur, struct process, p_siblings);
+        if (child->p_state == PS_ZOMBIE && atomic_load_explicit(&child->p_flags, ATOMIC_ACQUIRE) & PF_REALZOMBIE) {
+            if (pid == (pid_t) -1 || child->p_pid == pid) {
+                sleep_finish(0);
+                return child;
+            }
+        }
+    }
+
+    if (flags & WAIT_NOHANG) { return NULL; }
+
+    sleep_finish(1);
+    goto again;
+}
+
+int do_wait(struct thread *t, pid_t pid, int *stat_loc, register_t *retval, int flags) {
+    struct process *pr = t->t_proc;
+    struct process *child;
+
+    pr_debug(wait_log,
+             "pid %d: waiting on [pid: %d] with stat_loc %#p and flags %x\n",
+             pr->p_pid,
+             pid,
+             stat_loc,
+             flags);
+    // we have no children we could wait for
+    if (list_is_empty(&pr->p_children)) {
+        pr_debug(wait_log, "pid %d: no children to wait on\n", pr->p_pid);
+        return -ECHILD;
+    }
+
+    child = find_child(pr, pid, flags);
+
+    if (!child) {
+        *retval = -1;
+        return 0;
+    }
+
+    pr_debug(wait_log, "pid %d: waited on [pid: %d] with exit status %d\n", pr->p_pid, child->p_pid, child->p_xstatus);
+
+    if (stat_loc) {
+        if (copyout(stat_loc, (char *) &child->p_xstatus, sizeof(int))) { return -EFAULT; }
+    }
+    *retval = child->p_pid;
+    list_del(&child->p_siblings);
+
+    free_proc(child);
+
+    return 0;
+}
+
+void reaper(void *arg) {
+    struct thread  *t;
+    struct process *pr;
+    (void) arg;
+
+    for (;;) {
+        while (list_is_empty(&deadqueue)) {
+            sleep_setup(&deadqueue, "reaper");
+            sleep_finish(list_is_empty(&deadqueue));
+        }
+
+        t = list_first_entry(&deadqueue, struct thread, t_qnode);
+        list_del(&t->t_qnode);
+        pr = t->t_proc;
+
+        pm_free_page((phys_addr_t) __pa(t->t_kstack));
+        vmspace_put(pr->p_mm);
+
+        free_thread(t);
+
+        if (atomic_load_explicit(&pr->p_flags, ATOMIC_ACQUIRE) & PF_NOZOMBIE) {
+            proc_zap(pr);
+        } else {
+            atomic_fetch_or(&pr->p_flags, PF_REALZOMBIE, ATOMIC_ACQ_REL);
+            wakeup(pr->p_parent);
+        }
+    }
+}
+
+void proc_zap(struct process *pr) {
+    free_proc(pr);
+}

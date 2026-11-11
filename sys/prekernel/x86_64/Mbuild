@@ -1,0 +1,14 @@
+local mbl = require("mbuildlib")
+local sdirt = require("sdirtable")
+
+local c_srcs = mbl.files({
+	"printb.c",
+	"region_alloc.c",
+})
+local asm_srcs = mbl.files({})
+
+local subdir_info = sdirt.new()
+subdir_info:add(mbl.compile("cc", c_srcs, G_prekernel_opts))
+subdir_info:add(mbl.compile("as", asm_srcs, G_prekernel_opts))
+
+return subdir_info
