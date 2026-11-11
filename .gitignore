@@ -26,6 +26,7 @@ compile_commands.json
 .arch.tmp
 .cross_compile
 .cross_compile.tmp
+.gdb_history
 vmnyx
 image
 nyxos.iso
