@@ -4,7 +4,7 @@ rsource "prekernel/Kconfig"
 rsource "mm/Kconfig"
 rsource "kern/Kconfig"
 
-menu "Kernel hacking"
+menu "Kernel"
 
 config KERNEL_TESTS
     bool "Kernel unit tests"

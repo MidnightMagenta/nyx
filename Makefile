@@ -15,7 +15,6 @@ ARCH          ?= $(shell cat .arch 2>/dev/null)
 CROSS_COMPILE ?= $(shell cat .cross_compile 2>/dev/null)
 export ARCH CROSS_COMPILE
 
-# Kconfig strings are quoted in .config
 PROTOCOL := $(shell sed -n 's/^CONFIG_BOOT_PROTOCOL="\(.*\)"$$/\1/p' .config 2>/dev/null)
 
 PACKAGE_SCRIPT := tools/scripts/package/$(ARCH)-$(PROTOCOL).sh
@@ -53,13 +52,11 @@ menuconfig: check-arch
 # build
 # --------------------------------
 
-# the sub-make decides whether mbuild actually needs rebuilding
 $(MBUILD): FORCE
 	$(MAKE) -C $(MBUILD_DIR) all
 
 mbuild: $(MBUILD)
 
-# once generated, ninja regenerates build.ninja itself when the Mbuild scripts change
 $(BUILD)/build.ninja: $(MBUILD) .config | check-arch
 	@mkdir -p $(BUILD)
 	$(MBUILD) -C $(BUILD) $(TOPDIR)/Mbuild
@@ -74,7 +71,6 @@ $(NINJA_TARGETS): $(BUILD)/build.ninja
 # packaging
 # --------------------------------
 
-# one ninja invocation, so -j doesn't run two ninjas on the same build dir
 package: $(BUILD)/build.ninja | check-arch
 	@test -x $(PACKAGE_SCRIPT) || { echo "error: no packaging script $(PACKAGE_SCRIPT)" >&2; exit 1; }
 	$(NINJA) -C $(BUILD) $(NINJAARGS) image initramfs
