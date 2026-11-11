@@ -155,6 +155,6 @@ void fudge_exec() {
 
 void __init init_proc(void *arg) {
     (void) arg;
-    do_exec("/bin/init", NULL, NULL);
+    do_exec("/sbin/init", NULL, NULL);
     return;
 }
