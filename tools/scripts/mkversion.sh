@@ -1,7 +1,7 @@
 #! /bin/sh
 set -euo pipefail
 
-COMMIT_ID=$(git rev-parse HEAD | tr -d '\n')
+COMMIT_ID=$(git -C "$(dirname "$0")" rev-parse HEAD | tr -d '\n')
 
 cat >$1 <<EOF
 #define NYX_BUILD_ID "$COMMIT_ID"
