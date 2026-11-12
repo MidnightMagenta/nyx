@@ -85,7 +85,6 @@ G_sbin_opts = {
 	objdir = mbl.bpath("obj"),
 }
 
--- program name -> built binary
 local bins = {}
 for _, p in ipairs(progs) do
 	local info = mb.subdir(p)

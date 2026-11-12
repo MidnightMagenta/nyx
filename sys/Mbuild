@@ -198,8 +198,6 @@ local kernel_vmbin = mb.build({
 	implicit = archinfo.link,
 })
 
-print(kernel_vmbin)
-
 local prekernel = mb.subdir("prekernel")
 
 local kernel_blob = mb.build({
