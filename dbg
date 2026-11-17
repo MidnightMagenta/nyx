@@ -13,12 +13,6 @@ RR_DISK=(
 )
 
 case "${1:-}" in
-mkinitcpio)
-    ./scripts/mkinitcpio.sh
-    ;;
-mkimage)
-    ./scripts/mkimage.sh
-    ;;
 run)
     qemu-system-x86_64 -cdrom build/nyxos.iso -m 4G -cpu qemu64 -nographic
     ;;
@@ -61,7 +55,7 @@ replay)
     gdb
     ;;
 *)
-    echo "Usage: dbg {mkimage|run|run-info|debug|record|replay}"
+    echo "Usage: dbg {run|run-info|debug|record|replay}"
     exit 1
     ;;
 esac
