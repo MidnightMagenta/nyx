@@ -1,13 +1,13 @@
-#include <sys/mm/address.h>
-#include <sys/mm/mm_types.h>
-#include <sys/mm/mmzone.h>
-#include <sys/mm/physmem.h>
-#include <sys/mm/slab.h>
 #include <sys/align.h>
 #include <sys/errno.h>
 #include <sys/linkage.h>
 #include <sys/list.h>
 #include <sys/minmax.h>
+#include <sys/mm/address.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/mmzone.h>
+#include <sys/mm/physmem.h>
+#include <sys/mm/slab.h>
 #include <sys/stddef.h>
 #include <sys/string.h>
 #include <sys/types.h>
@@ -26,7 +26,7 @@ struct kmem_cache_s;
 
 #define CFLAG_OFF_SLAB (1 << 0)
 
-#define OFF_SLAB(cache)         test_bit(CFLAG_OFF_SLAB, &(cache)->flags)
+#define OFF_SLAB(cache)         ((cache)->flags & CFLAG_OFF_SLAB)
 #define SHRINK_WATERMARK(cache) (2 * (cache)->nr_objs)
 #define MAX_SHRINK(cache)       (2 * SHRINK_WATERMARK(cache))
 
@@ -105,15 +105,18 @@ static void kmem_freepages(struct kmem_cache_s *cache, void *addr) {
     __pm_free_pages(page, cache->gfp_order);
 }
 
+static inline size_t slab_mgmt_size(struct kmem_cache_s *cache, size_t nr_objs);
+
 static struct kmem_slab_s *alloc_slabmgmt(struct kmem_cache_s *cache, void *objptr, int local_flags) {
     struct kmem_slab_s *slab;
 
     if (OFF_SLAB(cache)) {
-        slab           = kmem_cache_alloc(cache->slab_cache, local_flags);
+        slab = kmem_cache_alloc(cache->slab_cache, local_flags);
+        if (!slab) { return NULL; }
         slab->slab_mem = objptr;
     } else {
         slab           = objptr;
-        slab->slab_mem = objptr + (sizeof(struct kmem_slab_s) + cache->nr_objs * sizeof(kmem_bufctl_t));
+        slab->slab_mem = objptr + slab_mgmt_size(cache, cache->nr_objs);
     }
 
     slab->in_use    = 0;
@@ -131,15 +134,31 @@ static void slab_map_pages(struct kmem_cache_s *cache, struct kmem_slab_s *slab,
     page     = virt_to_page(addr);
     nr_pages = (1 << cache->gfp_order);
 
-    do {
+    while (nr_pages--) {
         page->pg_kmem_cache = cache;
         page->pg_kmem_slab  = slab;
         page++;
-    } while (nr_pages--);
+    }
 }
 
 static inline size_t slab_buffer_size(struct kmem_cache_s *cache) {
     return ALIGN_UP(cache->obj_size, cache->obj_align);
+}
+
+static inline size_t slab_mgmt_size(struct kmem_cache_s *cache, size_t nr_objs) {
+    if (OFF_SLAB(cache)) { return 0; }
+    return ALIGN_UP(sizeof(struct kmem_slab_s) + nr_objs * sizeof(kmem_bufctl_t), cache->obj_align);
+}
+
+static size_t slab_objs_for(struct kmem_cache_s *cache, size_t slab_size) {
+    size_t nr_objs;
+
+    if (OFF_SLAB(cache)) { return slab_size / slab_buffer_size(cache); }
+
+    nr_objs = (slab_size - sizeof(struct kmem_slab_s)) / (slab_buffer_size(cache) + sizeof(kmem_bufctl_t));
+    while (nr_objs && slab_mgmt_size(cache, nr_objs) + nr_objs * slab_buffer_size(cache) > slab_size) { nr_objs--; }
+
+    return nr_objs;
 }
 
 static inline kmem_bufctl_t *slab_bufctl(struct kmem_slab_s *slab) {
@@ -163,9 +182,8 @@ static void cache_init_objs(struct kmem_cache_s *cache, struct kmem_slab_s *slab
 
 #ifdef __DEBUG
         memset(objp, SLAB_MAGIC, slab_buffer_size(cache));
-#else
-        if (cache->ctor) { cache->ctor(objp); }
 #endif
+        if (cache->ctor) { cache->ctor(objp); }
         slab_bufctl(slab)[i] = i + 1;
     }
     slab_bufctl(slab)[i - 1] = BUFCTL_END;
@@ -216,6 +234,7 @@ static void cache_shrink(struct kmem_cache_s *cache) {
         kmem_freepages(cache, slab->slab_addr);
         if (OFF_SLAB(cache)) { kmem_cache_free(cache->slab_cache, slab); }
 
+        cache->slab_lists.free_objects -= cache->nr_objs;
         cache_max_shrink -= cache->nr_objs;
     }
 }
@@ -236,10 +255,9 @@ int __init kmem_cache_init() {
 
     cache_cache.obj_size  = sizeof(struct kmem_cache_s);
     cache_cache.obj_align = _Alignof(struct kmem_cache_s);
-    cache_cache.nr_objs =
-            (PAGE_SIZE - sizeof(struct kmem_slab_s)) / (sizeof(struct kmem_cache_s) + sizeof(kmem_bufctl_t));
-    cache_cache.ctor = NULL;
-    cache_cache.dtor = NULL;
+    cache_cache.nr_objs   = slab_objs_for(&cache_cache, PAGE_SIZE);
+    cache_cache.ctor      = NULL;
+    cache_cache.dtor      = NULL;
 
     cache_cache.slab_cache = NULL;
 
@@ -259,13 +277,10 @@ static void calculate_slab_size(struct kmem_cache_s *cache) {
     for (order = 0; order < MAX_ORDER; order++) {
         size_t slab_size = (1 << order) << PAGE_SHIFT;
         size_t used;
-        if (OFF_SLAB(cache)) {
-            nr_objs = slab_size / slab_buffer_size(cache);
-            used    = nr_objs * slab_buffer_size(cache);
-        } else {
-            nr_objs = (slab_size - sizeof(struct kmem_slab_s)) / (slab_buffer_size(cache) + sizeof(kmem_bufctl_t));
-            used    = sizeof(struct kmem_slab_s) + nr_objs * sizeof(kmem_bufctl_t) + nr_objs * slab_buffer_size(cache);
-        }
+
+        nr_objs = slab_objs_for(cache, slab_size);
+        used    = slab_mgmt_size(cache, nr_objs) + nr_objs * slab_buffer_size(cache);
+
         size_t waste = slab_size - used;
         if (waste < lowest_waste) {
             lowest_waste = waste;
@@ -278,12 +293,7 @@ static void calculate_slab_size(struct kmem_cache_s *cache) {
     if (order >= MAX_ORDER) {
         order = lowest_order >= MAX_ORDER ? MAX_ORDER - 1 : lowest_order;
 
-        size_t slab_size = (1 << order << PAGE_SHIFT);
-        if (OFF_SLAB(cache)) {
-            nr_objs = slab_size / slab_buffer_size(cache);
-        } else {
-            nr_objs = (slab_size - sizeof(struct kmem_slab_s)) / (slab_buffer_size(cache) + sizeof(kmem_bufctl_t));
-        }
+        nr_objs = slab_objs_for(cache, (1 << order << PAGE_SHIFT));
     }
 
     cache->gfp_order = order;
