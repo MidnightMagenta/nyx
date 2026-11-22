@@ -41,6 +41,7 @@
 #define ENOSYS        __KERNEL_ENOSYS        /* No syscall */
 #define ENAMETOOLONG  __KERNEL_ENAMETOOLONG  /* Name too long */
 #define ELOOP         __KERNEL_ELOOP         /* Is a cycle */
+#define ENOTEMPTY     __KERNEL_ENOTEMPTY     /* Directory not empty */
 
 #define MAX_ERRNO       __KERNEL_MAX_ERRNO
 #define IS_ERR_VALUE(x) __KERNEL_IS_ERR_VALUE(x)
