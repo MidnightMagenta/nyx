@@ -1,10 +1,10 @@
-#include <sys/mm/address.h>
-#include <sys/mm/physmem.h>
-#include <sys/mm/virtmem.h>
 #include <sys/compiler.h>
 #include <sys/errno.h>
 #include <sys/kernel.h>
 #include <sys/minmax.h>
+#include <sys/mm/address.h>
+#include <sys/mm/physmem.h>
+#include <sys/mm/virtmem.h>
 
 #include <asi/bug.h>
 #include <asi/page.h>
@@ -107,7 +107,7 @@ static int vm_range_walk(pgd_t *pgd, virt_addr_t va, size_t len, vm_page_op op, 
         } else if (res == -ENOENT) {
             struct vm_pginfo pginfo;
             BUG_ON(vm_query_page(pgd, va, &pginfo) != -ENOENT);
-            va += MIN(pginfo.pi_len, (size_t) (end - va));
+            va += MIN((size_t) (pginfo.pi_virt_base + pginfo.pi_len - va), (size_t) (end - va));
         } else {
             return res;
         }
