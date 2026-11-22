@@ -6,6 +6,7 @@ local c_srcs = mbl.files({
 	"physmem.c",
 	"sanity.c",
 	"slab.c",
+	"vfs.c",
 })
 
 local subdir_into = sdirt.new()
