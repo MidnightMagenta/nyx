@@ -137,7 +137,7 @@ struct page *pm_alloc_pages(int gfp_mask, unsigned long order) {
 found_page:
     if (gfp_mask & __M_ZERO) {
         void  *addr = page_address(page);
-        size_t len  = (1ul << order);
+        size_t len  = PAGE_SIZE << order;
         memset(addr, 0, len);
     }
 
