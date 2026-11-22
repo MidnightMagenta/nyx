@@ -1,9 +1,10 @@
-#include <sys/mm/address.h>
-#include <sys/mm/physmem.h>
-#include <sys/mm/virtmem.h>
 #include <sys/errno.h>
 #include <sys/kernel.h>
 #include <sys/minmax.h>
+#include <sys/mm/address.h>
+#include <sys/mm/physmem.h>
+#include <sys/mm/virtmem.h>
+#include <sys/mman.h>
 #include <sys/page_fault.h>
 #include <sys/panic.h>
 #include <sys/proc.h>
@@ -11,8 +12,6 @@
 #include <sys/string.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
-
-#include <sys/uapi/mman.h>
 
 #include <asi/page.h>
 

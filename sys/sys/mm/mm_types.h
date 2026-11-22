@@ -3,12 +3,11 @@
 
 #include <sys/atomic.h>
 #include <sys/list.h>
+#include <sys/mman.h>
+#include <sys/posix_types.h>
 #include <sys/refcount.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
-#include <sys/uapi/posix_types.h>
-
-#include <sys/uapi/mman.h>
 
 #include <asi/bitops.h>
 #include <asi/page_data.h>

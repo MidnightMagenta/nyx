@@ -1,11 +1,12 @@
-#include <sys/mm/physmem.h>
-#include <sys/mm/vmspace.h>
 #include <sys/atomic.h>
 #include <sys/compiler.h>
 #include <sys/errno.h>
 #include <sys/kernel.h>
 #include <sys/list.h>
+#include <sys/mm/physmem.h>
+#include <sys/mm/vmspace.h>
 #include <sys/panic.h>
+#include <sys/posix_types.h>
 #include <sys/printk.h>
 #include <sys/proc.h>
 #include <sys/refcount.h>
@@ -15,7 +16,6 @@
 #include <sys/types.h>
 #include <sys/vfs.h>
 #include <sys/wait.h>
-#include <sys/uapi/posix_types.h>
 
 #include <asi/address.h>
 #include <asi/bug.h>

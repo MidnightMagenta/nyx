@@ -1,11 +1,11 @@
 #include <sys/elf.h>
 #include <sys/errno.h>
 #include <sys/exec.h>
+#include <sys/fcntl.h>
 #include <sys/kernel.h>
 #include <sys/string.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
-#include <sys/uapi/fcntl.h>
 
 #define hcf()                                                                                                          \
     while (1) { asm volatile("hlt"); }

@@ -1,7 +1,9 @@
-#include <sys/mm/kmalloc.h>
-#include <sys/mm/mm_types.h>
 #include <sys/current.h>
 #include <sys/errno.h>
+#include <sys/fcntl.h>
+#include <sys/mm/kmalloc.h>
+#include <sys/mm/mm_types.h>
+#include <sys/posix_types.h>
 #include <sys/proc.h>
 #include <sys/refcount.h>
 #include <sys/spinlock.h>
@@ -10,8 +12,6 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/vfs.h>
-#include <sys/uapi/fcntl.h>
-#include <sys/uapi/posix_types.h>
 
 #include <asi/bug.h>
 

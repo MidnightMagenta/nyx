@@ -1,0 +1,7 @@
+#ifndef _SYS_UAPI_NYX_LIMITS_H
+#define _SYS_UAPI_NYX_LIMITS_H
+
+#define __KERNEL_PATH_MAX 4096
+#define __KERNEL_NAME_MAX 255
+
+#endif

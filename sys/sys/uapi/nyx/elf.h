@@ -1,5 +1,5 @@
-#ifndef _UAPI_ELF_H
-#define _UAPI_ELF_H
+#ifndef _SYS_UAPI_UAPI_ELF_H
+#define _SYS_UAPI_UAPI_ELF_H
 
 #include <uapi/asi/nyx/elf_types.h>
 

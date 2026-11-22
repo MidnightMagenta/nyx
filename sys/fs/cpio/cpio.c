@@ -1,18 +1,18 @@
+#include <sys/errno.h>
+#include <sys/fcntl.h>
 #include <sys/fs/cpio.h>
 #include <sys/fs/fsnode.h>
-#include <sys/mm/kmalloc.h>
-#include <sys/mm/mm_types.h>
-#include <sys/errno.h>
 #include <sys/kernel.h>
 #include <sys/linkage.h>
 #include <sys/list.h>
+#include <sys/mm/kmalloc.h>
+#include <sys/mm/mm_types.h>
+#include <sys/posix_types.h>
 #include <sys/stddef.h>
 #include <sys/string.h>
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/vfs.h>
-#include <sys/uapi/fcntl.h>
-#include <sys/uapi/posix_types.h>
 
 #include <asi/bug.h>
 

@@ -1,7 +1,7 @@
+#include <sys/errno.h>
 #include <sys/mm/kmalloc.h>
 #include <sys/mm/mm_types.h>
 #include <sys/mm/vmspace.h>
-#include <sys/errno.h>
 #include <sys/proc.h>
 #include <sys/string.h>
 #include <sys/uio.h>
@@ -161,15 +161,15 @@ static int lookup(struct nameidata *ndp) {
 
 int namei(struct nameidata *ndp) {
     int   err;
-    char *buf = kmalloc(MAXPATH, M_SLEEPOK);
+    char *buf = kmalloc(PATH_MAX, M_SLEEPOK);
     if (!buf) { return -ENOMEM; }
 
     if (ndp->ni_segflg == UIO_USERSPACE) {
         size_t done;
-        err = copyinstr(buf, ndp->ni_dirp, MAXPATH, &done);
+        err = copyinstr(buf, ndp->ni_dirp, PATH_MAX, &done);
         if (err) { goto fail0; }
     } else {
-        if (strlcpy(buf, ndp->ni_dirp, MAXPATH) >= MAXPATH) {
+        if (strlcpy(buf, ndp->ni_dirp, PATH_MAX) >= PATH_MAX) {
             err = -ENAMETOOLONG;
             goto fail0;
         }

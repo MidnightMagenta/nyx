@@ -1,13 +1,14 @@
-#include <sys/fs/cpio.h>
-#include <sys/mm/mm_types.h>
-#include <sys/mm/virtmem.h>
-#include <sys/mm/vmspace.h>
 #include <sys/compiler.h>
 #include <sys/current.h>
 #include <sys/exec.h>
+#include <sys/fcntl.h>
+#include <sys/fs/cpio.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
 #include <sys/linkage.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/virtmem.h>
+#include <sys/mm/vmspace.h>
 #include <sys/panic.h>
 #include <sys/printk.h>
 #include <sys/proc.h>
@@ -15,7 +16,6 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/vfs.h>
-#include <sys/uapi/fcntl.h>
 
 #include <asi/address.h>
 #include <asi/bootparam.h>

@@ -2,14 +2,12 @@
 #define _NYX_VFS_H
 
 #include <sys/list.h>
+#include <sys/posix_types.h>
 #include <sys/refcount.h>
 #include <sys/spinlock.h>
 #include <sys/stddef.h>
 #include <sys/uio.h>
-#include <sys/uapi/posix_types.h>
 
-#define MAXPATH     4096
-#define NAME_MAX    255
 #define MAXSYMLINKS 32
 
 enum vtype { VNON, VREG, VDIR, VBLK, VCHR, VLNK, VFIFO, VSOCK };

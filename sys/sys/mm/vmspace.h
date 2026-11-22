@@ -1,13 +1,13 @@
 #ifndef _MM_MM_H
 #define _MM_MM_H
 
-#include <sys/mm/mm_types.h>
-#include <sys/mm/virtmem.h>
 #include <sys/atomic.h>
 #include <sys/current.h>
 #include <sys/errno.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/virtmem.h>
+#include <sys/posix_types.h>
 #include <sys/proc.h>
-#include <sys/uapi/posix_types.h>
 
 #include <asi/access_user.h>
 

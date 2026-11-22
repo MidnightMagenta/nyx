@@ -1,18 +1,18 @@
+#include <sys/errno.h>
+#include <sys/list.h>
+#include <sys/minmax.h>
 #include <sys/mm/address.h>
 #include <sys/mm/mm_types.h>
 #include <sys/mm/physmem.h>
 #include <sys/mm/slab.h>
 #include <sys/mm/virtmem.h>
 #include <sys/mm/vmspace.h>
-#include <sys/errno.h>
-#include <sys/list.h>
-#include <sys/minmax.h>
+#include <sys/mman.h>
 #include <sys/proc.h>
 #include <sys/refcount.h>
 #include <sys/string.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <sys/uapi/mman.h>
 
 #include <asi/bug.h>
 #include <asi/memory.h>

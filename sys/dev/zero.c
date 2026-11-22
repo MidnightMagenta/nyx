@@ -1,8 +1,8 @@
 #include <sys/initcall.h>
+#include <sys/posix_types.h>
 #include <sys/stddef.h>
 #include <sys/uio.h>
 #include <sys/vfs.h>
-#include <sys/uapi/posix_types.h>
 
 #define ZERO_RDEV makedev(1, 5)
 

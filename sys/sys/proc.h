@@ -1,10 +1,11 @@
 #ifndef _NYX_PROC_H
 #define _NYX_PROC_H
 
-#include <sys/mm/mm_types.h>
 #include <sys/atomic.h>
+#include <sys/mm/mm_types.h>
+#include <sys/posix_types.h>
+#include <sys/uapi/nyx/wait.h>
 #include <sys/vfs.h>
-#include <sys/uapi/posix_types.h>
 
 #include <asi/cpu.h>
 #include <asi/page.h>
@@ -103,7 +104,7 @@ void  put_tid(pid_t tid);
 #define EXIT_NORMAL (1 << 0)
 #define EXIT_THREAD (1 << 1)
 
-#define WAIT_NOHANG (1 << 0)
+#define WAIT_NOHANG __KERNEL_NOHANG
 
 int  do_fork(struct thread  *curp,
              int             flags,

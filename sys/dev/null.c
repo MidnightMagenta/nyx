@@ -1,6 +1,6 @@
 #include <sys/initcall.h>
+#include <sys/posix_types.h>
 #include <sys/vfs.h>
-#include <sys/uapi/posix_types.h>
 
 struct uio;
 
