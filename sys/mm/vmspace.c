@@ -81,7 +81,7 @@ static inline void vm_map_remove(struct vmspace *vs, struct vm_map_entry *e) {
     list_for_each_entry(ent, &vs->v_vmmap, vm_list) {
         if (ent == e) {
             is_valid = true;
-            return;
+            break;
         }
     }
     if (!is_valid) { BUG(); }
@@ -182,60 +182,6 @@ void vmspace_put(struct vmspace *vm) {
 
     vm_free_page_table(vm->v_pgd);
     kmem_cache_free(vmspace_cache, vm);
-}
-
-int vmspace_map(struct vmspace *mm, virt_addr_t addr, size_t len, unsigned long flags, int gfp_flags) {
-    int res;
-    addr = PG_ALIGN_DN(addr);
-    len  = PG_ALIGN_UP(len);
-
-    for (size_t off = 0; off < len; off += PAGE_SIZE) {
-        phys_addr_t pa = pm_get_zeroed_page(gfp_flags);
-        if (pa == INVALID_PHYS_ADDR) {
-            vm_unmap(mm->v_pgd, addr, len);
-            return -ENOMEM;
-        }
-        if ((res = vm_map(mm->v_pgd, pa, addr + off, PAGE_SIZE, flags | VM_USER, gfp_flags))) {
-            pm_free_page(pa);
-            vm_unmap(mm->v_pgd, addr, len);
-            return res;
-        }
-    }
-
-    return 0;
-}
-
-int vmspace_mapcopy(struct vmspace *mm, virt_addr_t addr, void *data, size_t len, unsigned long flags, int gfp_flags) {
-    int    res;
-    size_t end = PG_ALIGN_UP(addr + len);
-    addr       = PG_ALIGN_DN(addr);
-
-    for (size_t off = 0; addr + off < end; off += PAGE_SIZE) {
-        phys_addr_t  pa    = pm_get_zeroed_page(gfp_flags);
-        size_t       chunk = MIN(PAGE_SIZE, len - off);
-        struct page *pg    = phys_to_page(pa);
-
-        refcount_inc(&pg->pg_refcnt);
-
-        if (pa == INVALID_PHYS_ADDR) {
-            vm_unmap(mm->v_pgd, addr, off);
-            return -ENOMEM;
-        }
-
-        memcpy(__va(pa), (char *) data + off, chunk);
-        if (chunk < PAGE_SIZE) memset((char *) __va(pa) + chunk, 0, PAGE_SIZE - chunk);
-
-        if ((res = vm_map(mm->v_pgd, pa, addr + off, PAGE_SIZE, flags | VM_USER, gfp_flags))) {
-            pm_free_page(pa);
-            vm_unmap(mm->v_pgd, addr, off);
-            return res;
-        }
-    }
-    return 0;
-}
-
-void vmspace_unmap(struct vmspace *mm, virt_addr_t addr, size_t len) {
-    vm_unmap(mm->v_pgd, addr, len);
 }
 
 static inline virt_addr_t find_free_range(struct vmspace *vs, virt_addr_t hint, size_t len) {
@@ -390,8 +336,9 @@ int sys_munmap(struct thread *t, struct syscall_args *args, register_t *retval) 
 
 bool access_ok(const void *uptr, size_t len) {
     virt_addr_t u = (virt_addr_t) uptr;
-    if (u <= ARCH_USER_START && u + len >= ARCH_USER_END) { return false; }
-    return true;
+
+    if (u < ARCH_USER_START || u > ARCH_USER_END) { return false; }
+    return len <= ARCH_USER_END - u + 1;
 }
 
 int copyinstr(void *kaddr, const void *uaddr, size_t len, size_t *done) {
