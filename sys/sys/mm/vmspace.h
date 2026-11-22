@@ -11,7 +11,7 @@
 
 #include <asi/access_user.h>
 
-struct vnode;
+struct file;
 
 struct vmspace *vmspace_fork(struct process *p);
 struct vmspace *vmspace_share(struct process *p);
@@ -28,7 +28,7 @@ int vms_mmap(struct vmspace *vs,
              size_t          len,
              int             prot,
              int             flags,
-             struct vnode   *vp,
+             struct file    *fp,
              off_t           off,
              virt_addr_t    *pa);
 int vms_munmap(struct vmspace *vs, virt_addr_t addr, size_t len);

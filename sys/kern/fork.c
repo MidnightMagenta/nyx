@@ -3,6 +3,7 @@
 #include <sys/mm/vmspace.h>
 #include <sys/atomic.h>
 #include <sys/errno.h>
+#include <sys/filedesc.h>
 #include <sys/kernel.h>
 #include <sys/list.h>
 #include <sys/printk.h>
@@ -11,7 +12,6 @@
 #include <sys/sched.h>
 #include <sys/string.h>
 #include <sys/types.h>
-#include <sys/vfs.h>
 
 #include <asi/address.h>
 

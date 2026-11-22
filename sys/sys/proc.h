@@ -5,7 +5,6 @@
 #include <sys/mm/mm_types.h>
 #include <sys/posix_types.h>
 #include <sys/uapi/nyx/wait.h>
-#include <sys/vfs.h>
 
 #include <asi/cpu.h>
 #include <asi/page.h>
@@ -15,6 +14,7 @@
 
 struct process;
 struct thread;
+struct filedesc;
 
 struct thread {
     atomic_ulong_t t_flags;

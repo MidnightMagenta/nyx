@@ -1,17 +1,18 @@
 #include <sys/mm/mm_types.h>
 #include <sys/atomic.h>
+#include <sys/filedesc.h>
 #include <sys/list.h>
 #include <sys/proc.h>
 #include <sys/refcount.h>
 #include <sys/stddef.h>
-#include <sys/vfs.h>
+
+#include <asi/bug.h>
 
 extern char init_stack_top[];
 
-struct vmspace  __proc0_vmspace;
-struct filedesc __proc0_files;
-struct thread   proc0;
-struct process  proc0_proc;
+struct vmspace __proc0_vmspace;
+struct thread  proc0;
+struct process proc0_proc;
 
 void proc0_init() {
     __proc0_vmspace.v_pgd = NULL;
@@ -38,7 +39,7 @@ void proc0_init() {
     proc0_proc.p_parent  = NULL;
     proc0_proc.p_xstatus = 0;
 
-    fdinit(&proc0_proc);
+    BUG_ON(fdinit(&proc0_proc));
 
     list_init(&proc0_proc.p_thrds_list);
     list_init(&proc0_proc.p_children);

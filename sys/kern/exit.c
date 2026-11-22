@@ -1,6 +1,7 @@
 #include <sys/atomic.h>
 #include <sys/compiler.h>
 #include <sys/errno.h>
+#include <sys/filedesc.h>
 #include <sys/kernel.h>
 #include <sys/list.h>
 #include <sys/mm/physmem.h>
@@ -14,7 +15,6 @@
 #include <sys/stddef.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <sys/vfs.h>
 #include <sys/wait.h>
 
 #include <asi/address.h>

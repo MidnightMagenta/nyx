@@ -1,4 +1,5 @@
 #include <sys/errno.h>
+#include <sys/filedesc.h>
 #include <sys/list.h>
 #include <sys/minmax.h>
 #include <sys/mm/address.h>
@@ -13,6 +14,7 @@
 #include <sys/string.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <sys/vfs.h>
 
 #include <asi/bug.h>
 #include <asi/memory.h>
@@ -54,7 +56,7 @@ static inline int vm_map_insert(struct vmspace *vs,
                                 size_t          len,
                                 int             prot,
                                 int             flags,
-                                struct vnode   *vn,
+                                struct file    *fp,
                                 off_t           foff) {
     struct vm_map_entry *vme = kmem_cache_alloc(vmmap_cache, M_SLEEPOK);
     if (!vme) { return -ENOMEM; }
@@ -63,7 +65,7 @@ static inline int vm_map_insert(struct vmspace *vs,
     vme->vm_end   = addr + len;
     vme->vm_prot  = prot;
     vme->vm_flags = flags;
-    vme->vm_vn    = vn;
+    vme->vm_file  = fp;
     vme->vm_foff  = foff;
 
     list_init(&vme->vm_list);
@@ -86,6 +88,7 @@ static inline void vm_map_remove(struct vmspace *vs, struct vm_map_entry *e) {
 #endif
 
     list_del(&e->vm_list);
+    if (e->vm_file) { fput(e->vm_file); }
     kmem_cache_free(vmmap_cache, e);
 }
 
@@ -95,6 +98,7 @@ static inline struct vm_map_entry *vm_map_clone_vme(struct vm_map_entry *e) {
 
     memcpy(new_vme, e, sizeof(struct vm_map_entry));
     list_init(&new_vme->vm_list);
+    if (new_vme->vm_file) { fhold(new_vme->vm_file); }
 
     return new_vme;
 }
@@ -173,7 +177,6 @@ void vmspace_put(struct vmspace *vm) {
 
     list_for_each_entry_safe(vme, tmp, &vm->v_vmmap, vm_list) {
         vmspace_unmap_entry(vm, vme);
-        if (vme->vm_vn) { vput(vme->vm_vn); }
         vm_map_remove(vm, vme);
     }
 
@@ -266,13 +269,15 @@ static inline int clear_range(struct vmspace *vs, virt_addr_t addr, size_t len) 
             struct vm_map_entry *right = vm_map_clone_vme(e);
             if (!right) { return -ENOMEM; }
             right->vm_start = end;
-            e->vm_end       = addr;
+            right->vm_foff += (off_t) (end - e->vm_start);
+            e->vm_end = addr;
             list_add(&right->vm_list, &e->vm_list);
             break;
         }
         if (e->vm_start < addr) {
             e->vm_end = addr;
         } else if (e->vm_end > end) {
+            e->vm_foff += (off_t) (end - e->vm_start);
             e->vm_start = end;
         } else {
             vm_map_remove(vs, e);
@@ -287,12 +292,12 @@ int vms_mmap(struct vmspace *vs,
              size_t          len,
              int             prot,
              int             flags,
-             struct vnode   *vp,
+             struct file    *fp,
              off_t           off,
              virt_addr_t    *pa) {
     int res;
 
-    pr_debug(vmspace_log, "mmap(%#p, %#lx, %ld, %#x, %#x, %#p, %ld)\n", vs, addr, len, prot, flags, vp, off);
+    pr_debug(vmspace_log, "mmap(%#p, %#lx, %ld, %#x, %#x, %#p, %ld)\n", vs, addr, len, prot, flags, fp, off);
 
     if (len == 0) { return -EINVAL; }
     if (off & (PAGE_SIZE - 1)) { return -EINVAL; }
@@ -311,7 +316,11 @@ int vms_mmap(struct vmspace *vs,
 
     pr_debug(vmspace_log, "    mapping to address %#lx\n", addr);
 
-    if ((res = vm_map_insert(vs, addr, len, prot, flags, vp, off))) { return res; }
+    if (fp) { fhold(fp); }
+    if ((res = vm_map_insert(vs, addr, len, prot, flags, fp, off))) {
+        if (fp) { fput(fp); }
+        return res;
+    }
     if (pa) { *pa = addr; }
 
     return 0;
@@ -344,16 +353,24 @@ int kern_mmap(struct process *pr,
               int             fd,
               off_t           off,
               virt_addr_t    *pa) {
-    struct file *f = NULL;
+    struct file *fp = NULL;
+    int          res;
 
     pr_debug(vmspace_log, "kern_mmap called for PID %ld\n", pr->p_pid);
 
     if (!(flags & MAP_ANONYMOUS)) {
-        f = fget(pr, fd);
-        if (!f) { return -EBADF; }
+        fp = fget(pr, fd);
+        if (!fp) { return -EBADF; }
+        if (!(fp->f_mode & FMODE_READ)) {
+            fput(fp);
+            return -EACCES;
+        }
     }
 
-    return vms_mmap(pr->p_mm, addr, len, prot, flags, f ? getvnode(f) : NULL, off, pa);
+    res = vms_mmap(pr->p_mm, addr, len, prot, flags, fp, off, pa);
+    if (fp) { fput(fp); }
+
+    return res;
 }
 
 int kern_munmap(struct process *pr, virt_addr_t addr, size_t len) {
