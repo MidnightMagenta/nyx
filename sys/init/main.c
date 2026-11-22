@@ -111,48 +111,6 @@ void __init start_kernel() {
     BUG();
 }
 
-#include "fudgeasm.h"
-#include <asi/gdt.h>
-
-void fudge_exec() {
-    struct thread  *t  = current();
-    struct process *pr = t->t_proc;
-    struct vmspace *mm = vmspace_new(pr);
-    struct vmspace *oldmm;
-    flags_t         flags;
-
-    struct trap_frame *tf = thread_trap_frame(t);
-    tf->frame.rip         = 0x10000;
-    tf->frame.cs          = USER_CODE64_SEGMENT;
-    tf->frame.ss          = USER_DATA_SEGMENT;
-    tf->frame.rflags      = 0x202;
-
-    vmspace_mapcopy(mm,
-                    0x10000,
-                    init_fudgeasm_bin,
-                    init_fudgeasm_bin_len,
-                    VM_EXEC | VM_READ | VM_WRITE | VM_USER,
-                    M_SLEEPOK);
-
-    vms_mmap(mm,
-             0x10000,
-             init_fudgeasm_bin_len,
-             VM_EXEC | VM_READ | VM_WRITE,
-             MAP_ANON | MAP_PRIVATE | MAP_FIXED,
-             NULL,
-             0,
-             NULL);
-
-    oldmm = pr->p_mm;
-
-    flags = arch_irq_save();
-    vmspace_activate(mm);
-    pr->p_mm = mm;
-    arch_irq_restore(flags);
-
-    vmspace_put(oldmm);
-}
-
 void __init init_proc(void *arg) {
     (void) arg;
     do_exec("/sbin/init", NULL, NULL);
