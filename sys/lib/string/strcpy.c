@@ -17,8 +17,12 @@ char *strncpy(char *restrict dest, const char *restrict src, size_t len) {
 }
 
 size_t strlcpy(char *restrict dest, const char *restrict src, size_t len) {
-    size_t size = strnlen(src, len);
-    memcpy(dest, src, size == len ? size - 1 : size);
-    dest[size] = '\0';
+    size_t size = strlen(src);
+
+    if (len) {
+        size_t n = size >= len ? len - 1 : size;
+        memcpy(dest, src, n);
+        dest[n] = '\0';
+    }
     return size;
 }
