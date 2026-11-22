@@ -3,12 +3,10 @@
 
 #include <uapi/asi/posix_types.h>
 
-typedef __kernel_pid_t pid_t;
-typedef __kernel_off_t off_t;
-typedef unsigned int   mode_t;
-typedef unsigned long  dev_t;
-typedef unsigned long  ino_t;
-typedef unsigned long  nlink_t;
+typedef unsigned int  __kernel_mode_t;
+typedef unsigned long __kernel_dev_t;
+typedef unsigned long __kernel_ino_t;
+typedef unsigned long __kernel_nlink_t;
 
 #define PID_MAX 32768
 
