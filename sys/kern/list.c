@@ -82,6 +82,7 @@ void list_sort(void *priv, struct list_head *head, list_cmp_t cmp) {
                 merge_final(priv, cmp, head, carry[i], result);
                 return;
             }
+            result = merge(priv, cmp, carry[i], result);
         }
     }
 
