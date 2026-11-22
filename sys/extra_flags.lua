@@ -6,7 +6,7 @@ local extra_flags = {
 		"-g",
 	},
 	["CONFIG_DEBUG$cppflags"] = {
-		"-DDEBUG",
+		"-D__DEBUG",
 	},
 
 	-- warnings
