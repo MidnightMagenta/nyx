@@ -6,7 +6,7 @@ All system calls return a -ERRNO if an error occurs. Zero or positive return val
 | ------------ | ------ | --------------- | -------- | ----- | ----- | ----- | ----- | ---------------------------------------------------------------------- |
 | SYS_read     | 0      | fd              | buffer   | count | N/A   | N/A   | N/A   | number of bytes read                                                   |
 | SYS_write    | 1      | fd              | buffer   | count | N/A   | N/A   | N/A   | number of bytes written                                                |
-| SYS_open     | 2      | path            | flags    | N/A   | N/A   | N/A   | N/A   | the fd of the opened file                                              |
+| SYS_open     | 2      | path            | flags    | mode  | N/A   | N/A   | N/A   | the fd of the opened file                                              |
 | SYS_close    | 3      | fd              | N/A      | N/A   | N/A   | N/A   | N/A   | N/A                                                                    |
 | SYS_dup      | 4      | fd              | N/A      | N/A   | N/A   | N/A   | N/A   | the fd of the duplicate                                                |
 | SYS_fork     | 5      | N/A             | N/A      | N/A   | N/A   | N/A   | N/A   | `0` in the child process, pid of the child in the parent process       |
