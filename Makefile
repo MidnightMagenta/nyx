@@ -21,7 +21,7 @@ ifeq ($(abspath $(BUILD)),$(TOPDIR))
 $(error BUILD must not be the source directory)
 endif
 
-.PHONY: all build mbuild config menuconfig package clean distclean check-arch FORCE $(NINJA_TARGETS) \
+.PHONY: all build mbuild config menuconfig clean distclean check-arch FORCE $(NINJA_TARGETS) \
 	ninjaclean compdb
 
 all: build
