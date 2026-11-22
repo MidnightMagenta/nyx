@@ -421,8 +421,9 @@ int vm_remap_page(pgd_t *pgd, phys_addr_t pa, virt_addr_t va, unsigned long prot
     pr_debug(virtmem_log, "    found entry at index %d in table at depth %d at %#p\n", leaf.idx, depth, leaf.table);
     pr_debug(virtmem_log, "    value of entry: %#lx\n", leaf.table[leaf.idx]);
 
-    leaf.table[leaf.idx] = (pa & __PAGE_ADDR_MASK) | get_pte_flags(prot);
-    inc_pgtable_refcount(leaf.table);
+    if (pa & (vm_sc_bytes(sc) - 1)) { return -EINVAL; }
+
+    leaf.table[leaf.idx] = (pa & __PAGE_ADDR_MASK) | get_pte_flags(prot) | (sc != VM_SC_4K ? __PG_PDE_PAGE_SIZE : 0);
     invlpg(va);
 
     return 0;
@@ -538,11 +539,10 @@ int vm_set_page_prot(pgd_t *pgd, virt_addr_t va, unsigned long new_prot, vm_size
     if (va & (vm_sc_bytes(*sc) - 1)) { return -EINVAL; }
 
     old_pa     = __PAGE_ADDR(table[idx]);
-    pg_flags   = get_pte_flags(new_prot) | (sc != VM_SC_4K ? __PG_PDE_PAGE_SIZE : 0);
+    pg_flags   = get_pte_flags(new_prot) | (*sc != VM_SC_4K ? __PG_PDE_PAGE_SIZE : 0);
     table[idx] = old_pa | pg_flags;
     invlpg(va);
 
-    return 0;
     return 0;
 }
 
