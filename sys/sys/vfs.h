@@ -54,10 +54,7 @@ struct superops {
     void (*sbo_put_super)(struct superblock *sb);
 };
 
-/*
- * Every operation that takes a directory inode is called with that directory's i_mutex held. iop_lookup leaves the
- * dentry negative when the name does not exist, the other operations instantiate the dentry on success.
- */
+/* Every operation that takes a directory inode is called with that directory's i_mutex held. */
 struct inodeops {
     int     (*iop_lookup)(struct inode *dir, struct dentry *dent);
     int     (*iop_create)(struct inode *dir, struct dentry *dent, mode_t mode, dev_t rdev);
