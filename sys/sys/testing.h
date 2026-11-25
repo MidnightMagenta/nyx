@@ -1,4 +1,6 @@
-#ifdef __TESTING__
+#ifndef __TESTING__
+#error "testing.h included in a non-test file"
+#endif
 
 #ifndef _NYX_TESTING_H
 #define _NYX_TESTING_H
@@ -173,5 +175,4 @@ int  __test_strcmp(const char *a, const char *b);
         if (TEST_HAS_FAILED()) { return; }                                                                             \
     } while (0)
 
-#endif
 #endif
