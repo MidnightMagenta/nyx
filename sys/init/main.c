@@ -69,7 +69,7 @@ static void __init mount_devfs() {
 static __init void start_init() {
     struct file *console;
     int          stdinfd, stdoutfd, stderrfd;
-    if (do_fork(&proc0, FORK_NOZOMBIE | FORK_SHAREVM, &init_proc, NULL, NULL, &initproc) != 0) {
+    if (do_fork(&proc0, FORK_NOZOMBIE | FORK_SHAREVM | FORK_SHAREFD, &init_proc, NULL, NULL, &initproc) != 0) {
         panic("failed to start init");
     }
 
