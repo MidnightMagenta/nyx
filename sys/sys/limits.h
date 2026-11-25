@@ -6,5 +6,6 @@
 
 #define PATH_MAX __KERNEL_PATH_MAX
 #define NAME_MAX __KERNEL_NAME_MAX
+#define OFF_MAX  __KERNEL_OFF_MAX
 
 #endif

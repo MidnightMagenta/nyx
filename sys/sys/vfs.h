@@ -10,7 +10,6 @@
 #include <sys/stddef.h>
 
 #define MAXSYMLINKS 32
-#define OFF_MAX     ((off_t) (~0UL >> 1))
 
 #define MINORBITS         20
 #define MINORMASK         ((1UL << MINORBITS) - 1)
