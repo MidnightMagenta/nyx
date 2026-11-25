@@ -207,8 +207,8 @@ static int ramfs_grow_pages(struct ramfs_inode *ri, size_t npages) {
 
 static int ramfs_truncate(struct inode *inode, off_t size) {
     struct ramfs_inode *ri   = RAMFS_I(inode);
-    size_t              keep = PG_ALIGN_UP((size_t) size) / PAGE_SIZE;
-    size_t              tail = (size_t) size % PAGE_SIZE;
+    size_t              keep = page_count(PG_ALIGN_UP((size_t) size));
+    size_t              tail = offset_in_page((size_t) size);
 
     if (size < inode->i_size) {
         ramfs_free_pages(ri, keep);
@@ -240,8 +240,8 @@ static ssize_t ramfs_read(struct file *fp, char *buf, size_t cnt, off_t *pos) {
     n   = MIN(cnt, (size_t) inode->i_size - off);
 
     while (done < n) {
-        size_t pg    = (off + done) / PAGE_SIZE;
-        size_t pgoff = (off + done) % PAGE_SIZE;
+        size_t pg    = page_count(off + done);
+        size_t pgoff = offset_in_page(off + done);
         size_t chunk = MIN(n - done, PAGE_SIZE - pgoff);
 
         if (pg < ri->ri_npages && ri->ri_pages[pg]) {
@@ -272,11 +272,11 @@ static ssize_t ramfs_write(struct file *fp, const char *buf, size_t cnt, off_t *
 
     mutex_lock(&inode->i_mutex);
 
-    if ((res = ramfs_grow_pages(ri, PG_ALIGN_UP(off + cnt) / PAGE_SIZE))) { goto out; }
+    if ((res = ramfs_grow_pages(ri, page_count(PG_ALIGN_UP(off + cnt))))) { goto out; }
 
     while (done < cnt) {
-        size_t pg    = (off + done) / PAGE_SIZE;
-        size_t pgoff = (off + done) % PAGE_SIZE;
+        size_t pg    = page_count(off + done);
+        size_t pgoff = offset_in_page(off + done);
         size_t chunk = MIN(cnt - done, PAGE_SIZE - pgoff);
 
         if (!ri->ri_pages[pg]) {
