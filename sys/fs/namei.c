@@ -66,7 +66,7 @@ static int nd_init(struct nameidata *nd, const struct path *dir, const char *nam
     nd->nd_flags = flags;
 
     if (len == 0) { return -ENOENT; }
-    if (len == PATH_MAX) { return -ENAMETOOLONG; }
+    if (len >= PATH_MAX) { return -ENAMETOOLONG; }
 
     nd->nd_buf = kmalloc(PATH_MAX, M_SLEEPOK);
     if (!nd->nd_buf) { return -ENOMEM; }
