@@ -28,6 +28,7 @@ struct filedesc {
 
 int              fdinit(struct process *p);
 struct filedesc *fdcopy(struct filedesc *src);
+struct filedesc *fdshare(struct filedesc *src);
 void             fdfree(struct process *p);
 
 int          fd_install(struct process *p, struct file *fp, int fdflags, int *fdout);

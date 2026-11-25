@@ -96,6 +96,11 @@ struct filedesc *fdcopy(struct filedesc *src) {
     return fdp;
 }
 
+struct filedesc *fdshare(struct filedesc *src) {
+    refcount_inc(&src->fd_refs);
+    return src;
+}
+
 void fdfree(struct process *p) {
     struct filedesc *fdp = p->p_fd;
 
