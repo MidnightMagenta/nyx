@@ -1,18 +1,18 @@
-#include <sys/mm/address.h>
-#include <sys/mm/physmem.h>
-#include <sys/mm/virtmem.h>
 #include <sys/errno.h>
 #include <sys/kernel.h>
 #include <sys/minmax.h>
+#include <sys/mm/address.h>
+#include <sys/mm/physmem.h>
+#include <sys/mm/virtmem.h>
+#include <sys/mman.h>
 #include <sys/page_fault.h>
 #include <sys/panic.h>
 #include <sys/proc.h>
+#include <sys/stat.h>
 #include <sys/stddef.h>
 #include <sys/string.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
-
-#include <sys/uapi/mman.h>
 
 #include <asi/page.h>
 
@@ -89,25 +89,22 @@ static pgflt_result_t handle_anon_page_fault(struct vmspace *vms, struct pgflt_i
 static pgflt_result_t handle_file_backed_page_fault(struct vmspace      *vms,
                                                     struct pgflt_info   *pfi,
                                                     struct vm_map_entry *vma) {
-    struct vattr attr;
-    off_t        file_off;
-    size_t       rem, to_read;
-    virt_addr_t  va = PG_ALIGN_DN(pfi->pf_addr);
-    struct page *pg;
-    void        *frame;
-    int          res;
+    struct inode *inode = f_inode(vma->vm_file);
+    off_t         file_off, size;
+    size_t        rem, to_read;
+    virt_addr_t   va = PG_ALIGN_DN(pfi->pf_addr);
+    struct page  *pg;
+    void         *frame;
+    ssize_t       n;
+    int           res;
 
     pr_debug(pgflt_log, "    handling file backed page fault\n");
 
-    res = VOP_GETATTR(vma->vm_vn, &attr);
-    if (res) {
-        return PGFLT_SIGBUS; // SIGBUS
-    }
+    if (!S_ISREG(inode->i_mode)) { return PGFLT_SIGSEGV; }
 
-    if (attr.va_type != VREG) { return PGFLT_SIGSEGV; }
-
+    size     = inode->i_size;
     file_off = vma->vm_foff + PG_ALIGN_DN(pfi->pf_addr - vma->vm_start);
-    rem      = (file_off < attr.va_size) ? (attr.va_size - file_off) : 0;
+    rem      = (file_off < size) ? (size_t) (size - file_off) : 0;
     to_read  = MIN(rem, PAGE_SIZE);
 
     pg = vm_alloc_page(M_SLEEPOK);
@@ -115,8 +112,12 @@ static pgflt_result_t handle_file_backed_page_fault(struct vmspace      *vms,
 
     frame = page_address(pg);
     if (to_read > 0) {
-        res = vn_rdwr(UIO_READ, vma->vm_vn, frame, to_read, file_off, NULL);
-        if (res) { return PGFLT_SIGSEGV; }
+        n = vfs_pread(vma->vm_file, frame, to_read, file_off);
+        if (n < 0) {
+            vm_put_page(pg);
+            return PGFLT_SIGBUS;
+        }
+        to_read = (size_t) n;
     }
 
     if (to_read < PAGE_SIZE) { memset((char *) frame + to_read, 0, PAGE_SIZE - to_read); }
@@ -165,7 +166,7 @@ static pgflt_result_t handle_user_page_fault(struct thread *t, struct pgflt_info
     if (pfi->pf_reason == PGFLT_NOT_PRESENT && res == -ENOENT) {
         if (vma->vm_flags & MAP_ANONYMOUS) {
             return handle_anon_page_fault(p->p_mm, pfi, vma);
-        } else if (vma->vm_vn) {
+        } else if (vma->vm_file) {
             return handle_file_backed_page_fault(p->p_mm, pfi, vma);
         }
     } else if (!res && pfi->pf_reason == PGFLT_PROT_VIOLATION) {

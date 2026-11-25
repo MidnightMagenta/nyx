@@ -9,6 +9,7 @@ local c_srcs = mbl.files({
 	"irq.c",
 	"kthread.c",
 	"list.c",
+	"mutex.c",
 	"page_fault.c",
 	"percpu.c",
 	"printk.c",

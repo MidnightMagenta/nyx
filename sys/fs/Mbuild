@@ -2,15 +2,20 @@ local mbl = require("mbuildlib")
 local sdirt = require("sdirtable")
 
 local subdirs = {
-	"cpio",
-	"devfs",
+	"ramfs",
 }
 
 local c_srcs = mbl.files({
-	"desc.c",
-	"fsnode.c",
+	"chrdev.c",
+	"cpio.c",
+	"dcache.c",
+	"file.c",
+	"filedesc.c",
+	"inode.c",
+	"namei.c",
+	"namespace.c",
+	"super.c",
 	"vfs.c",
-	"vfs_lookup.c",
 })
 
 local subdir_into = sdirt.new()

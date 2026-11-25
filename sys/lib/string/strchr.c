@@ -1,19 +1,17 @@
 #include <sys/string.h>
 
 const char *strchr(const char *s, int z) {
-    while (*s != '\0') {
+    for (;; s++) {
         if (*s == (char) z) { return s; }
-        s++;
+        if (*s == '\0') { return NULL; }
     }
-    return NULL;
 }
 
 const char *strrchr(const char *s, int z) {
     const char *last = NULL;
 
-    while (*s != '\0') {
+    for (;; s++) {
         if (*s == (char) z) { last = s; }
-        s++;
+        if (*s == '\0') { return last; }
     }
-    return last;
 }

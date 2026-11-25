@@ -1,31 +1,35 @@
 #include <sys/initcall.h>
+#include <sys/posix_types.h>
+#include <sys/stat.h>
 #include <sys/stddef.h>
-#include <sys/uio.h>
+#include <sys/string.h>
 #include <sys/vfs.h>
-#include <sys/uapi/posix_types.h>
+
+#include <asi/bug.h>
 
 #define ZERO_RDEV makedev(1, 5)
 
-static int zero_read(dev_t d, struct uio *u) {
-    (void) d;
-    static const char zb[256] = {0};
-    while (u->uio_resid > 0) {
-        size_t k = u->uio_resid < sizeof(zb) ? u->uio_resid : sizeof(zb);
-        int    e = uiomove((void *) zb, k, u);
-        if (e) { return e; }
-    }
-    return 0;
+static ssize_t zero_read(struct file *fp, char *buf, size_t cnt, off_t *pos) {
+    (void) fp;
+    (void) pos;
+
+    memset(buf, 0, cnt);
+    return (ssize_t) cnt;
 }
 
-static const struct cdevsw zero_cdevsw = {
-        .d_name  = "zero",
-        .d_open  = cdev_noop,
-        .d_close = cdev_noop,
-        .d_read  = zero_read,
-        .d_write = cdev_sink,
-        .d_ioctl = cdev_notty,
+static ssize_t zero_write(struct file *fp, const char *buf, size_t cnt, off_t *pos) {
+    (void) fp;
+    (void) buf;
+    (void) pos;
+    return (ssize_t) cnt;
+}
+
+static const struct fileops zero_fops = {
+        .fop_read  = zero_read,
+        .fop_write = zero_write,
 };
 
 DEFINE_INITCALL(init_zerodev) {
-    cdev_register("zero", &zero_cdevsw, ZERO_RDEV, 0666);
+    BUG_ON(chrdev_register(ZERO_RDEV, "zero", &zero_fops));
+    BUG_ON(vfs_mknod(NULL, "/dev/zero", S_IFCHR | 0666, ZERO_RDEV));
 }

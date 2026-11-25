@@ -1,0 +1,17 @@
+#ifndef _SYS_MMAN_H
+#define _SYS_MMAN_H
+
+#include <sys/uapi/nyx/mman.h>
+
+#define PROT_READ  __KERNEL_PROT_READ
+#define PROT_WRITE __KERNEL_PROT_WRITE
+#define PROT_EXEC  __KERNEL_PROT_EXEC
+#define PROT_NONE  __KERNEL_PROT_NONE
+
+#define MAP_PRIVATE   __KERNEL_MAP_PRIVATE
+#define MAP_SHARED    __KERNEL_MAP_SHARED
+#define MAP_ANONYMOUS __KERNEL_MAP_ANONYMOUS
+#define MAP_ANON      __KERNEL_MAP_ANON
+#define MAP_FIXED     __KERNEL_MAP_FIXED
+
+#endif

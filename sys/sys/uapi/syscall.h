@@ -1,5 +1,5 @@
-#ifndef _NYX_UAPI_SYSCALL_H
-#define _NYX_UAPI_SYSCALL_H
+#ifndef _UAPI_SYSCALL_H
+#define _UAPI_SYSCALL_H
 
 #define SYS_read   0
 #define SYS_write  1

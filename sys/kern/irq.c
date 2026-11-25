@@ -54,7 +54,7 @@ int irq_remove_handler(unsigned int irq, irq_handler_func fn) {
     if (irq >= NR_IRQS) { return -EINVAL; }
     if (list_is_empty(&irq_descs[irq].actions)) { return -ENOENT; }
 
-    for (cur = irq_descs[irq].actions.next; cur->next != &irq_descs[irq].actions; cur = cur->next) {
+    list_for_each(cur, &irq_descs[irq].actions) {
         action = list_entry(cur, struct irq_action, list);
         if (action->fn == fn) {
             list_del(&action->list);

@@ -3,12 +3,10 @@
 
 #include <sys/atomic.h>
 #include <sys/list.h>
+#include <sys/mman.h>
+#include <sys/posix_types.h>
 #include <sys/refcount.h>
 #include <sys/types.h>
-#include <sys/vfs.h>
-#include <sys/uapi/posix_types.h>
-
-#include <sys/uapi/mman.h>
 
 #include <asi/bitops.h>
 #include <asi/page_data.h>
@@ -94,8 +92,8 @@ struct vm_map_entry {
     int         vm_prot;
     int         vm_flags;
 
-    struct vnode *vm_vn;
-    off_t         vm_foff;
+    struct file *vm_file;
+    off_t        vm_foff;
 
     struct list_head vm_list;
     struct vmspace  *vm_vmspace;

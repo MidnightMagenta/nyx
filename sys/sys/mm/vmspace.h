@@ -1,17 +1,17 @@
 #ifndef _MM_MM_H
 #define _MM_MM_H
 
-#include <sys/mm/mm_types.h>
-#include <sys/mm/virtmem.h>
 #include <sys/atomic.h>
 #include <sys/current.h>
 #include <sys/errno.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/virtmem.h>
+#include <sys/posix_types.h>
 #include <sys/proc.h>
-#include <sys/uapi/posix_types.h>
 
 #include <asi/access_user.h>
 
-struct vnode;
+struct file;
 
 struct vmspace *vmspace_fork(struct process *p);
 struct vmspace *vmspace_share(struct process *p);
@@ -19,16 +19,12 @@ struct vmspace *vmspace_new(struct process *parent);
 void            vmspace_activate(struct vmspace *mm);
 void            vmspace_put(struct vmspace *mm);
 
-int  vmspace_map(struct vmspace *mm, virt_addr_t addr, size_t len, unsigned long flags, int gfp_flags);
-int  vmspace_mapcopy(struct vmspace *mm, virt_addr_t addr, void *data, size_t len, unsigned long flags, int gfp_flags);
-void vmspace_unmap(struct vmspace *mm, virt_addr_t addr, size_t len);
-
 int vms_mmap(struct vmspace *vs,
              virt_addr_t     addr,
              size_t          len,
              int             prot,
              int             flags,
-             struct vnode   *vp,
+             struct file    *fp,
              off_t           off,
              virt_addr_t    *pa);
 int vms_munmap(struct vmspace *vs, virt_addr_t addr, size_t len);

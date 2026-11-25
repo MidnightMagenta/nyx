@@ -1,275 +1,242 @@
 #ifndef _NYX_VFS_H
 #define _NYX_VFS_H
 
+#include <sys/limits.h>
 #include <sys/list.h>
+#include <sys/mutex.h>
+#include <sys/posix_types.h>
 #include <sys/refcount.h>
 #include <sys/spinlock.h>
 #include <sys/stddef.h>
-#include <sys/uio.h>
-#include <sys/uapi/posix_types.h>
 
-#define MAXPATH     4096
-#define NAME_MAX    255
 #define MAXSYMLINKS 32
 
-enum vtype { VNON, VREG, VDIR, VBLK, VCHR, VLNK, VFIFO, VSOCK };
+#define MINORBITS         20
+#define MINORMASK         ((1UL << MINORBITS) - 1)
+#define makedev(maj, min) ((dev_t) (((dev_t) (maj) << MINORBITS) | ((dev_t) (min) & MINORMASK)))
+#define major(dev)        ((unsigned int) ((dev) >> MINORBITS))
+#define minor(dev)        ((unsigned int) ((dev) & MINORMASK))
 
-struct vnode;
-struct mount;
-struct file;
-struct vnodeops;
-struct vfsops;
+struct path;
+struct dentry;
+struct inode;
+struct inodeops;
 struct fileops;
-struct componentname;
-struct statfs;
+struct mount;
+struct superblock;
+struct superops;
+struct file;
+struct dir_ctx;
 
-struct vattr {
-    enum vtype va_type;
-    u16        va_mode;
-    u32        va_nlink;
-    u32        va_uid;
-    u32        va_gid;
-    u64        va_fileid;
-    off_t      va_size;
-    u32        va_rdev;
+struct path {
+    struct mount  *p_mnt;
+    struct dentry *p_dent;
 };
 
-#define makedev(maj, min) ((dev_t) (((maj) << 20) | ((min) & 0xfffff)))
-#define major(d)          ((uint32_t) ((d) >> 20))
-#define minor(d)          ((uint32_t) ((d) & 0xfffff))
+struct fstype {
+    const char      *fs_name;
+    int              (*fs_mount)(struct fstype      *fs,
+                                 const char         *source,
+                                 unsigned long       flags,
+                                 const void         *data,
+                                 struct superblock **out);
+    void             (*fs_kill_sb)(struct superblock *sb);
+    struct list_head fs_linkage;
+};
 
-struct vnode {
-    enum vtype             v_type;
-    const struct vnodeops *v_op;
-    void                  *v_data;
-    struct mount          *v_mount;
-    struct mount          *v_mountedhere;
-    struct refcount        v_ref;
-    u32                    v_lockstate;
+struct superops {
+    struct inode *(*sbo_read_inode)(struct superblock *sb, ino_t ino);
+    int           (*sbo_write_inode)(struct inode *ino);
+    void          (*sbo_evict_inode)(struct inode *ino);
+    int           (*sbo_sync_fs)(struct superblock *sb);
+    // int        (*sbo_statfs)(struct superblock *sb, struct statfs *out); //: TODO: implement statfs
+    void (*sbo_put_super)(struct superblock *sb);
+};
+
+/* Every operation that takes a directory inode is called with that directory's i_mutex held. */
+struct inodeops {
+    int     (*iop_lookup)(struct inode *dir, struct dentry *dent);
+    int     (*iop_create)(struct inode *dir, struct dentry *dent, mode_t mode, dev_t rdev);
+    int     (*iop_symlink)(struct inode *dir, struct dentry *dent, const char *target);
+    int     (*iop_remove)(struct inode *dir, struct dentry *dent);
+    ssize_t (*iop_readlink)(struct dentry *dent, char *buf, size_t len);
+    int     (*iop_truncate)(struct inode *ino, off_t size);
+};
+
+typedef int (*filldir_t)(struct dir_ctx *ctx, const char *name, int namelen, off_t pos, u64 ino, unsigned int type);
+
+struct dir_ctx {
+    filldir_t dc_callback;
+    u64       dc_cookie;
+};
+
+/* Buffers passed to fop_read and fop_write are always kernel memory. */
+struct fileops {
+    int     (*fop_open)(struct inode *in, struct file *fp);
+    int     (*fop_release)(struct inode *in, struct file *fp);
+    ssize_t (*fop_read)(struct file *fp, char *buf, size_t cnt, off_t *pos);
+    ssize_t (*fop_write)(struct file *fp, const char *buf, size_t cnt, off_t *pos);
+    off_t   (*fop_llseek)(struct file *fp, off_t off, int whence);
+    int     (*fop_iterate)(struct file *fp, struct dir_ctx *ctx);
+};
+
+struct superblock {
+    // TODO: backing block dev
+    struct fstype         *sb_type;
+    const struct superops *sb_ops;
+    struct dentry         *sb_root;
+    unsigned long          sb_block_size;
+    unsigned long          sb_flags;
+    refcount_t             sb_refs;
+    void                  *sb_fs_private;
+    spinlock_t             sb_lock;
+    struct mutex           sb_inode_mutex;
+    struct list_head       sb_inodes;
 };
 
 struct mount {
-    const struct vfsops *mnt_op;
-    void                *mnt_data;
-    struct vnode        *mnt_root;
-    struct vnode        *mnt_vnodecovered;
-
-    struct list_head mnt_link;
+    struct dentry     *mnt_root;
+    struct superblock *mnt_sb;
+    struct mount      *mnt_parent;
+    struct dentry     *mnt_mountpoint;
+    refcount_t         mnt_refs;
+    struct list_head   mnt_linkage;
 };
 
-struct vfsops {
-    int (*vfs_mount)(struct mount *mp, void *data);
-    int (*vfs_unmount)(struct mount *mp, int flags);
-    int (*vfs_root)(struct mount *mp, struct vnode **vpp);
-    int (*vfs_statfs)(struct mount *mp, struct statfs *sbp);
+#define D_DEAD (1 << 0)
+
+struct dentry {
+    char               d_name[NAME_MAX + 1];
+    size_t             d_namelen;
+    struct dentry     *d_parent;
+    struct inode      *d_inode;
+    struct superblock *d_sb;
+    refcount_t         d_refs;
+    unsigned long      d_flags;
+    unsigned int       d_mounts;
+    spinlock_t         d_lock;
+    struct list_head   d_children;
+    struct list_head   d_siblings;
+    void              *d_fs_private;
 };
 
-struct vnodeops {
-    int (*vop_lookup)(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp);
-    int (*vop_open)(struct vnode *vp, int mode);
-    int (*vop_close)(struct vnode *vp, int mode);
-    int (*vop_read)(struct vnode *vp, struct uio *uio, int ioflag);
-    int (*vop_write)(struct vnode *vp, struct uio *uio, int ioflag);
-    int (*vop_ioctl)(struct vnode *vp, unsigned long cmd, void *data);
-    int (*vop_getattr)(struct vnode *vp, struct vattr *vap);
-    int (*vop_readdir)(struct vnode *vp, struct uio *uio);
-    int (*vop_readlink)(struct vnode *vp, struct uio *uio);
-    int (*vop_inactive)(struct vnode *vp);
-    int (*vop_reclaim)(struct vnode *vp);
+struct inode {
+    ino_t                  i_ino;
+    mode_t                 i_mode;
+    nlink_t                i_nlink;
+    off_t                  i_size;
+    dev_t                  i_rdev;
+    refcount_t             i_refs;
+    struct superblock     *i_sb;
+    const struct inodeops *i_op;
+    const struct fileops  *i_fop;
+    spinlock_t             i_lock;
+    struct mutex           i_mutex;
+    struct list_head       i_sb_linkage;
+    void                  *i_fs_private;
 };
 
-struct fileops {
-    int (*fo_read)(struct file *fp, struct uio *uio, int flags);
-    int (*fo_write)(struct file *fp, struct uio *uio, int flags);
-    int (*fo_ioctl)(struct file *fp, unsigned long cmd, void *data);
-    int (*fo_stat)(struct file *fp, struct vattr *vap);
-    int (*fo_close)(struct file *fp);
-};
-
-enum { DTYPE_VNODE = 1, DTYPE_PIPE, DTYPE_SOCKET, DTYPE_KQUEUE };
+#define FMODE_READ  (1 << 0)
+#define FMODE_WRITE (1 << 1)
 
 struct file {
-    short                 f_type;
-    const struct fileops *f_ops;
-    void                 *f_data;
-    off_t                 f_offset;
-    int                   f_flags;
-    struct refcount       f_count;
+    struct path           f_path;
+    struct inode         *f_inode;
+    const struct fileops *f_op;
+    off_t                 f_pos;
+    struct mutex          f_pos_lock;
+    unsigned long         f_flags;
+    unsigned long         f_mode;
+    refcount_t            f_refs;
+    void                 *f_fs_private;
 };
 
-struct fdentry {
-    struct file *fe_file;
-    int          fe_flags;
-};
+#define LOOKUP_FOLLOW    (1 << 0)
+#define LOOKUP_DIRECTORY (1 << 1)
 
-#define FD_CLOEXEC (1 << 0)
-#define FD_CLOFORK (1 << 1)
-
-struct filedesc {
-    struct fdentry *fd_files;
-    int             fd_nfiles;
-    struct vnode   *fd_cdir;
-    struct vnode   *fd_rdir;
-    spinlock_t      fd_lock;
-};
-
-struct cdevsw {
-    const char *d_name;
-    int         (*d_open)(dev_t dev, int mode);
-    int         (*d_close)(dev_t dev, int mode);
-    int         (*d_read)(dev_t dev, struct uio *uio);
-    int         (*d_write)(dev_t dev, struct uio *uio);
-    int         (*d_ioctl)(dev_t dev, unsigned long cmd, void *data);
-};
-
-enum { NAMEI_LOOKUP, NAMEI_CREATE, NAMEI_DELETE, NAMEI_RENAME };
-
-#define NAMEI_FOLLOW     0x0001
-#define NAMEI_ISLASTCN   0x0002
-#define NAMEI_WANTPARENT 0x0004
-
-struct componentname {
-    int         cn_nameiop;
-    u32         cn_flags;
-    const char *cn_nameptr;
-    size_t      cn_namelen;
-};
-
-struct nameidata {
-    // inputs
-    const char     *ni_dirp;
-    enum uio_seg    ni_segflg;
-    int             ni_op;
-    u32             ni_flags;
-    struct process *ni_proc;
-
-    // outputs
-    struct vnode *ni_vp;
-    struct vnode *ni_dvp;
-
-    // scratchpad
-    struct componentname ni_cnd;
-    char                *ni_pathbuf;
-    int                  ni_loopcnt;
-};
-
-static inline int VFS_MOUNT(struct mount *mp, void *d) {
-    return mp->mnt_op->vfs_mount(mp, d);
-}
-static inline int VFS_UNMOUNT(struct mount *mp, int f) {
-    return mp->mnt_op->vfs_unmount(mp, f);
-}
-static inline int VFS_ROOT(struct mount *mp, struct vnode **vpp) {
-    return mp->mnt_op->vfs_root(mp, vpp);
-}
-static inline int VFS_STATFS(struct mount *mp, struct statfs *s) {
-    return mp->mnt_op->vfs_statfs(mp, s);
+static inline struct inode *d_inode(struct dentry *dent) {
+    return dent->d_inode;
 }
 
-static inline int VOP_LOOKUP(struct vnode *d, struct vnode **vpp, struct componentname *c) {
-    return d->v_op->vop_lookup(d, vpp, c);
-}
-static inline int VOP_OPEN(struct vnode *v, int m) {
-    return v->v_op->vop_open(v, m);
-}
-static inline int VOP_CLOSE(struct vnode *v, int m) {
-    return v->v_op->vop_close(v, m);
-}
-static inline int VOP_READ(struct vnode *v, struct uio *u, int f) {
-    return v->v_op->vop_read(v, u, f);
-}
-static inline int VOP_WRITE(struct vnode *v, struct uio *u, int f) {
-    return v->v_op->vop_write(v, u, f);
-}
-static inline int VOP_IOCTL(struct vnode *v, unsigned long c, void *d) {
-    return v->v_op->vop_ioctl(v, c, d);
-}
-static inline int VOP_GETATTR(struct vnode *v, struct vattr *a) {
-    return v->v_op->vop_getattr(v, a);
-}
-static inline int VOP_READDIR(struct vnode *v, struct uio *u) {
-    return v->v_op->vop_readdir(v, u);
-}
-static inline int VOP_READLINK(struct vnode *v, struct uio *u) {
-    return v->v_op->vop_readlink(v, u);
-}
-static inline int VOP_INACTIVE(struct vnode *v) {
-    return v->v_op->vop_inactive(v);
-}
-static inline int VOP_RECLAIM(struct vnode *v) {
-    return v->v_op->vop_reclaim(v);
+static inline struct inode *f_inode(struct file *f) {
+    return f->f_inode;
 }
 
-static inline int vn_lock(struct vnode *vp, int flags) {
-    (void) vp;
-    (void) flags;
-    return 0;
-}
-static inline void VOP_UNLOCK(struct vnode *vp) {
-    (void) vp;
-}
-#define LK_EXCLUSIVE 0x1
-
-int  getnewvnode(struct mount *mp, const struct vnodeops *ops, enum vtype type, struct vnode **vpp);
-void vref(struct vnode *vp);
-void vrele(struct vnode *vp);
-void vput(struct vnode *vp);
-
-int                  vfs_register(const char *name, const struct vfsops *ops);
-const struct vfsops *vfs_byname(const char *name);
-int                  do_mount(const char *fsname, struct vnode *covered, void *data, struct mount **mpp);
-int                  do_unmount(struct mount *mp, int flags);
-int                  vfs_mountroot(const char *fsname, void *data);
-
-void vops_check(const struct vnodeops *ops);
-
-int vop_nolookup(struct vnode *, struct vnode **, struct componentname *);
-int vop_noopen(struct vnode *, int);
-int vop_noclose(struct vnode *, int);
-int vop_noread(struct vnode *, struct uio *, int);
-int vop_nowrite(struct vnode *, struct uio *, int);
-int vop_noioctl(struct vnode *, unsigned long, void *);
-int vop_noreaddir(struct vnode *, struct uio *);
-int vop_noreadlink(struct vnode *, struct uio *);
-int vop_null(struct vnode *);
-
-int namei(struct nameidata *ndp);
-
-int cdev_register(const char *name, const struct cdevsw *cdev, dev_t dev, u16 mode);
-int cdev_noop(dev_t d, int m);
-int cdev_notty(dev_t d, unsigned long c, void *a);
-int cdev_sink(dev_t d, struct uio *u);
-
-int              fdinit(struct process *p);
-struct filedesc *fdcopy(struct filedesc *src);
-void             fdfree(struct process *p);
-int              fdalloc(struct process *p, int min, int *fdout);
-int              falloc(struct process *p, struct file **fpout, int *fdout);
-struct file     *fget(struct process *p, int fd);
-void             fhold(struct file *fp);
-void             fdrop(struct file *fp);
-int              fd_close(struct process *p, int fd);
-
-static inline struct vnode *getvnode(struct file *fp) {
-    if (fp->f_type != DTYPE_VNODE) { return NULL; }
-    return fp->f_data;
+static inline bool d_is_negative(struct dentry *dent) {
+    return dent->d_inode == NULL;
 }
 
-int vn_open(struct nameidata *ndp, int fflags, u16 mode);
-int vn_rdwr(enum uio_rw rw, struct vnode *vp, void *buf, size_t len, off_t off, size_t *residp);
-int vfs_open(struct process *p, const char *path, enum uio_seg seg, int flags, u16 mode, int *fdout);
+static inline void i_set_nlink(struct inode *inode, nlink_t nl) {
+    inode->i_nlink = nl;
+}
+static inline void i_inc_nlink(struct inode *inode) {
+    inode->i_nlink++;
+}
+static inline void i_drop_nlink(struct inode *inode) {
+    inode->i_nlink--;
+}
+static inline void i_clr_nlink(struct inode *inode) {
+    inode->i_nlink = 0;
+}
 
-int kern_open(struct process *p, const char *path, int flags, u16 mode, int *fdout);
-int kern_close(struct process *p, int fd);
-int kern_read(struct process *p, int fd, const void *ubuf, size_t count, ssize_t *nread);
-int kern_write(struct process *p, int fd, const void *ubuf, size_t count, ssize_t *nwritten);
-int kern_dup(struct process *p, int oldfd, int *newfd);
+int            vfs_register_fs(struct fstype *fs);
+int            vfs_unregister_fs(struct fstype *fs);
+struct fstype *vfs_get_fs(const char *name);
 
-int kopen(const char *path, int flags, u16 mode, struct vnode **vnout);
+struct superblock *salloc(struct fstype *fs, const struct superops *ops);
+void               sget(struct superblock *sb);
+void               sput(struct superblock *sb);
+void               kill_generic_super(struct superblock *sb);
 
-extern const struct fileops vnops;
+struct dentry *dalloc(struct dentry *parent, const char *name, size_t namelen);
+struct dentry *dalloc_root(struct superblock *sb, struct inode *root);
+struct dentry *dlookup(struct dentry *parent, const char *name, size_t namelen);
+void           dget(struct dentry *dent);
+void           dput(struct dentry *dent);
+void           dinstantiate(struct dentry *dent, struct inode *inode);
+void           dunlink(struct dentry *dent);
+void           dshrink(struct dentry *root, int held);
 
-extern struct vnode    *rootvnode;
-extern struct list_head mountlist;
+struct inode *ialloc(struct superblock *sb);
+struct inode *iread(struct superblock *sb, ino_t ino);
+void          iget(struct inode *inode);
+void          iput(struct inode *inode);
+void          init_special_inode(struct inode *inode, mode_t mode, dev_t rdev);
+
+void          mntget(struct mount *mnt);
+void          mntput(struct mount *mnt);
+struct mount *lookup_mnt(struct mount *parent, struct dentry *mountpoint);
+
+void path_get(struct path *p);
+void path_put(struct path *p);
+
+int vfs_mount_root(const char *fsname, const char *source, unsigned long flags, const void *data);
+int vfs_mount(const char *fsname, const char *source, const char *target, unsigned long flags, const void *data);
+int vfs_umount(const char *target);
+
+int vfs_lookup(const struct path *dir, const char *name, unsigned int flags, struct path *out);
+int vfs_mknod(const struct path *dir, const char *name, mode_t mode, dev_t rdev);
+int vfs_mkdir(const struct path *dir, const char *name, mode_t mode);
+int vfs_symlink(const struct path *dir, const char *name, const char *target);
+int vfs_unlink(const struct path *dir, const char *name);
+int vfs_rmdir(const struct path *dir, const char *name);
+
+int     vfs_open(const struct path *dir, const char *name, int flags, mode_t mode, struct file **out);
+void    fhold(struct file *fp);
+void    fput(struct file *fp);
+ssize_t vfs_read(struct file *fp, void *buf, size_t cnt);
+ssize_t vfs_write(struct file *fp, const void *buf, size_t cnt);
+ssize_t vfs_pread(struct file *fp, void *buf, size_t cnt, off_t off);
+ssize_t vfs_pwrite(struct file *fp, const void *buf, size_t cnt, off_t off);
+off_t   vfs_llseek(struct file *fp, off_t off, int whence);
+int     vfs_iterate(struct file *fp, struct dir_ctx *ctx);
+int     vfs_truncate(struct inode *inode, off_t size);
+
+off_t generic_file_llseek(struct file *fp, off_t off, int whence);
+
+int chrdev_register(dev_t dev, const char *name, const struct fileops *fops);
+int chrdev_unregister(dev_t dev);
+
+extern const struct fileops chrdev_fops;
 
 #endif

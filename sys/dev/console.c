@@ -1,43 +1,37 @@
 #include <sys/early_serial.h>
 #include <sys/initcall.h>
+#include <sys/posix_types.h>
+#include <sys/stat.h>
 #include <sys/stddef.h>
-#include <sys/uio.h>
 #include <sys/vfs.h>
-#include <sys/uapi/posix_types.h>
+
+#include <asi/bug.h>
 
 #define CONSOLE_RDEV makedev(5, 1)
 
-static int console_write(dev_t d, struct uio *u) {
-    (void) d;
-    char buf[128];
-
-    while (u->uio_resid > 0) {
-        size_t k = u->uio_resid < sizeof(buf) ? u->uio_resid : sizeof(buf);
-        int    e = uiomove(buf, k, u);
-        if (e) { return e; }
-
-        for (size_t i = 0; i < k; i++) { early_serial_putc(buf[i]); }
-    }
-
+static ssize_t console_read(struct file *fp, char *buf, size_t cnt, off_t *pos) {
+    (void) fp;
+    (void) buf;
+    (void) cnt;
+    (void) pos;
     return 0;
 }
 
+static ssize_t console_write(struct file *fp, const char *buf, size_t cnt, off_t *pos) {
+    (void) fp;
+    (void) pos;
 
-static int console_read(dev_t d, struct uio *u) {
-    (void) d;
-    (void) u;
-    return 0;
+    for (size_t i = 0; i < cnt; i++) { early_serial_putc(buf[i]); }
+
+    return (ssize_t) cnt;
 }
 
-static const struct cdevsw console_cdevsw = {
-        .d_name  = "console",
-        .d_open  = cdev_noop,
-        .d_close = cdev_noop,
-        .d_read  = console_read,
-        .d_write = console_write,
-        .d_ioctl = cdev_notty,
+static const struct fileops console_fops = {
+        .fop_read  = console_read,
+        .fop_write = console_write,
 };
 
 DEFINE_INITCALL(init_consoledev) {
-    cdev_register("console", &console_cdevsw, CONSOLE_RDEV, 0666);
+    BUG_ON(chrdev_register(CONSOLE_RDEV, "console", &console_fops));
+    BUG_ON(vfs_mknod(NULL, "/dev/console", S_IFCHR | 0666, CONSOLE_RDEV));
 }

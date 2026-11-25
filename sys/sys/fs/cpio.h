@@ -3,9 +3,8 @@
 
 #include <sys/stddef.h>
 
-struct cpio_args {
-    const void *base;
-    size_t      len;
-};
+struct path;
+
+int cpio_unpack(const void *base, size_t len, const struct path *dest);
 
 #endif

@@ -19,9 +19,14 @@ run)
 run-info)
     qemu-system-x86_64 -cdrom build/nyxos.iso -m 4G -cpu qemu64 -vga std -d int,guest_errors,cpu_reset -no-reboot -no-shutdown
     ;;
-debug)
+serve)
+    # QEMU halted with the gdbstub on :1234, no gdb attached. Used by `debug`
+    # and by editor DAP clients. exec so killing this script kills QEMU.
     mkdir -p tmp
-    qemu-system-x86_64 -cdrom build/nyxos.iso -m 4G -cpu qemu64 -vga std -s -S -d int,guest_errors,cpu_reset -no-reboot -no-shutdown -D tmp/qemu.log &
+    exec qemu-system-x86_64 -cdrom build/nyxos.iso -m 4G -cpu qemu64 -vga std -s -S -d int,guest_errors,cpu_reset -no-reboot -no-shutdown -D tmp/qemu.log
+    ;;
+debug)
+    "$0" serve &
     gdb
     ;;
 record)
@@ -37,7 +42,7 @@ record)
         -icount shift=auto,rr=record,rrfile=tmp/replay.bin,rrsnapshot=init \
         -no-reboot
     ;;
-replay)
+replay-serve)
     # Deterministic replay of tmp/replay.bin with the gdb stub on :1234 and the
     # CPU frozen (-S). In gdb: `target remote :1234`, then reverse-stepi (rsi) /
     # reverse-continue (rc). Uses the SAME machine/disk arrays as record.
@@ -45,17 +50,24 @@ replay)
         echo "No recording found -- run '$0 record' first." >&2
         exit 1
     fi
-    qemu-system-x86_64 "${RR_MACHINE[@]}" "${RR_DISK[@]}" \
+    exec qemu-system-x86_64 "${RR_MACHINE[@]}" "${RR_DISK[@]}" \
         -icount shift=auto,rr=replay,rrfile=tmp/replay.bin,rrsnapshot=init \
         -s -S -no-reboot -no-shutdown \
-        -d int,guest_errors,cpu_reset -D tmp/qemu-replay.log &
+        -d int,guest_errors,cpu_reset -D tmp/qemu-replay.log
+    ;;
+replay)
+    if [[ ! -f tmp/replay.bin || ! -f tmp/nyxos.qcow2 ]]; then
+        echo "No recording found -- run '$0 record' first." >&2
+        exit 1
+    fi
+    "$0" replay-serve &
     QEMU_PID=$!
     # Free port 1234 when gdb exits so the next replay can bind it.
     trap 'kill "$QEMU_PID" 2>/dev/null || true' EXIT
     gdb
     ;;
 *)
-    echo "Usage: dbg {run|run-info|debug|record|replay}"
+    echo "Usage: dbg {run|run-info|serve|debug|record|replay|replay-serve}"
     exit 1
     ;;
 esac

@@ -33,6 +33,6 @@ struct mmap_entry {
 struct mmap_map {
     u64               nr_entries;
     struct mmap_entry map[MMAP_MAX_ENTRIES];
-};
+} __packed;
 
 #endif

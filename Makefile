@@ -16,12 +16,13 @@ CROSS_COMPILE ?= $(shell cat .cross_compile 2>/dev/null)
 export ARCH CROSS_COMPILE
 
 NINJA_TARGETS := vmnyx image initramfs sbin package
+NINJA_COMPDB_RULES := cc
 
 ifeq ($(abspath $(BUILD)),$(TOPDIR))
 $(error BUILD must not be the source directory)
 endif
 
-.PHONY: all build mbuild config menuconfig package clean distclean check-arch FORCE $(NINJA_TARGETS) \
+.PHONY: all build mbuild config menuconfig clean distclean check-arch FORCE $(NINJA_TARGETS) \
 	ninjaclean compdb
 
 all: build
@@ -44,7 +45,7 @@ menuconfig: check-arch
 	@exit 1
 
 compile_commands.json: $(BUILD)/build.ninja
-	$(NINJA) -C $(BUILD) -t compdb > $@
+	$(NINJA) -C $(BUILD) -t compdb cc > $@
 
 compdb: compile_commands.json
 

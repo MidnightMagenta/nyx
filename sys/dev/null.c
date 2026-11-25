@@ -1,26 +1,34 @@
 #include <sys/initcall.h>
+#include <sys/posix_types.h>
+#include <sys/stat.h>
+#include <sys/stddef.h>
 #include <sys/vfs.h>
-#include <sys/uapi/posix_types.h>
 
-struct uio;
+#include <asi/bug.h>
 
 #define NULL_RDEV makedev(1, 3)
 
-static int null_read(dev_t d, struct uio *u) {
-    (void) d;
-    (void) u;
+static ssize_t null_read(struct file *fp, char *buf, size_t cnt, off_t *pos) {
+    (void) fp;
+    (void) buf;
+    (void) cnt;
+    (void) pos;
     return 0;
 }
 
-static const struct cdevsw null_cdevsw = {
-        .d_name  = "null",
-        .d_open  = cdev_noop,
-        .d_close = cdev_noop,
-        .d_read  = null_read,
-        .d_write = cdev_sink,
-        .d_ioctl = cdev_notty,
+static ssize_t null_write(struct file *fp, const char *buf, size_t cnt, off_t *pos) {
+    (void) fp;
+    (void) buf;
+    (void) pos;
+    return (ssize_t) cnt;
+}
+
+static const struct fileops null_fops = {
+        .fop_read  = null_read,
+        .fop_write = null_write,
 };
 
 DEFINE_INITCALL(init_nulldev) {
-    cdev_register("null", &null_cdevsw, NULL_RDEV, 0666);
+    BUG_ON(chrdev_register(NULL_RDEV, "null", &null_fops));
+    BUG_ON(vfs_mknod(NULL, "/dev/null", S_IFCHR | 0666, NULL_RDEV));
 }

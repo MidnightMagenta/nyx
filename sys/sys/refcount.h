@@ -3,9 +3,9 @@
 
 #include <sys/atomic.h>
 
-struct refcount {
+typedef struct refcount {
     atomic_int_t __count;
-};
+} refcount_t;
 
 static inline void refcount_init(struct refcount *rc, int v) {
     atomic_store_explicit(&rc->__count, v, ATOMIC_RELEASE);

@@ -1,17 +1,17 @@
+#include <sys/atomic.h>
+#include <sys/errno.h>
+#include <sys/filedesc.h>
+#include <sys/kernel.h>
+#include <sys/list.h>
 #include <sys/mm/mm_types.h>
 #include <sys/mm/physmem.h>
 #include <sys/mm/vmspace.h>
-#include <sys/atomic.h>
-#include <sys/errno.h>
-#include <sys/kernel.h>
-#include <sys/list.h>
 #include <sys/printk.h>
 #include <sys/proc.h>
 #include <sys/refcount.h>
 #include <sys/sched.h>
 #include <sys/string.h>
 #include <sys/types.h>
-#include <sys/vfs.h>
 
 #include <asi/address.h>
 
@@ -107,8 +107,13 @@ static inline int fork_vmspace(struct process *parent, struct process *pr, int f
 static inline int fork_files(struct process *parent, struct process *pr, int flags) {
     (void) flags;
 
-    pr->p_fd = fdcopy(parent->p_fd);
-    if (!pr->p_fd) { return -ENOMEM; }
+    if (flags & FORK_SHAREFD) {
+        pr->p_fd = fdshare(parent->p_fd);
+        if (!pr->p_fd) { return -ENOSPC; }
+    } else {
+        pr->p_fd = fdcopy(parent->p_fd);
+        if (!pr->p_fd) { return -ENOMEM; }
+    }
 
     return 0;
 }

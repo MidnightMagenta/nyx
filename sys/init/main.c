@@ -1,21 +1,23 @@
-#include <sys/fs/cpio.h>
-#include <sys/mm/mm_types.h>
-#include <sys/mm/virtmem.h>
-#include <sys/mm/vmspace.h>
 #include <sys/compiler.h>
 #include <sys/current.h>
+#include <sys/errno.h>
 #include <sys/exec.h>
+#include <sys/fcntl.h>
+#include <sys/filedesc.h>
+#include <sys/fs/cpio.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
 #include <sys/linkage.h>
+#include <sys/mm/mm_types.h>
+#include <sys/mm/virtmem.h>
+#include <sys/mm/vmspace.h>
 #include <sys/panic.h>
 #include <sys/printk.h>
 #include <sys/proc.h>
+#include <sys/stat.h>
 #include <sys/string.h>
 #include <sys/types.h>
-#include <sys/uio.h>
 #include <sys/vfs.h>
-#include <sys/uapi/fcntl.h>
 
 #include <asi/address.h>
 #include <asi/bootparam.h>
@@ -48,36 +50,34 @@ extern struct thread proc0;
 struct thread       *initproc;
 
 static __init void mount_root() {
-    struct cpio_args args = {
-            .base = __va(get_initramfs()),
-            .len  = get_initramfs_len(),
-    };
-    BUG_ON(vfs_mountroot("cpio", &args));
+    struct path root;
+
+    BUG_ON(vfs_mount_root("ramfs", "rootfs", 0, NULL));
+
+    fd_get_root(current()->t_proc->p_fd, &root);
+    BUG_ON(cpio_unpack(__va(get_initramfs()), get_initramfs_len(), &root));
+    path_put(&root);
 }
 
 static void __init mount_devfs() {
-    struct nameidata nd = {
-            .ni_dirp   = "/dev",
-            .ni_segflg = UIO_SYSSPACE,
-            .ni_op     = NAMEI_LOOKUP,
-            .ni_flags  = 0,
-            .ni_proc   = current()->t_proc,
-    };
+    int res = vfs_mkdir(NULL, "/dev", S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 
-    BUG_ON(namei(&nd));
-    BUG_ON(do_mount("devfs", nd.ni_vp, NULL, NULL));
+    BUG_ON(res && res != -EEXIST);
+    BUG_ON(vfs_mount("ramfs", "devfs", "/dev", 0, NULL));
 }
 
 static __init void start_init() {
-    int stdinfd, stdoutfd, stderrfd;
-    if (do_fork(&proc0, FORK_NOZOMBIE | FORK_SHAREVM, &init_proc, NULL, NULL, &initproc) != 0) {
+    struct file *console;
+    int          stdinfd, stdoutfd, stderrfd;
+    if (do_fork(&proc0, FORK_NOZOMBIE | FORK_SHAREVM | FORK_SHAREFD, &init_proc, NULL, NULL, &initproc) != 0) {
         panic("failed to start init");
     }
 
     BUG_ON(initproc->t_proc->p_pid != 1);
     strncpy(initproc->t_proc->p_name, "init", PROC_NAME_LEN);
 
-    BUG_ON(vfs_open(initproc->t_proc, "/dev/console", UIO_SYSSPACE, O_RDWR, 0, &stdinfd));
+    BUG_ON(vfs_open(NULL, "/dev/console", O_RDWR, 0, &console));
+    BUG_ON(fd_install(initproc->t_proc, console, 0, &stdinfd));
     BUG_ON(kern_dup(initproc->t_proc, stdinfd, &stdoutfd));
     BUG_ON(kern_dup(initproc->t_proc, stdinfd, &stderrfd));
     BUG_ON(stdinfd != 0 || stdoutfd != 1 || stderrfd != 2);
@@ -91,9 +91,9 @@ void __init start_kernel() {
     init_irq();
     init_vfs();
     init_filesystems();
-    mount_root();
     init_timer();
     init_sched();
+    mount_root();
     mount_devfs();
     do_initcalls();
 
@@ -109,48 +109,6 @@ void __init start_kernel() {
     __idle_task_fn();
 
     BUG();
-}
-
-#include "fudgeasm.h"
-#include <asi/gdt.h>
-
-void fudge_exec() {
-    struct thread  *t  = current();
-    struct process *pr = t->t_proc;
-    struct vmspace *mm = vmspace_new(pr);
-    struct vmspace *oldmm;
-    flags_t         flags;
-
-    struct trap_frame *tf = thread_trap_frame(t);
-    tf->frame.rip         = 0x10000;
-    tf->frame.cs          = USER_CODE64_SEGMENT;
-    tf->frame.ss          = USER_DATA_SEGMENT;
-    tf->frame.rflags      = 0x202;
-
-    vmspace_mapcopy(mm,
-                    0x10000,
-                    init_fudgeasm_bin,
-                    init_fudgeasm_bin_len,
-                    VM_EXEC | VM_READ | VM_WRITE | VM_USER,
-                    M_SLEEPOK);
-
-    vms_mmap(mm,
-             0x10000,
-             init_fudgeasm_bin_len,
-             VM_EXEC | VM_READ | VM_WRITE,
-             MAP_ANON | MAP_PRIVATE | MAP_FIXED,
-             NULL,
-             0,
-             NULL);
-
-    oldmm = pr->p_mm;
-
-    flags = arch_irq_save();
-    vmspace_activate(mm);
-    pr->p_mm = mm;
-    arch_irq_restore(flags);
-
-    vmspace_put(oldmm);
 }
 
 void __init init_proc(void *arg) {
